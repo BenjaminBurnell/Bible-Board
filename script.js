@@ -25,8 +25,8 @@ async function fetchVerseText(book, chapter, verse) {
   
   const proxy = "https://api.allorigins.win/raw?url=";
   const code = bibleBookCodes[book] || book;
-  const apiUrl = `https://bible-api-5jrz.onrender.com/verse/KJV/${encodeURIComponent(code)}/${chapter}/${verse}`;
-  const url = encodeURIComponent(apiUrl);
+  const url = `https://bible-api-5jrz.onrender.com/verse/KJV/${encodeURIComponent(code)}/${chapter}/${verse}`;
+  // const url = encodeURIComponent(apiUrl);
   
 
   try {
