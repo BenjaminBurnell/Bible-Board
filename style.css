@@ -1,0 +1,131 @@
+/* ==================== Setup for site ==================== */
+@import url('https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400;1,700&display=swap');
+
+* { font-family: "Atkinson Hyperlegible", sans-serif; user-select: none; -webkit-user-select: none; }
+
+:root {
+  --bg:#171717; --bg-seethroug:#20202050; --bg-dots:#1d1d1d; --bg-alt:#202020;
+  --fg:#e6e6e6; --fg-seethrough:#e6e6e620; --accent:#67E495; --border:#2f2f2f; --muted:#8b949e;
+}
+body.light {
+  --bg:#ffffff; --bg-seethroug:#f2f2f2ab; --bg-dots:#f3f3f3; --bg-alt:#dadada;
+  --fg:#343434; --fg-seethrough:#29292920; --border:#dfdfdf; --accent:#2ea043; --muted:#57606a;
+}
+
+html, body { width:100%; height:100%; margin:0; overflow:hidden; background:var(--bg); }
+
+@media (pointer: coarse) {
+  @media (max-width:750px){
+    #main-content-container{display:none;} #search-query-container{display:none;}
+    #bible-board-phone-message{width:100vw;height:auto;position:fixed;top:0;left:0;bottom:0;background:var(--bg);color:var(--fg);display:flex;justify-content:center;align-items:center;}
+    #bible-board-text{width:calc(100vw - 50px);font-size:25px;font-weight:800;text-align:center;}
+  }
+}
+@media (pointer: fine) { @media (min-width:750px){ #bible-board-phone-message,#bible-board-text{display:none;} } }
+
+.viewport{ width:100%; height:auto; overflow:hidden; cursor:grab; scroll-behavior:auto; margin:auto; position:fixed; top:0; bottom:0; left:0; }
+.workspace{
+  position:relative; width:8000px; height:8000px; overflow:hidden;
+  background-color:var(--bg);
+  background-image: radial-gradient(circle at center, var(--bg-dots) 3px, transparent 3px);
+  background-size:40px 40px;
+}
+#main-content-container{ width:100vw; height:100%; position:relative; }
+
+/* ==================== Elements (board items) ==================== */
+.board-item{
+  position:absolute; width:fit-content; max-width:400px; padding:15px;
+  display:flex; align-items:center; justify-content:center; gap:5px;
+  color:var(--fg); font-weight:800; cursor:grab; z-index:5;
+  background: var(--bg-seethroug); backdrop-filter: blur(1rem);
+  border-radius:10px; border:1px solid var(--fg-seethrough);
+  box-shadow:0 0 15px 1px rgba(0,0,0,0.1);
+}
+.board-item:hover{ background:var(--bg-dots); }
+.board-item:active{ cursor:grabbing; }
+.board-item.selected-connection{ box-shadow:0 0 0 3px var(--accent); border-color:var(--accent); }
+
+/* ===== Verse/content typography ===== */
+.verse-text{ width:100%; font-size:15px; text-align:left; color:var(--muted); font-weight:700; text-transform:uppercase; }
+.verse-text-content{ font-size:22.5px; color:var(--fg); font-weight:900; margin:5px 0; }
+.verse-text-reference{ width:100%; font-size:15px; text-align:left; color:var(--muted); font-weight:700; text-transform:uppercase; }
+
+/* ===== Text note ===== */
+.text-note .text-content,
+.text-note textarea.text-content{
+  font-size:22.5px; color:var(--fg); font-weight:900; line-height:1.35;
+  white-space:pre-wrap;
+  /* 👇 ensure no border/outline if you use <div contenteditable> or <textarea> */
+  background:transparent; border:none; outline:none; box-shadow:none;
+  padding:0; margin:0;
+}
+.text-note .text-content:focus,
+.text-note textarea.text-content:focus{ outline:none; box-shadow:none; border:none; }
+
+/* ======= Global Action Buttons ======= */
+#action-buttons-container{
+  display:flex; flex-direction:column; gap:8px;
+  width:50px; position:fixed; left:25px; top:50%; transform:translateY(-50%);
+  background:var(--bg-seethroug); border:1px solid var(--fg-seethrough);
+  backdrop-filter: blur(1rem); justify-content:center; align-items:center;
+  padding:10px 5px; border-radius:20px; z-index:10001;
+}
+.action-button{
+  width:35px; height:35px; display:flex; justify-content:center; align-items:center;
+  padding:10px; background:var(--bg-seethroug); border-radius:10px; border:1px solid var(--fg-seethrough);
+  cursor:pointer; transition:opacity .15s ease;
+}
+.action-button:hover{ background:var(--bg-dots); }
+.action-icon{ fill:var(--muted); }
+.action-button:disabled{ opacity:.4; cursor:not-allowed; }
+.action-button:disabled:hover{ opacity:.4; cursor:not-allowed;  } /* same behavior as connect button */
+
+#delete-action-button {
+    background:rgb(173,28,28);
+}
+
+/* ======= Connections ======= */
+.connections{ position:absolute; top:0; left:0; width:8000px; height:8000px; pointer-events:none; }
+.connection-line{
+  stroke:var(--border); stroke-width:7; fill:none; opacity:0.9;
+  stroke-linecap:round; stroke-linejoin:round; cursor:pointer; pointer-events:stroke;
+}
+.connection-line:hover{ stroke:rgb(173,28,28); }
+
+/* ==================== Search Input, Theme, Title, Panel, Loader ==================== */
+#search-container{ width:calc(100% - 50px); max-width:650px; height:60px; background:var(--bg-seethroug); backdrop-filter:blur(1rem); position:absolute; bottom:25px; left:50%; transform:translateX(-50%); border-radius:20px; border:1px solid var(--fg-seethrough); z-index:10000; }
+#search-bar{ width:calc(100% - 100px); max-width:500px; height:30px; position:absolute; top:50%; left:25px; transform:translateY(-50%); background:transparent; border:none; font-size:17.5px; font-weight:800; color:var(--fg); }
+#search-button{ width:60px; height:100%; position:absolute; right:0; top:50%; transform:translateY(-50%); border-radius:20px; border:1px solid var(--muted); background:var(--fg); cursor:pointer; }
+@media (pointer:fine){ #search-button:hover{ opacity:.75; } }
+input, button, textarea:focus{ outline:none; }
+
+.toggle-btn{ background:none; border:none; display:flex; align-items:center; justify-content:center; padding:6px; border-radius:15px; width:50px; height:50px; transition:.3s ease, transform .3s ease; backdrop-filter:blur(1rem); background:var(--bg-seethroug); border:1px solid var(--fg-seethrough); color:var(--fg); cursor:pointer; position:absolute; top:25px; right:25px; }
+@media (pointer:fine){ .toggle-btn:hover{ background:var(--bg-alt); transition:.0s; } }
+#moon-icon,#sun-icon{ width:20px; height:20px; transition:opacity .3s ease; }
+#moon-icon{ width:25px; height:25px; position:absolute; top:calc(50% + 2px); left:calc(50% - 2px); transform:translate(-50%,-50%); }
+body.light #moon-icon{ display:none; }
+body:not(.light) #sun-icon{ display:none; }
+
+#bible-whiteboard-title{ display:flex; align-items:center; justify-content:center; padding:0 6px; border-radius:15px; backdrop-filter:blur(1rem); background:var(--bg-seethroug); border:1px solid var(--fg-seethrough); color:var(--fg); position:absolute; top:25px; left:25px; width:fit-content; height:50px; }
+#bible-whiteboard-text{ display:flex; justify-content:center; align-items:center; gap:5px; padding:5px; }
+#edit-Icon{ width:17.5px; height:17.5px; fill:var(--muted); }
+#title-textbox{ background:transparent; border:none; color:var(--fg); font-size:15px; font-weight:800; }
+#title-textbox::placeholder{ font-weight:600; }
+
+#search-query-container{ width:300px; position:fixed; top:0; bottom:0; left:100%; border-left:1px solid var(--border); background:var(--bg); }
+#search-query-content{ height:100%; width:100%; padding:15px; background:transparent; overflow-y:scroll; }
+#search-query{ color:var(--muted); font-size:15px; font-weight:600; }
+#did-you-mean-text{ color:var(--muted); font-size:15px; font-weight:600; display:flex; align-items:center; gap:5px; }
+#did-you-mean-text div{ text-decoration:underline; cursor:pointer; }
+#search-query-full-container{ flex-direction:column; }
+#search-query-verses-text{ color:var(--fg); font-size:20px; font-weight:800; margin:15px 0 10px; }
+#search-query-verse-container{ position:relative; width:calc(100% - 30px); }
+.search-query-verse-container{ border-radius:20px; color:var(--fg); border:1px solid var(--border); background:var(--bg-dots); padding:15px; width:calc(100% - 32px); font-size:17.5px; font-weight:900; }
+.search-query-verse-add-button{ border-radius:20px; background:var(--fg); color:var(--bg); border:1px solid var(--bg); padding:5px 15px; cursor:pointer; }
+.search-query-verse-reference{ margin-top:5px; width:100%; font-size:15px; text-align:left; color:var(--muted); font-weight:700; text-transform:uppercase; margin-bottom:10px; }
+@media (pointer:fine){ .search-query-verse-add-button:hover{ opacity:.75; } }
+
+#loader{ position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); text-align:center; background:var(--bg); color:var(--fg); display:flex; flex-direction:column; justify-content:center; align-content:center; transition:opacity .8s ease, visibility .8s ease; }
+#loader.fade-out{ opacity:0; visibility:hidden; }
+.loader-spinner{ width:35px; height:35px; border:6px solid var(--fg-seethrough); border-top-color:var(--muted); border-radius:50%; animation:spin 1s linear infinite; }
+@keyframes spin{ from{ transform:rotate(0deg);} to{ transform:rotate(360deg);} }

@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="style.css" />
+    <title>Bible Whiteboard</title>
+  </head>
+  <body>
+    <div id="main-content-container">
+      <div class="viewport">
+        <div id="workspace" class="workspace">
+          <svg id="connections" class="connections"></svg>
+        </div>
+      </div>
+
+      <button id="theme-toggle" class="toggle-btn" aria-label="Toggle Theme">
+        <svg id="moon-icon" xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="var(--fg)">
+          <path d="M21 12.79A9 9 0 0 1 11.21 3 7 7 0 1 0 21 12.79Z" />
+        </svg>
+        <svg id="sun-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" fill="var(--fg)">
+          <path d="M440-760v-160h80v160h-80Zm266 110-55-55 112-115 56 57-113 113Zm54 210v-80h160v80H760ZM440-40v-160h80v160h-80ZM254-652 140-763l57-56 113 113-56 54Zm508 512L651-255l54-54 114 110-57 59ZM40-440v-80h160v80H40Zm157 300-56-57 112-112 29 27 29 28-114 114Zm283-100q-100 0-170-70t-70-170q0-100 70-170t170-70q100 0 170 70t70 170q0 100-70 170t-170 70Zm0-80q66 0 113-47t47-113q0-66-47-113t-113-47q-66 0-113 47t-47 113q0 66 47 113t113 47Zm0-160Z"/>
+        </svg>
+      </button>
+
+      <form id="search-container" onsubmit="return searchForQuery(event)">
+        <input id="search-bar" type="text" placeholder="Search" autocomplete="off" />
+        <button id="search-button" type="submit">
+          <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="var(--bg-alt)">
+            <path d="M784-120 532-372q-30 24-69 38t-83 14q-109 0-184.5-75.5T120-580q0-109 75.5-184.5T380-840q109 0 184.5 75.5T640-580q0 44-14 83t-38 69l252 252-56 56ZM380-400q75 0 127.5-52.5T560-580q0-75-52.5-127.5T380-760q-75 0-127.5 52.5T200-580q0 75 52.5 127.5T380-400Z"/>
+          </svg>
+        </button>
+      </form>
+
+      <div id="bible-whiteboard-title">
+        <div id="bible-whiteboard-text">
+          <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" id="edit-Icon" fill="var(--fg)">
+            <path d="M200-200h57l391-391-57-57-391 391v57Zm-80 80v-170l528-527q12-11 26.5-17t30.5-6q16 0 31 6t26 18l55 56q12 11 17.5 26t5.5 30q0 16-5.5 30.5T817-647L290-120H120Zm640-584-56-56 56 56Zm-141 85-28-29 57 57-29-28Z"/>
+          </svg>
+          <input id="title-textbox" type="text" placeholder="Untitled Bible Board" />
+        </div>
+      </div>
+
+      <!-- ✅ Global action buttons -->
+      <div id="action-buttons-container" title="Actions">
+        <!-- Connect -->
+        <button id="mobile-action-button" class="action-button" aria-label="Connect" disabled>
+          <svg class="action-icon" xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px">
+            <path d="M200-120q-17 0-28.5-11.5T160-160v-40h-40v-160
+                q0-17 11.5-28.5T160-400h40v-280q0-66 47-113t113-47
+                q66 0 113 47t47 113v400q0 33 23.5 56.5T600-200
+                q33 0 56.5-23.5T680-280v-280h-40q-17 0-28.5-11.5
+                T600-600v-160h40v-40q0-17 11.5-28.5T680-840h80
+                q17 0 28.5 11.5T800-800v40h40v160q0 17-11.5
+                28.5T800-560h-40v280q0 66-47 113t-113 47
+                q-66 0-113-47t-47-113v-400q0-33-23.5
+                -56.5T360-760q-33 0-56.5 23.5T280-680v280h40
+                q17 0 28.5 11.5T360-360v160h-40v40q0
+                17-11.5 28.5T280-120h-80Z"/>
+          </svg>
+        </button>
+
+        <!-- Text -->
+        <button id="text-action-button" class="action-button" aria-label="Add text">
+          <svg class="action-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 -960 960 960">
+            <path d="M160-120v-80h240v-560H240v-80h480v80H560v560h240v80H160Z"/>
+          </svg>
+        </button>
+
+        <!-- Delete -->
+        <button id="delete-action-button" class="action-button" aria-label="Delete selected" disabled>
+          <svg class="action-icon" xmlns="http://www.w3.org/2000/svg" height="24" width="24" viewBox="0 -960 960 960">
+            <path d="M280-120q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520ZM360-280h80v-360h-80v360Zm160 0h80v-360h-80v360Z"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <div id="search-query-container">
+      <div id="search-query-content">
+        <div id="search-query">Search for ""</div>
+        <div id="did-you-mean-text">Did you mean ""?</div>
+
+        <div id="search-query-full-container">
+          <div id="search-query-verses-text">Verses</div>
+          <div id="search-query-verse-container"></div>
+        </div>
+
+        <div id="loader"><div class="loader-spinner"></div></div>
+      </div>
+    </div>
+
+    <div id="bible-board-phone-message">
+      <div id="bible-board-text">Bible board works best on desktop or tablets.</div>
+    </div>
+
+    <script src="search.js"></script>
+    <script src="script.js"></script>
+  </body>
+</html>
