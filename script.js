@@ -16,29 +16,34 @@ const bibleBookCodes = {
   "Jude":"JUD","Revelation":"REV"
 };
 
-// ==================== Fetch Verse Text (uses KJV) ====================
+// ==================== Fetch Verse Text (KJV) — FIXED for GitHub Pages ====================
 async function fetchVerseText(book, chapter, verse) {
-  // const proxy = "https://api.allorigins.win/raw?url=";
-  // const code = bibleBookCodes[book] || book;
-  // const apiUrl = `https://bible-api-5jrz.onrender.com/verse/KJV/${encodeURIComponent(code)}/${chapter}/${verse}`;
-  // const url = proxy + encodeURIComponent(apiUrl);
-  
-  const proxy = "https://api.allorigins.win/raw?url=";
-  const code = bibleBookCodes[book] || book;
-  const url = `https://bible-api-5jrz.onrender.com/verse/KJV/${encodeURIComponent(code)}/${chapter}/${verse}`;
-  // const url = encodeURIComponent(apiUrl);
-  
+  const code = bibleBookCodes[book] || book; // e.g., "OBA"
+  const apiUrl = `https://bible-api-5jrz.onrender.com/verse/KJV/${encodeURIComponent(code)}/${chapter}/${verse}`;
+
+  // Use a CORS-friendly proxy (AllOrigins raw) with the FULL URL encoded once.
+  const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(apiUrl)}`;
 
   try {
-    const resp = await fetch(url);
-    if (!resp.ok) throw new Error("Network error");
+    let resp = await fetch(proxyUrl, { method: "GET" });
+    if (!resp.ok) throw new Error("Proxy fetch failed");
     const data = await resp.json();
     if (data.text) return data.text;
     if (data.verses) return data.verses.map(v => v.text).join(" ");
     return "Verse not found.";
   } catch (err) {
-    console.error("❌ Error fetching verse:", err);
-    return "Error fetching verse.";
+    console.warn("Proxy failed, trying direct fetch…", err);
+    try {
+      const resp = await fetch(apiUrl, { method: "GET", mode: "cors" });
+      if (!resp.ok) throw new Error("Direct fetch failed");
+      const data = await resp.json();
+      if (data.text) return data.text;
+      if (data.verses) return data.verses.map(v => v.text).join(" ");
+      return "Verse not found.";
+    } catch (err2) {
+      console.error("❌ Error fetching verse:", err2);
+      return "Error fetching verse.";
+    }
   }
 }
 
