@@ -16,25 +16,22 @@ const bibleBookCodes = {
   "Jude":"JUD","Revelation":"REV"
 };
 
-// ==================== Fetch Verse Text (KJV) — FIXED for GitHub Pages ====================
+// ==================== Fetch Verse Text (KJV) ====================
 async function fetchVerseText(book, chapter, verse) {
-  const code = bibleBookCodes[book] || book; // e.g., "OBA"
+  const code = bibleBookCodes[book] || book;
   const apiUrl = `https://bible-api-5jrz.onrender.com/verse/KJV/${encodeURIComponent(code)}/${chapter}/${verse}`;
-
-  // Use a CORS-friendly proxy (AllOrigins raw) with the FULL URL encoded once.
   const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(apiUrl)}`;
 
   try {
-    let resp = await fetch(proxyUrl, { method: "GET" });
+    const resp = await fetch(proxyUrl);
     if (!resp.ok) throw new Error("Proxy fetch failed");
     const data = await resp.json();
     if (data.text) return data.text;
     if (data.verses) return data.verses.map(v => v.text).join(" ");
     return "Verse not found.";
-  } catch (err) {
-    console.warn("Proxy failed, trying direct fetch…", err);
+  } catch {
     try {
-      const resp = await fetch(apiUrl, { method: "GET", mode: "cors" });
+      const resp = await fetch(apiUrl, { mode: "cors" });
       if (!resp.ok) throw new Error("Direct fetch failed");
       const data = await resp.json();
       if (data.text) return data.text;
@@ -58,10 +55,24 @@ const didYouMeanText = document.getElementById("did-you-mean-text");
 const searchQueryFullContainer = document.getElementById("search-query-full-container");
 const loader = document.getElementById("loader");
 
+// SONGS (present in index.html; populated by your search.js)
+const songsHeader = document.getElementById("search-query-songs-text");
+const songsContainer = document.getElementById("search-query-song-container");
+
 // Global action buttons
 const connectBtn = document.getElementById("mobile-action-button");
 const textBtn = document.getElementById("text-action-button");
 const deleteBtn = document.getElementById("delete-action-button");
+
+// Interlinear button + panel refs
+const interlinearBtn   = document.getElementById("interlinear-action-button");
+const interPanel       = document.getElementById("interlinear-panel");
+const interClose       = document.getElementById("interlinear-close");
+const interSubtitle    = document.getElementById("interlinear-subtitle");
+const interList        = document.getElementById("interlinear-list");
+const interLoader      = document.getElementById("interlinear-loader");
+const interEmpty       = document.getElementById("interlinear-empty");
+const interError       = document.getElementById("interlinear-error");
 
 // Ensure SVG exists
 let svg = document.getElementById("connections");
@@ -76,6 +87,30 @@ if (!svg) {
   svg.style.left = "0";
   svg.style.zIndex = "5";
   workspace.prepend(svg);
+}
+
+// ==================== Layout State ====================
+let searchDrawerOpen = false;     // 300px
+let interlinearOpen  = false;     // 340px
+
+function applyLayout(withTransition = true) {
+  const offset = (searchDrawerOpen ? 300 : 0) + (interlinearOpen ? 340 : 0);
+
+  if (withTransition) mainContentContainer.style.transition = ".25s";
+  mainContentContainer.style.width = offset ? `calc(100% - ${offset}px)` : "100%";
+
+  if (withTransition) searchQueryContainer.style.transition = ".25s";
+  searchQueryContainer.style.left = searchDrawerOpen ? "calc(100% - 300px)" : "100%";
+
+  interPanel.classList.toggle("open", interlinearOpen);
+
+  if (withTransition) {
+    setTimeout(() => {
+      mainContentContainer.style.transition = "0s";
+      searchQueryContainer.style.transition = "0s";
+    }, 250);
+  }
+  updateAllConnections();
 }
 
 // ==================== State ====================
@@ -98,11 +133,34 @@ let isConnectMode = false;
 let selectedItem = null;
 
 // Drag-from-text thresholds
-const DRAG_SLOP = 6; // px
-let pendingMouseDrag = null;       // { item, startX, startY, offX, offY }
-let pendingTouchDrag = null;       // { item, startX, startY, offX, offY }
+const DRAG_SLOP = 6;
+let pendingMouseDrag = null;
+let pendingTouchDrag = null;
 
 // ==================== Helpers ====================
+function isTouchInsideUI(el) {
+  return !!(el.closest?.('#search-query-container') ||
+            el.closest?.('#action-buttons-container') ||
+            el.closest?.('#bible-whiteboard-title') ||
+            el.closest?.('#search-container'));
+}
+
+
+function onGlobalMouseUp() {
+  if (active) {
+    try { active.style.cursor = "grab"; } catch {}
+  }
+  active = null;
+  pendingMouseDrag = null;
+  touchDragElement = null;
+  isPanning = false;
+}
+
+// Make sure we always release, even if mouseup lands on another element/panel
+window.addEventListener("mouseup", onGlobalMouseUp);               // normal bubble
+document.addEventListener("mouseup", onGlobalMouseUp, true);       // capture phase
+window.addEventListener("blur", onGlobalMouseUp);                  // lost focus (e.g., alt-tab)
+
 function clamp(v, a, b){ return Math.min(Math.max(v, a), b); }
 function itemKey(el){ if(!el?.dataset?.vkey){ el.dataset.vkey = "v_"+Math.random().toString(36).slice(2);} return el.dataset.vkey; }
 
@@ -112,7 +170,6 @@ function clampScroll(){
   viewport.scrollLeft = clamp(viewport.scrollLeft, 0, maxLeft);
   viewport.scrollTop  = clamp(viewport.scrollTop, 0, maxTop);
 }
-
 function applyZoom(e, deltaScale){
   const old = scale, next = clamp(old + deltaScale, MIN_SCALE, MAX_SCALE);
   if (Math.abs(next - old) < 1e-9) return false;
@@ -120,7 +177,7 @@ function applyZoom(e, deltaScale){
   const vpRect = viewport.getBoundingClientRect();
   const vpX = e.clientX - vpRect.left, vpY = e.clientY - vpRect.top;
   const worldX = (viewport.scrollLeft + vpX) / old;
-  const worldY = (viewport.scrollTop + vpY) / old;
+  const worldY = (viewport.scrollTop  + vpY) / old;
 
   scale = next;
   workspace.style.transformOrigin = "top left";
@@ -138,10 +195,14 @@ viewport.addEventListener("mousedown", (e) => {
   startX = e.clientX; startY = e.clientY;
   scrollLeft = viewport.scrollLeft; scrollTop = viewport.scrollTop;
 });
-window.addEventListener("mouseup", () => { isPanning = false; viewport.style.cursor = "grab"; });
+
+window.addEventListener("mouseup", () => {
+  viewport.style.cursor = "grab";
+  onGlobalMouseUp();
+});
+
 window.addEventListener("mousemove", (e) => {
   if (!isPanning && !active) {
-    // Check for drag-from-text activation
     if (pendingMouseDrag) {
       const dx = e.clientX - pendingMouseDrag.startX;
       const dy = e.clientY - pendingMouseDrag.startY;
@@ -168,16 +229,16 @@ viewport.addEventListener("wheel", (e) => {
   const changed = applyZoom(e, -pixels*(e.ctrlKey ? PINCH_SENS : WHEEL_SENS));
   if (changed) e.preventDefault();
 },{passive:false});
+
 window.addEventListener("load", () => {
   viewport.scrollLeft = (workspace.scrollWidth - viewport.clientWidth)/2;
   viewport.scrollTop  = (workspace.scrollHeight - viewport.clientHeight)/2;
   workspace.style.transformOrigin = "top left";
   workspace.style.transform = `scale(${scale})`;
   updateAllConnections();
-  updateActionButtonsEnabled(); // start disabled where applicable
-  // If browser ever selects inside contenteditable, prevent dragging side-effects
-  document.addEventListener("mouseup", ()=>{ pendingMouseDrag = null; }, true);
+  updateActionButtonsEnabled();
 });
+
 window.addEventListener("resize", updateAllConnections);
 
 // Touch pan + pinch
@@ -185,57 +246,142 @@ let touchStartDistance = 0, lastScale = 1;
 function getTouchDistance(t){ const dx=t[0].clientX - t[1].clientX, dy=t[0].clientY - t[1].clientY; return Math.hypot(dx,dy); }
 function getTouchMidpoint(t){ return { x:(t[0].clientX+t[1].clientX)/2, y:(t[0].clientY+t[1].clientY)/2 }; }
 
-viewport.addEventListener("touchstart",(e)=>{
-  if (e.touches.length===1){ isTouchPanning=true; startX=e.touches[0].clientX; startY=e.touches[0].clientY;
-    scrollLeft=viewport.scrollLeft; scrollTop=viewport.scrollTop; }
-  else if (e.touches.length===2){ isTouchPanning=false; touchStartDistance=getTouchDistance(e.touches); lastScale=scale; }
-},{passive:false});
-viewport.addEventListener("touchmove",(e)=>{
-  if (e.touches.length===1 && isTouchPanning && !isConnectMode && !touchDragElement){
+viewport.addEventListener("touchstart", (e) => {
+  // Let UI (right panel, buttons, search, title) work normally
+  if (isTouchInsideUI?.(e.target)) return;
+
+  // ✅ If the touch begins on a board item, DO NOT start panning here.
+  //    Let workspace handlers manage element dragging.
+  if (e.touches.length === 1 && e.target.closest(".board-item")) return;
+
+  // Clear any stale element-drag states before starting a canvas gesture
+  touchDragElement = null;
+  pendingTouchDrag = null;
+  active = null;
+
+  if (e.touches.length === 1) {
+    isTouchPanning = true;
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+    scrollLeft = viewport.scrollLeft;
+    scrollTop  = viewport.scrollTop;
+  } else if (e.touches.length === 2) {
+    isTouchPanning = false;
+    touchStartDistance = getTouchDistance(e.touches);
+    lastScale = scale;
+  }
+}, { passive: false });
+
+
+
+viewport.addEventListener("touchmove", (e) => {
+  if (isTouchInsideUI?.(e.target)) return;
+
+  // ✅ If an element is dragging or we're arming one (pendingTouchDrag),
+  //    the viewport must NOT pan/zoom on this move.
+  if (touchDragElement || pendingTouchDrag) return;
+
+  if (e.touches.length === 1 && isTouchPanning && !isConnectMode) {
+    e.preventDefault(); // only while panning the canvas
     viewport.scrollLeft = scrollLeft - (e.touches[0].clientX - startX);
     viewport.scrollTop  = scrollTop  - (e.touches[0].clientY - startY);
     clampScroll(); updateAllConnections();
-  } else if (e.touches.length===2){
-    e.preventDefault();
+  } else if (e.touches.length === 2) {
+    e.preventDefault(); // pinch zoom
     const newDistance = getTouchDistance(e.touches);
     const scaleDelta = (newDistance - touchStartDistance) * PINCH_SENS;
     const newScale = clamp(lastScale + scaleDelta, MIN_SCALE, MAX_SCALE);
     const mid = getTouchMidpoint(e.touches);
-    applyZoom({clientX:mid.x, clientY:mid.y}, newScale - scale);
+    applyZoom({ clientX: mid.x, clientY: mid.y }, newScale - scale);
   }
-},{passive:false});
+}, { passive: false });
+
+
 viewport.addEventListener("touchend",()=>{ isTouchPanning=false; },{passive:true});
 
-// ==================== Drag board items (mouse) ====================
-workspace.addEventListener("mousedown",(e)=>{
+workspace.addEventListener("touchstart", (e) => {
   if (isConnectMode) return;
-  const item = e.target.closest(".board-item");
-  if (!item) return;
+  if (e.touches.length !== 1) return;           // element drag is 1-finger only
+  if (isTouchInsideUI?.(e.target)) return;      // don’t hijack UI touches
 
-  // If the press began on editable text, defer drag until the cursor moves beyond a slop.
-  const onEditable = !!e.target.closest('[contenteditable="true"], textarea.text-content');
-  if (onEditable) {
-    const rect = item.getBoundingClientRect();
-    pendingMouseDrag = {
-      item,
-      startX: e.clientX,
-      startY: e.clientY,
-      offX: (e.clientX - rect.left) / scale,
-      offY: (e.clientY - rect.top ) / scale
-    };
-    return; // don't start drag yet
+  const item = e.target.closest(".board-item");
+  if (!item) {
+    // Touch on empty canvas should not arm an element drag
+    pendingTouchDrag = null;
+    return;
   }
 
-  startDragMouse(item, e);
-});
+  // Don’t preventDefault yet — we only do that once we actually start dragging
+  touchDragElement = null;                       // clear any stale drag
+  const t = e.touches[0];
+  const rect = item.getBoundingClientRect();
+  pendingTouchDrag = {
+    item,
+    startX: t.clientX,
+    startY: t.clientY,
+    offX: (t.clientX - rect.left) / scale,
+    offY: (t.clientY - rect.top ) / scale,
+  };
+}, { passive: false });
 
-window.addEventListener("mouseup",()=>{
-  if (active) active.style.cursor="grab";
-  active=null;
-  pendingMouseDrag = null;
-});
+workspace.addEventListener("touchmove", (e) => {
+  if (isConnectMode) return;
 
-// helpers for mouse drag
+  // Already dragging an item → keep the gesture captured to the item
+  if (touchDragElement) {
+    e.preventDefault();
+    const t = e.touches[0];
+    dragTouchTo(t);
+    return;
+  }
+
+  // Not yet dragging → promote to drag ONLY after slop, then preventDefault
+  const t = e.touches[0];
+  if (pendingTouchDrag && !touchDragElement) {
+    const dx = t.clientX - pendingTouchDrag.startX;
+    const dy = t.clientY - pendingTouchDrag.startY;
+    if (Math.hypot(dx, dy) > DRAG_SLOP) {
+      e.preventDefault(); // from now on, this gesture belongs to the item
+      startDragTouch(pendingTouchDrag.item, t, pendingTouchDrag.offX, pendingTouchDrag.offY);
+      pendingTouchDrag = null;
+    }
+  }
+}, { passive: false });
+
+
+workspace.addEventListener("touchend", () => {
+  touchDragElement = null;
+  pendingTouchDrag = null;
+  touchMoved = false;
+}, { passive: true });
+
+workspace.addEventListener("touchcancel", () => {
+  touchDragElement = null;
+  pendingTouchDrag = null;
+  touchMoved = false;
+}, { passive: true });
+
+
+// If touch ends anywhere (including over UI), ensure we’re not “stuck” in drag
+window.addEventListener("touchend", () => {
+  touchDragElement = null;
+  pendingTouchDrag = null;
+  touchMoved = false;
+  isTouchPanning = false;
+  active = null;
+}, { passive: true });
+
+window.addEventListener("touchcancel", () => {
+  touchDragElement = null;
+  pendingTouchDrag = null;
+  touchMoved = false;
+  isTouchPanning = false;
+  active = null;
+}, { passive: true });
+
+
+
+// ==================== Drag helpers ====================
 function startDragMouse(item, eOrPoint, offX, offY){
   active = item; currentIndex += 1; item.style.zIndex = currentIndex; item.style.cursor="grabbing";
   if (offX == null || offY == null) {
@@ -255,49 +401,6 @@ function dragMouseTo(clientX, clientY){
   active.style.top  = clamp(newTop,0,maxTop)+"px";
   updateAllConnections();
 }
-
-// ==================== Drag board items (touch) ====================
-workspace.addEventListener("touchstart",(e)=>{
-  if (isConnectMode || e.touches.length!==1) return;
-  const item = e.target.closest(".board-item");
-  if (!item) return;
-
-  const onEditable = !!e.target.closest('[contenteditable="true"], textarea.text-content');
-  const t = e.touches[0];
-  const rect = item.getBoundingClientRect();
-  pendingTouchDrag = {
-    item,
-    startX: t.clientX,
-    startY: t.clientY,
-    offX: (t.clientX - rect.left)/scale,
-    offY: (t.clientY - rect.top )/scale
-  };
-},{passive:true});
-
-workspace.addEventListener("touchmove",(e)=>{
-  if (isConnectMode) return;
-  const t = e.touches[0];
-  // Activate deferred drag after threshold
-  if (pendingTouchDrag && !touchDragElement) {
-    const dx = t.clientX - pendingTouchDrag.startX;
-    const dy = t.clientY - pendingTouchDrag.startY;
-    if (Math.hypot(dx, dy) > DRAG_SLOP) {
-      startDragTouch(pendingTouchDrag.item, t, pendingTouchDrag.offX, pendingTouchDrag.offY);
-      pendingTouchDrag = null;
-    }
-  }
-  if (!touchDragElement) return;
-  e.preventDefault(); touchMoved=true;
-  dragTouchTo(t);
-},{passive:false});
-
-workspace.addEventListener("touchend",()=>{
-  if (!touchDragElement) { pendingTouchDrag = null; return; }
-  touchDragElement=null;
-  setTimeout(()=>{touchMoved=false;},0);
-},{passive:true});
-
-// helpers for touch drag
 function startDragTouch(item, touchPoint, offX, offY){
   touchDragElement = item; touchMoved=false; isTouchPanning=false;
   currentIndex += 1; item.style.zIndex = currentIndex;
@@ -388,7 +491,6 @@ function addBibleVerse(reference, text){
   workspace.appendChild(el);
   el.dataset.vkey = itemKey(el);
 
-  // desktop drag (non-editable areas)
   el.addEventListener("mousedown",(e)=>{
     if (isConnectMode || e.target.closest('[contenteditable="true"], textarea.text-content')) return;
     startDragMouse(el, e);
@@ -409,7 +511,6 @@ function addTextNote(initial="New note"){
   const y = visibleY + (visibleH-50)/2;
   el.style.left=`${x}px`; el.style.top=`${y}px`;
 
-  // Structure: NOTE header + editable body (contenteditable div)
   el.innerHTML = `
     <div class="note-content">
       <div class="verse-text note-label">NOTE</div>
@@ -422,36 +523,27 @@ function addTextNote(initial="New note"){
   const header = el.querySelector(".note-label");
   const body = el.querySelector(".text-content");
 
-  // --- Drag from header OR body with threshold ---
   header.addEventListener("mousedown",(e)=>{ if (!isConnectMode) startDragMouse(el, e); });
   el.addEventListener("mousedown",(e)=>{
     if (isConnectMode) return;
-    // If clicking inside body, defer drag until movement exceeds slop
     if (e.target === body || e.target.closest(".text-content")) {
       const rect = el.getBoundingClientRect();
       pendingMouseDrag = {
-        item: el,
-        startX: e.clientX,
-        startY: e.clientY,
-        offX: (e.clientX - rect.left) / scale,
-        offY: (e.clientY - rect.top ) / scale
+        item: el, startX: e.clientX, startY: e.clientY,
+        offX: (e.clientX - rect.left) / scale, offY: (e.clientY - rect.top) / scale
       };
       return;
     }
     startDragMouse(el, e);
   });
 
-  // Touch: start from anywhere and defer until slop exceeded
   el.addEventListener("touchstart",(e)=>{
     if (isConnectMode || e.touches.length!==1) return;
     const t = e.touches[0];
     const rect = el.getBoundingClientRect();
     pendingTouchDrag = {
-      item: el,
-      startX: t.clientX,
-      startY: t.clientY,
-      offX: (t.clientX - rect.left)/scale,
-      offY: (t.clientY - rect.top )/scale
+      item: el, startX: t.clientX, startY: t.clientY,
+      offX: (t.clientX - rect.left)/scale, offY: (t.clientY - rect.top)/scale
     };
   },{passive:true});
 
@@ -477,58 +569,225 @@ function addTextNote(initial="New note"){
     setTimeout(()=>{touchMoved=false;},0);
   },{passive:true});
 
-  // Select and focus for quick typing
   selectItem(el);
   setTimeout(()=>{ body.focus(); document.getSelection()?.selectAllChildren(body); }, 0);
 
   return el;
 }
 
+/* ========== NEW: Dedicated Interlinear card element ========== */
+function addInterlinearCard({surface, english, translit, morph, strong, reference}) {
+  const el = document.createElement("div");
+  el.classList.add("board-item","interlinear-card");
+  el.style.position = "absolute";
+
+  // Default position: near the selected verse if possible; else center-ish
+  let targetLeft, targetTop;
+  const vpRect = viewport.getBoundingClientRect();
+  if (selectedItem && selectedItem.classList.contains("bible-verse")) {
+    const ar = selectedItem.getBoundingClientRect();
+    const ax = (viewport.scrollLeft + (ar.left - vpRect.left)) / scale;
+    const ay = (viewport.scrollTop  + (ar.top  - vpRect.top )) / scale;
+    targetLeft = ax + 20;
+    targetTop  = ay + ar.height + 12;
+  } else {
+    const visibleX=viewport.scrollLeft/scale, visibleY=viewport.scrollTop/scale;
+    const visibleW=vpRect.width/scale, visibleH=vpRect.height/scale;
+    targetLeft = visibleX + (visibleW-320)/2;
+    targetTop  = visibleY + (visibleH-120)/2;
+  }
+  el.style.left = `${targetLeft}px`;
+  el.style.top  = `${targetTop}px`;
+
+  // Build content
+  const chips = [];
+  if (translit) chips.push(`<span class="interlinear-chip">${translit}</span>`);
+  if (morph)   chips.push(`<span class="interlinear-chip">${morph}</span>`);
+  if (strong)  chips.push(`<span class="interlinear-chip">Strong: ${strong}</span>`);
+
+  el.innerHTML = `
+    <div class="interlinear-card-header">
+      <div class="interlinear-card-badge">INTERLINEAR</div>
+      <div class="interlinear-card-ref">${reference || ""}</div>
+    </div>
+    <div class="interlinear-card-body">
+      <div class="interlinear-card-surface">${surface || ""}</div>
+      ${english ? `<div class="interlinear-card-english">${english}</div>` : ""}
+      ${chips.length ? `<div class="interlinear-card-meta">${chips.join(" ")}</div>` : ""}
+    </div>
+  `;
+
+  // Useful metadata for future saving/export
+  el.dataset.type = "interlinear";
+  el.dataset.reference = reference || "";
+  el.dataset.surface = surface || "";
+  el.dataset.english = english || "";
+  el.dataset.translit = translit || "";
+  el.dataset.morph = morph || "";
+  el.dataset.strong = strong || "";
+
+  workspace.appendChild(el);
+  el.dataset.vkey = itemKey(el);
+
+  // Drag handlers (simple: start drag anywhere on the card)
+  el.addEventListener("mousedown",(e)=>{
+    if (isConnectMode) return;
+    startDragMouse(el, e);
+  });
+  el.addEventListener("touchstart",(e)=>{
+    if (isConnectMode || e.touches.length!==1) return;
+    const t = e.touches[0];
+    const rect = el.getBoundingClientRect();
+    pendingTouchDrag = {
+      item: el, startX: t.clientX, startY: t.clientY,
+      offX: (t.clientX - rect.left)/scale, offY: (t.clientY - rect.top)/scale
+    };
+  },{passive:true});
+  el.addEventListener("touchmove",(e)=>{
+    if (isConnectMode) return;
+    const t = e.touches[0];
+    if (pendingTouchDrag && !touchDragElement) {
+      const dx = t.clientX - pendingTouchDrag.startX;
+      const dy = t.clientY - pendingTouchDrag.startY;
+      if (Math.hypot(dx,dy) > DRAG_SLOP) {
+        startDragTouch(pendingTouchDrag.item, t, pendingTouchDrag.offX, pendingTouchDrag.offY);
+        pendingTouchDrag = null;
+      }
+    }
+    if (!touchDragElement) return;
+    e.preventDefault(); touchMoved=true;
+    dragTouchTo(t);
+  },{passive:false});
+  el.addEventListener("touchend",()=>{
+    if (!touchDragElement) { pendingTouchDrag = null; return; }
+    touchDragElement=null;
+    setTimeout(()=>{touchMoved=false;},0);
+  },{passive:true});
+
+  // Select on create (nice UX)
+  selectItem(el);
+  return el;
+}
+
 // ==================== Search UI glue ====================
 function searchForQueryFromSuggestion(reference){ searchBar.value = reference; searchForQuery(); }
 function displaySearchVerseOption(reference, text){
-  searchQueryFullContainer.style.display="flex"; loader.style.display="none";
-  const verseContainer=document.getElementById("search-query-verse-container");
-  verseContainer.innerHTML=""; const version="KJV";
-  const item=document.createElement("div"); item.classList.add("search-query-verse-container");
-  item.innerHTML = `
-    <div class="search-query-verse-text">${text}</div>
-    <div class="search-query-verse-reference">– ${reference} ${version}</div>
-    <button class="search-query-verse-add-button" onclick="closeSearchQuery()">add</button>`;
-  item.querySelector(".search-query-verse-add-button").addEventListener("click",()=>{ addBibleVerse(`${reference} ${version}`, text); });
-  verseContainer.appendChild(item);
+  const versesHeader   = document.getElementById("search-query-verses-text");
+  const verseContainer = document.getElementById("search-query-verse-container");
+
+  // ✅ Always show the "Verses" header when we have a verse
+  if (versesHeader) versesHeader.style.display = "block";
+
+  if (verseContainer) {
+    verseContainer.style.display = "block";
+    verseContainer.innerHTML = "";
+
+    const item = document.createElement("div");
+    item.classList.add("search-query-verse-container");
+    item.innerHTML = `
+      <div class="search-query-verse-text">${text}</div>
+      <div class="search-query-verse-reference">– ${reference} KJV</div>
+      <button class="search-query-verse-add-button">add</button>
+    `;
+    item.querySelector(".search-query-verse-add-button")
+        .addEventListener("click", () => addBibleVerse(`${reference} KJV`, text));
+
+    verseContainer.appendChild(item);
+  }
 }
 
 // ==================== Search (relies on findBibleVerseReference from search.js) ====================
 async function searchForQuery(event){
-  const input=document.getElementById("search-bar"); input.blur();
+  const input = document.getElementById("search-bar"); 
+  input && input.blur();
   if (event) event.preventDefault();
-  didYouMeanText.style.display="none"; searchQueryFullContainer.style.display="none"; loader.style.display="flex";
-  mainContentContainer.style.transition=".25s"; mainContentContainer.style.width="calc(100% - 300px)";
-  searchQueryContainer.style.transition=".25s"; searchQueryContainer.style.left="calc(100% - 300px)";
 
-  const query=searchBar.value.trim();
-  searchQuery.textContent=`Search for "${query}"`;
-  setTimeout(()=>{ mainContentContainer.style.transition="0s"; searchQueryContainer.style.transition="0s"; },250);
+  // Hide sections; show loader; open panel
+  if (typeof didYouMeanText !== "undefined") didYouMeanText.style.display="none";
+  if (typeof searchQueryFullContainer !== "undefined") searchQueryFullContainer.style.display="none";
+  if (typeof loader !== "undefined") loader.style.display="flex";
+  if (typeof mainContentContainer !== "undefined") {
+    mainContentContainer.style.transition=".25s";
+    mainContentContainer.style.width="calc(100% - 300px)";
+  }
+  if (typeof searchQueryContainer !== "undefined") {
+    searchQueryContainer.style.transition=".25s";
+    searchQueryContainer.style.left="calc(100% - 300px)";
+  }
 
-  const result = findBibleVerseReference(query);
-  if (result && result.didYouMean){
+  const query = (document.getElementById("search-bar")?.value || "").trim();
+  if (typeof searchQuery !== "undefined") searchQuery.textContent = `Search for "${query}"`;
+  setTimeout(()=>{ 
+    if (mainContentContainer) mainContentContainer.style.transition="0s"; 
+    if (searchQueryContainer) searchQueryContainer.style.transition="0s"; 
+  },250);
+
+  // Reset containers
+  const verseContainer = document.getElementById("search-query-verse-container");
+  if (verseContainer) verseContainer.innerHTML = "";
+  if (songsContainer) songsContainer.innerHTML = "";
+  const versesHeader = document.getElementById("search-query-verses-text");
+  if (versesHeader) versesHeader.style.display = "none";
+  if (songsHeader) songsHeader.style.display = "none";
+
+  // Parse verse intent via your existing parser
+  const result = (window.findBibleVerseReference) ? window.findBibleVerseReference(query) : null;
+
+  if (result && result.didYouMean && typeof didYouMeanText !== "undefined"){
     didYouMeanText.style.display="flex";
     didYouMeanText.innerHTML = `Did you mean: <div onclick="searchForQueryFromSuggestion('${result.reference}')">${result.reference}</div>?`;
   }
-  if (!result){ loader.style.display="none"; return false; }
 
-  if (result.book){
-    const verseText = await fetchVerseText(result.book, result.chapter||1, result.verse||1);
-    displaySearchVerseOption(result.reference, verseText);
+  // Prepare tasks: verse (if detected) + songs (always)
+  const tasks = [];
+  if (result && result.book){
+    const chap = result.chapter || 1;
+    const vrse = result.verse || 1;
+    tasks.push(
+      fetchVerseText(result.book, chap, vrse)
+        .then(text => ({ kind: "verse", payload: { ref: result.reference, text } }))
+        .catch(()=>({ kind:"verse", payload:null }))
+    );
   }
-  return false;
+  tasks.push(
+    fetchSongs(query, 8).then(list => ({ kind: "songs", payload: list || [] }))
+  );
+
+  const outputs = await Promise.all(tasks);
+
+  // Render
+  if (loader) loader.style.display="none";
+  if (searchQueryFullContainer) searchQueryFullContainer.style.display="flex";
+
+  const verseOut = outputs.find(o => o.kind === "verse");
+  const songsOut = outputs.find(o => o.kind === "songs");
+
+  if (verseOut && verseOut.payload){
+    // Keep your existing verse renderer if you have one:
+    if (typeof displaySearchVerseOption === "function"){
+      displaySearchVerseOption(verseOut.payload.ref, verseOut.payload.text);
+    } else if (verseContainer) {
+      // minimal fallback if your renderer name differs
+      versesHeader && (versesHeader.style.display = "block");
+      verseContainer.innerHTML = `
+        <div class="search-query-verse-container">
+          <div class="search-query-verse-text">${verseOut.payload.text}</div>
+          <div class="search-query-verse-reference">– ${verseOut.payload.ref} KJV</div>
+          <button class="search-query-verse-add-button">add</button>
+        </div>`;
+      verseContainer.querySelector(".search-query-verse-add-button")
+        .addEventListener("click",()=> addBibleVerse(`${verseOut.payload.ref} KJV`, verseOut.payload.text));
+    }
+  }
+
+  // Songs
+  displaySongResults(songsOut ? songsOut.payload : []);
 }
+
 function closeSearchQuery(){
-  mainContentContainer.style.transition=".25s"; mainContentContainer.style.width="100%";
-  searchQueryContainer.style.transition=".25s"; searchQueryContainer.style.left="100%";
+  searchDrawerOpen = false;
+  applyLayout(true);
   searchQuery.textContent = `Search for "${searchBar.value}"`;
-  setTimeout(()=>{ mainContentContainer.style.transition="0s"; searchQueryContainer.style.transition="0s"; },250);
 }
 
 // ==================== Theme Toggle ====================
@@ -547,32 +806,32 @@ toggle?.addEventListener("click",()=> setTheme(!body.classList.contains("light")
 function updateActionButtonsEnabled(){
   const hasSelection = !!selectedItem;
 
-  // If nothing is selected, ensure connect mode is off WITHOUT causing recursion
   if (!hasSelection && isConnectMode) {
-    isConnectMode = false; // do NOT call setConnectMode() here
+    isConnectMode = false;
   }
 
   if (connectBtn){
     connectBtn.disabled = !hasSelection;
     connectBtn.style.background = hasSelection && isConnectMode ? "var(--accent)" : "var(--bg-seethroug)";
     const ic = connectBtn.querySelector(".action-icon");
-    if (ic) ic.style.fill = hasSelection && isConnectMode ? "var(--bg)" : "var(--muted)";
+    if (ic) ic.style.fill = (hasSelection && isConnectMode) ? "var(--bg)" : "var(--muted)";
   }
 
   if (deleteBtn){
     deleteBtn.disabled = !hasSelection;
   }
-}
 
-// Replace your setConnectMode with this:
+  if (interlinearBtn){
+    const isVerse = !!selectedItem && selectedItem.classList.contains("bible-verse");
+    interlinearBtn.disabled = !isVerse;
+  }
+}
 function setConnectMode(on){
   const next = !!on;
-  if (isConnectMode === next) return; // guard: no-op if unchanged
+  if (isConnectMode === next) return;
   isConnectMode = next;
   updateActionButtonsEnabled();
 }
-
-
 function selectItem(el){
   if (!el) return;
   if (selectedItem && selectedItem !== el){
@@ -582,59 +841,40 @@ function selectItem(el){
   el.classList.add("selected-connection");
   updateActionButtonsEnabled();
 }
-
 function clearSelection(){
   if (selectedItem) selectedItem.classList.remove("selected-connection");
   selectedItem = null;
   setConnectMode(false);
   updateActionButtonsEnabled();
 }
-
-// Global click: selection / connection flow
 workspace.addEventListener("click",(e)=>{
-  if (touchMoved) return; // ignore click after touch drag
+  if (touchMoved) return;
   const item = e.target.closest(".board-item");
-
-  if (!item){
-    clearSelection();
-    return;
-  }
-
-  if (!isConnectMode){
-    selectItem(item);
-    return;
-  }
-
-  // If in connect mode and we have a selection, connect to the clicked item (if different)
+  if (!item){ clearSelection(); return; }
+  if (!isConnectMode){ selectItem(item); return; }
   if (selectedItem && item !== selectedItem){
     connectItems(selectedItem, item);
     updateAllConnections();
-    clearSelection(); // exit after connecting
+    clearSelection();
   }
 });
-
-// Clicking outside workspace clears selection
 document.addEventListener("click",(e)=>{
   const insideWorkspace = e.target.closest("#workspace");
   const insideAction = e.target.closest("#action-buttons-container");
   if (!insideWorkspace && !insideAction) clearSelection();
 });
-
-// Esc key cancels and clears selection
-document.addEventListener("keydown",(e)=>{ if (e.key==="Escape") clearSelection(); });
+document.addEventListener("keydown",(e)=>{ if (e.key==="Escape") { clearSelection(); closeInterlinearPanel(); } });
 
 // ==================== Action buttons: Connect / Text / Delete ====================
 connectBtn?.addEventListener("click",(e)=>{
   e.preventDefault(); e.stopPropagation();
-  if (!selectedItem) return; // disabled covers this
+  if (!selectedItem) return;
   setConnectMode(!isConnectMode);
 });
-
 textBtn?.addEventListener("click",(e)=>{
   e.preventDefault(); e.stopPropagation();
   addTextNote("New note");
 });
-
 deleteBtn?.addEventListener("click",(e)=>{
   e.preventDefault(); e.stopPropagation();
   if (!selectedItem) return;
@@ -643,5 +883,230 @@ deleteBtn?.addEventListener("click",(e)=>{
   clearSelection();
 });
 
-// ==================== Expose for other modules (optional) ====================
+// ==================== Interlinear integration ====================
+function openInterlinearPanel(){
+  interlinearOpen = true;
+  // If you want both drawers open, remove the next line:
+  closeSearchQuery();
+
+  interPanel.setAttribute("aria-busy","true");
+  interLoader.style.display = "flex";
+  interList.innerHTML = "";
+  interSubtitle.textContent = "";
+  interEmpty.style.display = "none";
+  interError.style.display = "none";
+
+  applyLayout(true);
+}
+function closeInterlinearPanel(){
+  interlinearOpen = false;
+  interPanel.setAttribute("aria-busy","false");
+  applyLayout(true);
+}
+interClose?.addEventListener("click", (e)=>{ e.preventDefault(); e.stopPropagation(); closeInterlinearPanel(); });
+
+async function fetchInterlinear(book, chapter, verse){
+  const base = `https://interlinear-api.onrender.com/interlinear/${encodeURIComponent(book)}/${chapter}/${verse}`;
+  try{
+    const r = await fetch(base, { method:"GET", mode:"cors" });
+    if(!r.ok) throw new Error("bad status");
+    return await r.json();
+  }catch(err){
+    try{
+      const prox = `https://api.allorigins.win/raw?url=${encodeURIComponent(base)}`;
+      const r2 = await fetch(prox);
+      if(!r2.ok) throw new Error("proxy bad");
+      return await r2.json();
+    }catch(err2){
+      console.error("❌ Interlinear fetch failed", err, err2);
+      return null;
+    }
+  }
+}
+
+function renderInterlinearTokens(data){
+  interLoader.style.display = "none";
+  interPanel.setAttribute("aria-busy","false");
+
+  if (!data || !Array.isArray(data.tokens) || data.tokens.length === 0){
+    interError.style.display = "block";
+    return;
+  }
+
+  interSubtitle.textContent = data.reference || `${data.book} ${data.chapter}:${data.verse}`;
+
+  const frag = document.createDocumentFragment();
+
+  data.tokens.forEach(tok=>{
+    const surface = tok.surface || "";
+    const english = tok.resolved_gloss || tok.translation || tok.gloss || "";
+    const translit = tok.resolved_translit || tok.translit || "";
+    const morph   = tok.morph || "";
+    const strongRaw  = (tok.strong || "");
+    const strong = strongRaw.replace(/^.*?(\/)?/, "").trim();
+
+    const row = document.createElement("div");
+    row.className = "interlinear-row";
+
+    row.innerHTML = `
+      <div class="interlinear-surface">${surface}</div>
+      <div class="interlinear-english">${english}</div>
+      <div class="interlinear-meta"></div>
+      <button class="interlinear-add">add</button>
+    `;
+
+    const meta = row.querySelector(".interlinear-meta");
+    const parts = [];
+    if (translit) parts.push(`<span class="meta-chip">${translit}</span>`);
+    if (morph)   parts.push(`<span class="meta-chip">${morph}</span>`);
+    if (strong)  parts.push(`<span class="meta-chip">Strong: ${strong}</span>`);
+    if (parts.length) meta.innerHTML = parts.join(" ");
+    else meta.style.display = "none";
+
+    // ⬇️ Add dedicated interlinear card on board
+    row.querySelector(".interlinear-add").addEventListener("click", ()=>{
+      addInterlinearCard({
+        surface,
+        english,
+        translit,
+        morph,
+        strong,
+        reference: interSubtitle.textContent
+      });
+    });
+
+    frag.appendChild(row);
+  });
+
+  interList.innerHTML = "";
+  interList.appendChild(frag);
+}
+
+// Parse selected verse reference ("– Genesis 1:1 KJV")
+function parseSelectedVerseRef(){
+  if (!selectedItem || !selectedItem.classList.contains("bible-verse")) return null;
+  const refEl = selectedItem.querySelector(".verse-text-reference");
+  const txt = (refEl?.textContent || "").replace(/^–\s*/, "").trim();
+  const m = txt.match(/^([1-3]?\s*[A-Za-z][A-Za-z\s]+?)\s+(\d+):(\d+)/);
+  if (!m) return null;
+  return { book: m[1].trim(), chapter: parseInt(m[2],10), verse: parseInt(m[3],10) };
+}
+
+// Button handler
+interlinearBtn?.addEventListener("click", async (e)=>{
+  e.preventDefault(); e.stopPropagation();
+  if (!selectedItem || !selectedItem.classList.contains("bible-verse")) return;
+
+  openInterlinearPanel();
+
+  const ref = parseSelectedVerseRef();
+  if (!ref){
+    interLoader.style.display = "none";
+    interError.style.display = "block";
+    return;
+  }
+
+  const data = await fetchInterlinear(ref.book, ref.chapter, ref.verse);
+  if (!data){
+    interLoader.style.display = "none";
+    interError.style.display = "block";
+    return;
+  }
+  renderInterlinearTokens(data);
+});
+
+
+// ==================== Song search (iTunes public API, CORS-friendly) ====================
+async function fetchSongs(query, limit = 8) {
+  if (!query) return [];
+  const url = `https://itunes.apple.com/search?${new URLSearchParams({
+    term: query,
+    entity: "song",
+    limit: String(limit)
+  }).toString()}`;
+  try {
+    const r = await fetch(url);
+    if (!r.ok) throw new Error("iTunes search failed");
+    const data = await r.json();
+    if (!Array.isArray(data.results)) return [];
+    return data.results.map(x => ({
+      id: x.trackId,
+      title: x.trackName || "Unknown Title",
+      artist: x.artistName || "Unknown Artist",
+      album: x.collectionName || "",
+      cover: (x.artworkUrl100 || "").replace("100x100bb", "200x200bb")
+    }));
+  } catch (e) {
+    console.warn("Song search error:", e);
+    return [];
+  }
+}
+
+// ==================== Add song to whiteboard ====================
+function addSongElement({ title, artist, cover }) {
+  const el = document.createElement("div");
+  el.classList.add("board-item","song-item");
+  el.style.position = "absolute";
+
+  const vpRect = viewport.getBoundingClientRect();
+  const visibleX = viewport.scrollLeft/scale, visibleY = viewport.scrollTop/scale;
+  const visibleW = vpRect.width/scale, visibleH = vpRect.height/scale;
+  const x = visibleX + (visibleW-320)/2;
+  const y = visibleY + (visibleH-90)/2;
+  el.style.left = `${x}px`; el.style.top = `${y}px`;
+
+  const safeCover = cover || "";
+  el.innerHTML = `
+    <div class="song-left">
+      <img class="song-cover" src="${safeCover}" alt="" />
+      <div class="song-texts">
+        <div class="song-name">${title}</div>
+        <div class="song-artist">${artist}</div>
+      </div>
+    </div>
+  `;
+
+  workspace.appendChild(el);
+  el.dataset.vkey = (el.dataset.vkey || ("v_"+Math.random().toString(36).slice(2)));
+
+  // keep your existing drag behavior
+  el.addEventListener("mousedown",(e)=>{
+    if (typeof startDragMouse === "function") startDragMouse(el, e);
+  });
+
+  return el;
+}
+
+function displaySongResults(songs){
+  if (!songs || songs.length === 0){
+    if (songsHeader) songsHeader.style.display = "none";
+    if (songsContainer) {
+      songsContainer.style.display = "none";
+      songsContainer.innerHTML = "";
+    }
+    return;
+  }
+  songsHeader.style.display = "block";
+  songsContainer.style.display = "grid";
+  songsContainer.innerHTML = "";
+  songs.forEach(s => {
+    const card = document.createElement("div");
+    card.className = "song-card";
+    card.innerHTML = `
+      <img class="song-cover" src="${s.cover || ""}" alt="">
+      <div class="song-meta">
+        <div class="song-title">${s.title}</div>
+        <div class="song-artist">${s.artist}</div>
+      </div>
+      <button class="song-add-btn">add</button>
+    `;
+    card.querySelector(".song-add-btn").addEventListener("click", ()=>{
+      addSongElement(s);
+    });
+    songsContainer.appendChild(card);
+  });
+}
+
+
+// ==================== Expose ====================
 window.addBibleVerse = addBibleVerse;

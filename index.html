@@ -41,9 +41,8 @@
         </div>
       </div>
 
-      <!-- ✅ Global action buttons -->
+      <!-- GLOBAL ACTIONS -->
       <div id="action-buttons-container" title="Actions">
-        <!-- Connect -->
         <button id="mobile-action-button" class="action-button" aria-label="Connect" disabled>
           <svg class="action-icon" xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px">
             <path d="M200-120q-17 0-28.5-11.5T160-160v-40h-40v-160
@@ -60,14 +59,18 @@
           </svg>
         </button>
 
-        <!-- Text -->
         <button id="text-action-button" class="action-button" aria-label="Add text">
           <svg class="action-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 -960 960 960">
             <path d="M160-120v-80h240v-560H240v-80h480v80H560v560h240v80H160Z"/>
           </svg>
         </button>
 
-        <!-- Delete -->
+        <button id="interlinear-action-button" class="action-button" aria-label="Interlinear (original ↔ English)" disabled>
+          <svg class="action-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 -960 960 960">
+            <path d="M160-160q-33 0-56.5-23.5T80-240v-480q0-33 23.5-56.5T160-800h560q33 0 56.5 23.5T800-720v480q0 33-23.5 56.5T720-160H160Zm0-80h560v-480H160v480Zm120-120h200v-80H280v80Zm0-160h360v-80H280v80Z"/>
+          </svg>
+        </button>
+
         <button id="delete-action-button" class="action-button" aria-label="Delete selected" disabled>
           <svg class="action-icon" xmlns="http://www.w3.org/2000/svg" height="24" width="24" viewBox="0 -960 960 960">
             <path d="M280-120q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520ZM360-280h80v-360h-80v360Zm160 0h80v-360h-80v360Z"/>
@@ -76,6 +79,7 @@
       </div>
     </div>
 
+    <!-- SEARCH DRAWER -->
     <div id="search-query-container">
       <div id="search-query-content">
         <div id="search-query">Search for ""</div>
@@ -84,15 +88,33 @@
         <div id="search-query-full-container">
           <div id="search-query-verses-text">Verses</div>
           <div id="search-query-verse-container"></div>
+
+          <!-- Songs -->
+          <div id="search-query-songs-text">Songs</div>
+          <div id="search-query-song-container" aria-live="polite"></div>
+
+          
         </div>
 
         <div id="loader"><div class="loader-spinner"></div></div>
       </div>
     </div>
 
-    <div id="bible-board-phone-message">
-      <div id="bible-board-text">Bible board works best on desktop or tablets.</div>
-    </div>
+    <!-- INTERLINEAR DRAWER -->
+    <aside id="interlinear-panel" aria-live="polite" aria-busy="false">
+      <div id="interlinear-header">
+        <div id="interlinear-title">Interlinear</div>
+        <button id="interlinear-close" aria-label="Close interlinear">&times;</button>
+      </div>
+
+      <div id="interlinear-subtitle"></div>
+      <div id="interlinear-list"></div>
+      <div id="interlinear-loader" class="panel-loader"><div class="loader-spinner"></div></div>
+      <div id="interlinear-empty" class="panel-empty">Select a verse and press the Interlinear button.</div>
+      <div id="interlinear-error" class="panel-error">Couldn’t load interlinear data.</div>
+    </aside>
+
+    <div id="bible-board-phone-message"><div id="bible-board-text">Bible board works best on desktop or tablets.</div></div>
 
     <script src="search.js"></script>
     <script src="script.js"></script>
