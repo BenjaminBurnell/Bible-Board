@@ -1,0 +1,540 @@
+/* Relies on variables from style.css (e.g., --bg, --fg, --border, --accent) */
+
+body {
+  background-color: var(--bg);
+  color: var(--fg);
+  font-family: "Atkinson Hyperlegible", sans-serif;
+  margin: 0;
+  padding: 0px;
+  overflow-y: auto;
+}
+
+/* === Auth Screen === */
+#auth-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  text-align: center;
+  position: relative;
+  background-color: var(--bg);
+  background-image: radial-gradient(
+    circle at center,
+    var(--bg-dots) 2px,
+    transparent 2px
+  );
+  background-size: 30px 30px;
+}
+
+#sign-in-form-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  width: 100vw;
+  height: 100vh;
+  background: var(--bg-seethroug);
+  backdrop-filter: blur(1.5rem);
+  -webkit-backdrop-filter: blur(1.5rem);
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 10002;
+  opacity: 0;
+}
+
+#sign-in-form-container.hidden {
+  display:none;
+}
+
+#sign-in-form {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  background:transparent;
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 101;
+}
+
+#bible-board-text {
+  font-size: 50px;
+  font-weight: 700;
+}
+
+/* .connection-svg-overlay {
+  display:none;
+} */
+
+.board-item {
+  display: none;
+}
+
+#auth-content-container {
+  width: calc(100vw - 50px);
+  max-width: 1500px;
+  height: calc(100vh - 50px);
+  max-height: 800px;
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  cursor: grab;
+}
+
+#get-started-button {
+  position: fixed;
+  right: 25px;
+  top: 25px;
+  z-index: 102;
+  font-size: 15px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 16px;
+  border-radius: 15px;
+  backdrop-filter: blur(1rem);
+  background: var(--fg);
+  border: 1px solid var(--border);
+  color: var(--bg);
+  width: fit-content;
+  height: 50px;
+  cursor: pointer;
+}
+
+/* Basic styling for the button */
+.google-signin-button {
+  /* Layout */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px; /* Slightly reduced space between logo and text */
+
+  /* Box Model */
+  padding: 10px 24px;
+  border: 1px solid #dadce0; /* Light grey border */
+  border-radius: 4px;
+
+  /* Typography */
+  font-family: "Roboto", Arial, sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--bg); /* Google's standard dark grey text */
+
+  /* Appearance */
+  background-color: var(--fg); /* White background */
+  cursor: pointer;
+  transition: background-color 0.3s, box-shadow 0.3s;
+
+  /* Remove default button styles */
+  outline: none;
+}
+
+/* Style for the SVG logo */
+.google-signin-button svg {
+  width: 18px;
+  height: 18px;
+  filter: brightness(0%);
+}
+
+/* Hover effect */
+.google-signin-button:hover {
+  background-color: #f8f9fa; /* Very light grey background on hover */
+  border-color: #d2d3d4;
+  box-shadow: 0 1px 2px 0 rgba(60, 64, 67, 0.3),
+    0 1px 3px 1px rgba(60, 64, 67, 0.15);
+}
+
+/* Active/press effect */
+.google-signin-button:active {
+  background-color: #f1f3f4;
+  border-color: #c6c6c6;
+}
+
+@media (min-width: 900px) {
+
+  #sign-in-form {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    background: var(--bg-seethroug);
+    backdrop-filter: blur(1rem);
+    padding: 40px;
+    border-radius: 15px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--border);
+    position: fixed;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 101;
+  }
+
+  .board-item {
+    scale: 0.5;
+    display: flex;
+  }
+  /* 1. This container makes the SVG span the entire screen */
+  .connection-svg-overlay {
+    display: flex;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none; /* Lets you click "through" the SVG */
+  }
+
+  /* 2. This styles your path element */
+  .connection-line {
+    stroke: var(--border); /* Line color */
+    stroke-width: 3px; /* 7px is very thick, 3px might look better */
+    fill: none; /* Makes it just a line, no fill */
+  }
+
+  .connection-line:hover {
+    stroke: var(--border); /* Line color */
+    fill: none;
+    cursor: default;
+  }
+}
+
+#auth-container p {
+  font-size: 1.1rem;
+  color: var(--muted);
+}
+
+/* === Dashboard Layout === */
+#dashboard-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px; /* Added padding for layout */
+}
+
+#dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 24px;
+}
+
+#dashboard-title {
+  font-size: 1.8rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.header-actions {
+  display: flex;
+  gap: 12px;
+}
+
+/* === Buttons === */
+.dash-btn {
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 700;
+  padding: 10px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg-alt);
+  color: var(--fg);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.dash-btn:hover {
+  border-color: var(--muted);
+}
+.dash-btn.primary {
+  background: var(--accent);
+  color: var(--bg);
+  border-color: var(--accent);
+}
+.dash-btn.primary:hover {
+  opacity: 0.85;
+}
+.dash-btn.danger {
+  background: transparent;
+  color: #e55353;
+  border-color: #e55353;
+}
+.dash-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* === Status Messages (Loading/Empty/Error) === */
+#status-message {
+  padding: 20px;
+  text-align: center;
+  font-size: 1.1rem;
+  color: var(--muted);
+}
+.skeleton-card {
+  background: var(--bg-alt);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  height: 120px; /* Matches min-height of real card */
+  opacity: 0.5;
+  animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.error-message {
+  color: #e55353;
+  background: rgba(229, 83, 83, 0.1);
+  border: 1px solid #e55353;
+  border-radius: 10px;
+  padding: 16px; /* Added padding */
+}
+
+/* === Board Grid === */
+#board-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+/* === NEW Card Styles === */
+.board-card {
+  background: var(--bg-alt);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  align-items: flex-start; /* Align main content and menu to top */
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 80px;
+  transition: all 0.2s ease;
+}
+
+.board-card:hover {
+  background: var(--bg-seethroug);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border-color: var(--border);
+}
+
+/* Clickable main area */
+.card-main {
+  flex: 1;
+  min-width: 0; /* Allows text truncation */
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.card-main:hover {
+  /* You can add a subtle hover on the title if you want */
+  /* .card-title { color: var(--accent); } */
+}
+
+.card-title {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--fg);
+  word-break: break-word;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Description line */
+.card-desc {
+  font-size: 0.95rem;
+  color: var(--muted);
+  margin: 4px 0 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Footer section */
+.card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 10px;
+}
+
+.card-date {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+.card-date svg {
+  flex-shrink: 0; /* Prevent icon from shrinking */
+}
+
+/* Optional tag */
+.card-tag {
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 9999px;
+  font-size: 0.85rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+/* Three-dots menu */
+.card-more {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.more-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  padding: 4px; /* A bit of padding */
+  margin: -4px; /* Counteract padding to align */
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.more-btn:hover {
+  background: var(--bg); /* Use main bg for contrast on hover */
+  color: var(--fg);
+}
+.more-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+.more-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 6px;
+  min-width: 140px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15);
+  z-index: 10;
+  list-style: none;
+  margin: 0;
+}
+.more-menu.hidden {
+  display: none;
+}
+
+.menu-item {
+  display: block;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  background: none;
+  border: none;
+  color: inherit;
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 500;
+  text-align: left;
+  transition: background 0.2s ease;
+}
+.menu-item:hover {
+  background: var(--bg-alt);
+}
+.menu-item.menu-delete {
+  color: #e55353;
+}
+.menu-item.menu-delete:hover {
+  background: rgba(229, 83, 83, 0.1);
+}
+
+/* === OLD Card Styles (Removed/Replaced) === */
+/*
+.card-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: auto; 
+}
+.card-btn {
+  font-size: 0.9rem;
+  padding: 6px 12px;
+}
+*/
+/* === Modal === */
+#modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(5px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20000;
+}
+#modal-backdrop.hidden {
+  display: none;
+}
+
+#modal {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  width: 90%;
+  max-width: 450px;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+}
+#modal h2 {
+  margin-top: 0;
+}
+#modal-title-input {
+  width: calc(100% - 20px);
+  padding: 10px;
+  font-size: 1rem;
+  background: var(--bg-alt);
+  border: 1px solid var(--border);
+  color: var(--fg);
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+#modal-title-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.modal-actions-right {
+  display: flex;
+  gap: 10px;
+}
