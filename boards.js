@@ -416,10 +416,14 @@ function handleAuthChange(user) {
 // --- Init ---
 async function init() {
   // --- Auth Listeners ---
+  var redirectURL = window.location.origin; 
+  if(window.location.href == "https://benjaminburnell.github.io/Bible-Board/"){
+    redirectURL = "https://benjaminburnell.github.io/Bible-Board/"
+  }
   signinBtn.addEventListener("click", () => {
     sb.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: window.location.href }, // Return to dashboard
+      options: { redirectTo: redirectURL }, // Return to dashboard
     });
   });
   signoutBtn.addEventListener("click", () => {
