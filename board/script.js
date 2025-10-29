@@ -271,6 +271,79 @@ async function fetchVerseText(book, chapter, verse, signal) {
   }
 }
 
+// ==================== NEW: Bible Search API Helpers ====================
+
+// ---- Bible Search API (query -> references) ----
+const bibleSearchCache = new Map();
+let activeBibleSearchController = null;
+async function fetchBibleSearchResults(query, limit = 5, signal) {
+  if (!query) return [];
+  const key = `${query.toLowerCase()}::${limit}`;
+  if (bibleSearchCache.has(key)) return bibleSearchCache.get(key);
+
+  // Respect caller's signal; otherwise manage our own controller (unchanged behavior)
+  let effSignal = signal;
+  if (!effSignal) {
+    if (activeBibleSearchController) activeBibleSearchController.abort();
+    activeBibleSearchController = new AbortController();
+    effSignal = activeBibleSearchController.signal;
+  }
+
+  const url = `https://bible-search-api-huro.onrender.com/search?q=${encodeURIComponent(query)}&limit=${limit}`;
+
+  try {
+    // IMPORTANT: use the same multi-proxy CORS bypass helper as verse fetches
+    const resp = await safeFetchWithFallbacks(url, effSignal);
+    const data = await resp.json();
+    const refs = Array.isArray(data?.references) ? data.references : [];
+    bibleSearchCache.set(key, refs);
+    return refs;
+  } catch (e) {
+    if (effSignal?.aborted) return [];
+    console.error("Search API error:", e);
+    return [];
+  }
+}
+
+// ---- Parse Reference String to Parts ----
+function parseReferenceToParts(reference) {
+  if (!reference) return null;
+  // split from the RIGHT to capture last "chapter:verse"
+  const lastSpace = reference.lastIndexOf(" ");
+  if (lastSpace === -1) return null;
+  const book = reference.slice(0, lastSpace).trim();
+  const chapVerse = reference.slice(lastSpace + 1).trim();
+  const [chapterStr, verseStr] = chapVerse.split(":");
+  const chapter = Number(chapterStr);
+  const verse = Number(verseStr);
+  if (!book || !Number.isFinite(chapter) || !Number.isFinite(verse)) return null;
+  return { book, chapter, verse };
+}
+
+// ---- Batch Fetch Verse Texts ----
+async function fetchVersesForReferences(refs, { batchSize = 4, signal } = {}) {
+  const results = [];
+  for (let i = 0; i < refs.length; i += batchSize) {
+    if (signal?.aborted) break; // Check abort before each batch
+    const batch = refs.slice(i, i + batchSize);
+    const fetched = await Promise.all(batch.map(async ref => {
+      if (signal?.aborted) return { reference: ref, text: "" }; // Check abort before each fetch
+      const parts = parseReferenceToParts(ref);
+      if (!parts) return { reference: ref, text: "Verse not found." };
+      try {
+        const text = await fetchVerseText(parts.book, parts.chapter, parts.verse, signal);
+        return { reference: ref, text };
+      } catch (e) {
+        if (signal?.aborted) return { reference: ref, text: "" };
+        return { reference: ref, text: "Error fetching verse." };
+      }
+    }));
+    results.push(...fetched.filter(r => r.text !== "")); // Don't add aborted results
+  }
+  return results;
+}
+
+
 // ==================== DOM Refs ====================
 const viewport = document.querySelector(".viewport");
 const workspace = document.querySelector("#workspace");
@@ -1213,6 +1286,7 @@ function searchForQueryFromSuggestion(reference) {
   searchBar.value = reference;
   searchForQuery();
 }
+
 function displaySearchVerseOption(reference, text) {
   const versesHeader = document.getElementById("search-query-verses-text");
   const verseContainer = document.getElementById(
@@ -1297,24 +1371,43 @@ async function searchForQuery(event) {
       `Did you mean: <div onclick="searchForQueryFromSuggestion('${result.reference}')">${result.reference}</div>?`;
   }
 
-  // Prepare tasks: verse (if detected) + songs (always)
+  // --- UPDATED: Prepare tasks ---
   const tasks = [];
   if (result && result.book) {
+    // EXISTING: single verse path (leave as-is)
     const chap = result.chapter || 1;
     const vrse = result.verse || 1;
     tasks.push(
-      fetchVerseText(result.book, chap, vrse, signal) // supports signal in your code
+      fetchVerseText(result.book, chap, vrse, signal)
         .then(text => ({ kind: "verse", payload: { ref: result.reference, text } }))
         .catch(err => ({ kind: "verse", payload: null, error: err }))
     );
+  } else {
+    // NEW: Bible Search API path when NO direct verse reference is detected
+    tasks.push(
+      (async () => {
+        const refs = await fetchBibleSearchResults(query, 5, signal);
+        if (signal.aborted) return { kind: "search_verses", payload: [] }; // Check for abort
+        if (!refs.length) {
+          return { kind: "search_verses", payload: [] };
+        }
+        const verses = await fetchVersesForReferences(refs, { batchSize: 4, signal });
+        return { kind: "search_verses", payload: verses };
+      })()
+    );
   }
+  
+  // Existing parallel songs task
   tasks.push(
-    fetchSongs(query, 8, signal)
+    fetchSongs(query, 5, signal)
       .then(list => ({ kind: "songs", payload: list || [] }))
       .catch(err => ({ kind: "songs", payload: [], error: err }))
   );
+  // --- END UPDATED: Prepare tasks ---
+
 
   try {
+    // --- UPDATED: Rendering Logic ---
     const outputs = await Promise.all(tasks);
 
     // If aborted, skip render
@@ -1324,53 +1417,88 @@ async function searchForQuery(event) {
     if (loader) loader.style.display = "none";
     if (searchQueryFullContainer) searchQueryFullContainer.style.display = "flex";
 
-    const verseOut = outputs.find(o => o.kind === "verse");
+    const singleVerse = outputs.find(o => o.kind === "verse");
+    const searchVerses = outputs.find(o => o.kind === "search_verses");
     const songsOut = outputs.find(o => o.kind === "songs");
 
-    // === Verse rendering (single place) ===
-    if (verseOut) {
-      const refStr = (result && result.reference) ? result.reference : (verseOut.payload?.ref || "");
-      const text = verseOut.payload?.text;
+    const errorMessages = ["Verse not found.", "Error fetching verse.", "Verse temporarily unavailable."];
+    const isVerseError = (text) => !text || errorMessages.includes(text) || /not\s*found/i.test(String(text));
 
-      const noResult =
-        !verseOut.payload ||
-        !text ||
-        text === "Verse not found." ||
-        text === "Error fetching verse." ||
-        /not\s*found/i.test(String(text));
-
-      if (noResult) {
-        if (typeof displayNoVerseFound === "function" && refStr) {
-          displayNoVerseFound(refStr);
-        } else if (verseContainer) {
-          versesHeader && (versesHeader.style.display = "block");
-          verseContainer.style.display = "block";
-          verseContainer.innerHTML = `
-            <div class="search-query-verse-container">
-              <div class="search-query-verse-text">No verses found for <strong>${refStr}</strong>.</div>
-            </div>`;
+    // A) Direct single-verse path (existing)
+    if (singleVerse) {
+      const ref = singleVerse.payload?.ref;
+      const text = singleVerse.payload?.text;
+      
+      if (isVerseError(text)) {
+        // This is called once. It's safe to use displayNoVerseFound.
+        if (typeof displayNoVerseFound === "function" && ref) {
+            displayNoVerseFound(ref);
         }
       } else {
-        // Happy path uses your existing card renderer
+        // This is called once. It's safe to use displaySearchVerseOption.
         if (typeof displaySearchVerseOption === "function") {
-          displaySearchVerseOption(verseOut.payload.ref, text);
-        } else if (verseContainer) {
-          versesHeader && (versesHeader.style.display = "block");
-          verseContainer.innerHTML = `
-            <div class="search-query-verse-container">
-              <div class="search-query-verse-text">${text}</div>
-              <div class="search-query-verse-reference">– ${verseOut.payload.ref} KJV</div>
-              <button class="search-query-verse-add-button">add</button>
-            </div>`;
-          verseContainer.querySelector(".search-query-verse-add-button").onclick =
-            () => addBibleVerse(`${verseOut.payload.ref} KJV`, text, false);
+            displaySearchVerseOption(ref, text);
         }
       }
     }
-    // If no verseOut at all (parser didn't detect a verse), keep verse section hidden.
 
-    // === Songs ===
+    // B) Search-based multi-verse path (NEW)
+    if (searchVerses) {
+      didYouMeanText.style.display = "none"; // Hide "Did you mean" for search results
+      // Get containers
+      const versesHeader = document.getElementById("search-query-verses-text");
+      const verseContainer = document.getElementById("search-query-verse-container");
+      
+      if (verseContainer) {
+        verseContainer.style.display = "block";
+        verseContainer.innerHTML = ""; // Clear container ONCE for new results
+      }
+      if (versesHeader) versesHeader.style.display = "none"; // Hide header until we know we have results
+
+      if (!searchVerses.payload.length) {
+        // No references at all from search. This is called once.
+        // Safe to use displayNoVerseFound.
+        if (typeof displayNoVerseFound === "function") {
+          displayNoVerseFound(query); // Use query as the ref
+        }
+      } else {
+        // We have results. Show header.
+        if (versesHeader) versesHeader.style.display = "block";
+        
+        // Render each result by *appending*
+        for (const { reference, text } of searchVerses.payload) {
+          if (isVerseError(text)) {
+            // Append a "not found" card. DO NOT call displayNoVerseFound.
+            if (verseContainer) {
+              const item = document.createElement("div");
+              item.classList.add("search-query-no-verse-found-container");
+              item.innerHTML = `
+                <div class="search-query-verse-text" style="text-align:center;color:var(--muted)">Verse not found for <strong>${reference}</strong>.</div>
+              `;
+              verseContainer.appendChild(item);
+            }
+          } else {
+            // Append a "found" card. DO NOT call displaySearchVerseOption.
+            if (verseContainer) {
+              const item = document.createElement("div");
+              item.classList.add("search-query-verse-container");
+              item.innerHTML = `
+                <div class="search-query-verse-text">${text}</div>
+                <div class="search-query-verse-reference">– ${reference} KJV</div>
+                <button class="search-query-verse-add-button">add</button>
+              `;
+              item.querySelector(".search-query-verse-add-button").onclick =
+                () => addBibleVerse(`${reference} KJV`, text, false);
+              verseContainer.appendChild(item);
+            }
+          }
+        }
+      }
+    }
+
+    // C) Songs (existing)
     displaySongResults(songsOut ? songsOut.payload : []);
+    // --- END UPDATED: Rendering Logic ---
 
   } catch (err) {
     if (!signal.aborted) {
@@ -1393,6 +1521,11 @@ function closeSearchQuery() {
   if (globalSearchController) {
     globalSearchController.abort();
     globalSearchController = null;
+  }
+  // NEW: Abort Bible Search API controller
+  if (activeBibleSearchController) {
+    activeBibleSearchController.abort();
+    activeBibleSearchController = null;
   }
 }
 
@@ -1830,7 +1963,7 @@ interlinearBtn?.addEventListener("click", async (e) => {
 /**
  * OPTIMIZATION: Added AbortSignal for cancellation.
  */
-async function fetchSongs(query, limit = 8, signal = null) {
+async function fetchSongs(query, limit = 5, signal = null) {
   if (!query) return [];
   const url = `https://itunes.apple.com/search?${new URLSearchParams({
     term: query,
