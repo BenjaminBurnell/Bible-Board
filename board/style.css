@@ -100,7 +100,7 @@ body:not(.light) #sun-icon{ display:none; }
 #title-textbox{ background:transparent; border:none; color:var(--fg); font-size:15px; font-weight:800; }
 #title-textbox::placeholder{ font-weight:600; }
 
-#search-query-container{ width:300px; position:fixed; top:0; bottom:0; left:100%; border-left:1px solid var(--border); background:var(--bg); transition:left .25s ease; }
+#search-query-container{ width:340px; position:fixed; top:0; bottom:0; left:100%; border-left:1px solid var(--border); background:var(--bg); transition:left .25s ease; }
 #search-query-content{ height:100%; width:100%; padding:15px; background:transparent; overflow-y:auto; padding-bottom: 5px; box-sizing: border-box; }
 #search-query-song-container::after{ content: ""; display: block; height: 0px; /* tweak as you like */ }
 #search-query{ color:var(--muted); font-size:15px; font-weight:600; }
@@ -113,6 +113,7 @@ body:not(.light) #sun-icon{ display:none; }
 #search-query-verses-text{ color:var(--fg); font-size:20px; font-weight:800; margin:5px 0 2px; }
 #search-query-verse-container{ position:relative; width:calc(100% - 30px); display:flex; flex-direction:column; gap:10px; }
 .search-query-verse-container{ border-radius:20px; color:var(--fg); border:1px solid var(--border); background:var(--bg-dots); padding:15px; width:calc(100%); font-size:17.5px; font-weight:900; }
+.search-query-no-verse-found-container{ border-radius:20px; color:var(--fg); border:none; background:transparent; padding:15px; width:calc(100%); font-size:17.5px; font-weight:900; }
 .search-query-verse-add-button{ border-radius:20px; background:var(--fg); color:var(--bg); border:1px solid var(--bg); padding:5px 15px; cursor:pointer; }
 .search-query-verse-reference{ margin-top:5px; width:100%; font-size:15px; text-align:left; color:var(--muted); font-weight:700; text-transform:uppercase; margin-bottom:15px; }
 

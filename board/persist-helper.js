@@ -1,4 +1,9 @@
 // board/persist-helper.js
+// OPTIMIZATION: No changes needed. This file correctly debounces
+// the save triggers. The problem was in script.js calling
+// triggerAutosave (via onBoardMutated) too frequently, which
+// has been fixed in the optimized script.js.
+
 (function () {
   if (!window.BoardAPI) {
     console.error("BoardAPI not found. Load persist-helper.js after script.js");
