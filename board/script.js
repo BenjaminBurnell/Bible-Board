@@ -436,6 +436,30 @@ const MIN_SCALE = 0.3,
   PINCH_SENS = 0.005,
   WHEEL_SENS = 0.001;
 
+// --- BoardAPI shim (safe to re-declare) ---
+window.BoardAPI = window.BoardAPI || {};
+if (!window.BoardAPI.getScale) {
+  window.BoardAPI.getScale = () => (typeof scale === "number" ? scale : 1);
+}
+if (!window.BoardAPI.setScale) {
+  window.BoardAPI.setScale = (s) => {
+    if (typeof s !== "number" || !isFinite(s) || s <= 0) return;
+    scale = s;
+    const workspace = document.getElementById("workspace");
+    if (workspace) {
+      workspace.style.transformOrigin = "top left";
+      workspace.style.transform = `scale(${scale})`;
+    }
+    try {
+      clampScroll?.();
+    } catch {}
+    try {
+      updateAllConnections?.();
+    } catch {}
+  };
+}
+// --- End BoardAPI shim ---
+
 // Touch/Tablet
 let isTouchPanning = false;
 let touchDragElement = null;
@@ -851,6 +875,7 @@ function startDragMouse(item, eOrPoint, offX, offY) {
     offsetY = offY;
   }
 }
+
 function dragMouseTo(clientX, clientY) {
   const newLeft = (viewport.scrollLeft + clientX) / scale - offsetX;
   const newTop = (viewport.scrollTop + clientY) / scale - offsetY;
@@ -860,6 +885,7 @@ function dragMouseTo(clientX, clientY) {
   active.style.top = clamp(newTop, 0, maxTop) + "px";
   throttledUpdateAllConnections(); // OPTIMIZATION: Use throttled version
 }
+
 function startDragTouch(item, touchPoint, offX, offY) {
   touchDragElement = item;
   touchMoved = false;
@@ -875,6 +901,7 @@ function startDragTouch(item, touchPoint, offX, offY) {
     touchDragOffset.y = offY;
   }
 }
+
 function dragTouchTo(touchPoint) {
   const vp = viewport.getBoundingClientRect();
   const x =
@@ -901,6 +928,7 @@ function connectionExists(a, b) {
     return (ca === ka && cb === kb) || (ca === kb && cb === ka);
   });
 }
+
 function updateConnection(path, el1, el2) {
   const vpRect = viewport.getBoundingClientRect();
   const r1 = el1.getBoundingClientRect(),
@@ -942,12 +970,14 @@ function updateConnection(path, el1, el2) {
     `M${p1.x},${p1.y} C${c1x},${c1y} ${c2x},${c2y} ${p2.x},${p2.y}`
   );
 }
+
 function updateAllConnections() {
   // This is the raw function. It will be wrapped by throttleRAF.
   connections.forEach(({ path, itemA, itemB }) =>
     updateConnection(path, itemA, itemB)
   );
 }
+
 function connectItems(a, b) {
   if (!a || !b || a === b || connectionExists(a, b)) return;
   const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
@@ -965,6 +995,7 @@ function connectItems(a, b) {
   updateConnection(path, a, b); // Update immediately on creation
   onBoardMutated("connect_items"); // AUTOSAVE
 }
+
 function disconnectLine(path) {
   const idx = connections.findIndex((c) => c.path === path);
   if (idx !== -1) {
@@ -975,6 +1006,7 @@ function disconnectLine(path) {
     onBoardMutated("disconnect_line"); // AUTOSAVE
   }
 }
+
 function removeConnectionsFor(el) {
   let changed = false;
   connections = connections.filter((c) => {
@@ -1534,6 +1566,7 @@ const toggle = document.getElementById("theme-toggle");
 const body = document.body;
 const moonIcon = document.getElementById("moon-icon");
 const sunIcon = document.getElementById("sun-icon");
+
 function setTheme(isLight) {
   body.classList.toggle("light", isLight);
   localStorage.setItem("theme", isLight ? "light" : "dark");
@@ -1573,12 +1606,14 @@ function updateActionButtonsEnabled() {
     interlinearBtn.disabled = !isVerse;
   }
 }
+
 function setConnectMode(on) {
   const next = !!on;
   if (isConnectMode === next) return;
   isConnectMode = next;
   updateActionButtonsEnabled();
 }
+
 function selectItem(el) {
   if (!el) return;
   if (selectedItem && selectedItem !== el) {
@@ -1588,12 +1623,14 @@ function selectItem(el) {
   el.classList.add("selected-connection");
   updateActionButtonsEnabled();
 }
+
 function clearSelection() {
   if (selectedItem) selectedItem.classList.remove("selected-connection");
   selectedItem = null;
   setConnectMode(false);
   updateActionButtonsEnabled();
 }
+
 workspace.addEventListener("click", (e) => {
   if (touchMoved) return;
   const item = e.target.closest(".board-item");
@@ -1611,6 +1648,7 @@ workspace.addEventListener("click", (e) => {
     clearSelection();
   }
 });
+
 document.addEventListener("click", (e) => {
   const insideWorkspace = e.target.closest("#workspace");
   const insideAction = e.target.closest("#action-buttons-container");
@@ -1623,6 +1661,7 @@ document.addEventListener("click", (e) => {
     clearSelection();
   }
 });
+
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") {
     clearSelection();
@@ -1638,11 +1677,13 @@ connectBtn?.addEventListener("click", (e) => {
   if (!selectedItem) return;
   setConnectMode(!isConnectMode);
 });
+
 textBtn?.addEventListener("click", (e) => {
   e.preventDefault();
   e.stopPropagation();
   addTextNote("New note");
 });
+
 deleteBtn?.addEventListener("click", (e) => {
   e.preventDefault();
   e.stopPropagation();
@@ -1670,6 +1711,7 @@ function openInterlinearPanel() {
 
   applyLayout(true);
 }
+
 function closeInterlinearPanel() {
   interlinearOpen = false;
   interPanel.setAttribute("aria-busy", "false");
@@ -1680,6 +1722,7 @@ function closeInterlinearPanel() {
   }
   applyLayout(true);
 }
+
 interClose?.addEventListener("click", (e) => {
   e.preventDefault();
   e.stopPropagation();
@@ -2279,6 +2322,110 @@ function deserializeBoard(data) {
       clampScroll();
     }, 50);
   }
+}
+
+function buildBoardTourSteps() {
+  let tempVerse = null;
+
+  const steps = [
+    {
+      id: "welcome",
+      title: "Welcome to Bible Board",
+      text: "This quick tour shows you how to add verses, arrange them, connect ideas, and view interlinear details.",
+      placement: "bottom", // Will be centered as it has no target
+    },
+    {
+      id: "workspace",
+      target: () => document.getElementById("workspace"),
+      title: "Your Workspace",
+      text: "This is your canvas. Drag with your mouse or finger to pan, and use the scroll wheel or pinch to zoom.",
+      placement: "right",
+      allowPointerThrough: true,
+    },
+    {
+      id: "search",
+      target: () => document.getElementById("search-bar"),
+      title: "Search Anything",
+      text: "Search for verses (like 'John 1:1') or topics (like 'love'). Press Enter or tap the search icon to begin.",
+      placement: "top",
+      beforeStep: () => {
+        // Ensure search panel is open if we add that logic later
+        // For now, it's always visible.
+      },
+    },
+    {
+      id: "board-element",
+      target: () => document.querySelector(".board-item.bible-verse"),
+      title: "Arrange Your Cards",
+      text: "Drag any card on the workspace to arrange your thoughts. You can create notes and add songs, too.",
+      placement: "bottom",
+      allowPointerThrough: true,
+      beforeStep: async () => {
+        // If no verse *on the board* exists, fake one
+        if (!document.querySelector(".board-item.bible-verse")) {
+          tempVerse = addBibleVerse(
+            "John 3:16 KJV",
+            "For God so loved the world...",
+            true
+          );
+          tempVerse.id = "temp-tour-board-verse";
+          // Position it in view
+          const vpRect = viewport.getBoundingClientRect();
+          tempVerse.style.left = `${(viewport.scrollLeft + vpRect.width / 2 - 150) / scale}px`;
+          tempVerse.style.top = `${(viewport.scrollTop + vpRect.height / 2 - 100) / scale}px`;
+        }
+      },
+      afterStep: () => {
+        const tempBoardVerse = document.getElementById("temp-tour-board-verse");
+        if (tempBoardVerse) {
+          tempBoardVerse.remove();
+        }
+        tempVerse = null;
+      },
+    },
+    {
+      id: "connect",
+      target: () => document.getElementById("mobile-action-button"),
+      title: "Connect Ideas",
+      text: "Select a card, then tap this 'Connect' button. Tap another card to draw a line between them.",
+      placement: "right",
+      padding: 8, // <-- ADDED THIS LINE for extra padding
+      allowPointerThrough: true, // <-- ADD THIS LINE
+    },
+    {
+      id: "notes",
+      target: () => document.getElementById("text-action-button"),
+      title: "Add Notes",
+      text: "Tap this 'note' button to add a blank note card to your board. You can type anything you want!",
+      placement: "right",
+      allowPointerThrough: true, // <-- ADD THIS LINE
+    },
+    {
+      id: "interlinear",
+      target: () => document.getElementById("interlinear-action-button"),
+      title: "Go Deeper",
+      text: "Select a verse card, then tap the 'Interlinear' button to open a word-by-word breakdown of the original language.",
+      placement: "right",
+      allowPointerThrough: true, // <-- ADD THIS LINE
+    },
+
+    {
+      id: "delete",
+      target: () => document.getElementById("delete-action-button"),
+      title: "Delete Item",
+      text: "Select a item on the bible board, then tap the 'Delete' button to delete the selected item.",
+      placement: "right",
+      allowPointerThrough: true, // <-- ADD THIS LINE
+    },
+    {
+      id: "finish",
+      title: "You're All Set!",
+      text: "You're ready to build your board. Try searching for a verse now to get started."
+      // allowPointerThrough: true, // <-- ADD THIS LINE
+    },
+  ];
+
+  return steps;
 }
 
 // ===== expose a small API for the Supabase module (keep at end of script.js) =====

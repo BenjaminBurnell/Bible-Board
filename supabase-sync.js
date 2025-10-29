@@ -604,6 +604,85 @@ async function main() {
     }
     // Note: We don't need to handle TOKEN_REFRESHED
   });
+
+  // --- Tour Initialization ---
+  // We init the tour here because it's the only place we have
+  // reliable access to the user ID and board ID after load.
+  try {
+    const user = lastKnownUser; // Already defined in main()
+    const userId = user?.id || "anonymous";
+    const boardId = currentBoardId || "legacy"; // Already defined in main()
+
+    // Expose for tour.js to potentially use
+    window.__BB_IDS__ = { userId, boardId };
+
+    // Wire up the Help button (which is in index.html)
+    const helpBtn = document.getElementById("bb-tour-help-btn");
+    if (helpBtn) {
+      helpBtn.style.display = "inline-block"; // Show the button
+      helpBtn.onclick = () => {
+        if (window.Tour && typeof buildBoardTourSteps === "function") {
+          window.BibleBoardTour.start({ force: true });
+        } else {
+          console.warn("Tour not ready.");
+        }
+      };
+    }
+
+    // Define the tour start function
+    window.BibleBoardTour = {
+      start: ({ force = false } = {}) => {
+        // buildBoardTourSteps is defined in script.js
+        if (typeof buildBoardTourSteps !== "function") {
+          console.error(
+            "buildBoardTourSteps() not found. Ensure script.js is loaded."
+          );
+          return;
+        }
+        
+        // Don't start if a tour is already open
+        if (window.BibleBoardTour.currentTour?.isOpen) return;
+
+        const steps = buildBoardTourSteps();
+        const lsKey = `bb.onboarded.board.${userId}.${boardId}`;
+        const shouldShow = force || !localStorage.getItem(lsKey);
+
+        if (shouldShow) {
+          const tour = new Tour(steps, {
+            onStart: () => {
+              window.BibleBoardTour.currentTour = tour;
+            },
+            onEnd: ({ completed }) => {
+              if (completed) {
+                localStorage.setItem(lsKey, "1");
+                // Optional: Update Supabase user_metadata
+                // if (user) {
+                //   console.log("TODO: Update Supabase user metadata with onboarded status");
+                //   // sb.auth.updateUser({
+                //   //   data: {
+                //   //     onboardedBoardIds: [...(user.user_metadata.onboardedBoardIds || []), boardId]
+                //   //   }
+                //   // }).catch(console.error);
+                // }
+              }
+              window.BibleBoardTour.currentTour = null;
+            },
+          });
+          tour.start(0);
+        }
+      },
+      currentTour: null, // Track the active tour instance
+    };
+
+    // Kick off automatically if it's the first time
+    // Use a small delay to let the board render
+    setTimeout(() => {
+        window.BibleBoardTour.start({ force: false });
+    }, 1000);
+
+  } catch (tourError) {
+    console.error("Failed to initialize onboarding tour:", tourError);
+  }
 }
 
 // ---------- Public API Wire-up ----------

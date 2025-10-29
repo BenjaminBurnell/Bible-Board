@@ -94,7 +94,7 @@ input, button, textarea:focus{ outline:none; }
 body.light #moon-icon{ display:none; }
 body:not(.light) #sun-icon{ display:none; }
 
-#bible-whiteboard-title{ display:flex; align-items:center; justify-content:center; padding:0 6px; border-radius:15px; backdrop-filter:blur(1rem); background:var(--bg-seethroug); border:1px solid var(--fg-seethrough); color:var(--fg); position:absolute; top:25px; left:85px; width:fit-content; height:50px; }
+#bible-whiteboard-title{ display:flex; align-items:center; justify-content:center; padding:0 6px; border-radius:15px; backdrop-filter:blur(1rem); background:var(--bg-seethroug); border:1px solid var(--fg-seethrough); color:var(--fg); position:fixed; top:25px; left:85px; width:fit-content; height:50px; }
 #bible-whiteboard-text{ display:flex; justify-content:center; align-items:center; gap:5px; padding:5px; }
 #edit-Icon{ width:17.5px; height:17.5px; fill:var(--muted); }
 #title-textbox{ background:transparent; border:none; color:var(--fg); font-size:15px; font-weight:800; }

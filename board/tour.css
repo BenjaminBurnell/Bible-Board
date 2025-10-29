@@ -1,0 +1,206 @@
+/* board/tour.css */
+
+:root {
+  --bb-tour-z-index: 100000;
+  --bb-tour-bg: #2a2a2a;
+  --bb-tour-fg: #f0f0f0;
+  --bb-tour-accent: #67e495;
+  --bb-tour-overlay: rgba(0, 0, 0, 0.6);
+  --bb-tour-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+body.light {
+  --bb-tour-bg: #ffffff;
+  --bb-tour-fg: #343434;
+  --bb-tour-accent: #2ea043;
+  --bb-tour-overlay: rgba(255, 255, 255, 0.4);
+  --bb-tour-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bb-tour,
+  .bb-tour *,
+  #bb-tour-highlight,
+  #bb-tour-overlay {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+#bb-tour-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--bb-tour-z-index);
+  /* background: var(--bb-tour-overlay); */
+  background: transparent !important;
+  backdrop-filter:brightness(0.7);
+  opacity: 0;
+  pointer-events: none; /* Correct: Makes overlay non-blocking */
+}
+
+/* NEW: Shield container (holds the 4 blocking divs) */
+#bb-tour-shields {
+  position: fixed;
+  inset: 0;
+  z-index: var(--bb-tour-z-index); /* Shields go under tooltip */
+  pointer-events: none; /* Correct: Container is passthrough */
+}
+
+/* NEW: Individual shield pieces */
+.bb-tour-shield {
+  position: fixed;
+  background: var(--bb-tour-overlay);
+  pointer-events: auto; /* Correct: Shields block clicks */
+}
+
+#bb-tour-highlight {
+  position: fixed;
+  display: none; /* Hidden by default */
+  z-index: calc(var(--bb-tour-z-index) + 1); /* Above shields */
+  background: transparent;
+  border-radius: 8px;
+  box-shadow: 0 0 0 4px var(--bb-tour-accent); /* Only show accent ring */
+  backdrop-filter: brightness(1.3);
+  opacity: 0;
+  pointer-events: none; /* Correct: Highlight ring is non-blocking */
+}
+
+#bb-tour-tooltip {
+  position: fixed;
+  z-index: calc(var(--bb-tour-z-index) + 2); /* Correct: Above shields and highlight */
+  background: var(--bb-tour-bg);
+  color: var(--bb-tour-fg);
+  border: 1px solid var(--border, #2f2f2f);
+  border-radius: 12px;
+  padding: 16px;
+  width: 320px;
+  max-width: calc(100vw - 32px);
+  box-shadow: var(--bb-tour-shadow);
+  opacity: 0;
+  transform: translateY(10px);
+  visibility: hidden;
+}
+
+#bb-tour-tooltip[data-placement^="top"] {
+  transform: translateY(10px);
+}
+#bb-tour-tooltip[data-placement^="bottom"] {
+  transform: translateY(-10px);
+}
+#bb-tour-tooltip[data-placement^="left"] {
+  transform: translateX(10px);
+}
+#bb-tour-tooltip[data-placement^="right"] {
+  transform: translateX(-10px);
+}
+#bb-tour-tooltip.bb-tour-centered {
+  transform: translate(-50%, -50%) scale(0.9);
+  top: 50%;
+  left: 50%;
+}
+
+.bb-tour-focus-trap {
+  width: 0;
+  height: 0;
+  opacity: 0;
+  overflow: hidden;
+  position: absolute;
+}
+
+#bb-tour-arrow {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: var(--bb-tour-bg);
+  border-top: 1px solid var(--border, #2f2f2f);
+  border-left: 1px solid var(--border, #2f2f2f);
+  transform: rotate(45deg);
+}
+
+/* Arrow placements */
+#bb-tour-tooltip[data-placement="bottom"] #bb-tour-arrow {
+  top: -5px;
+  left: calc(50% - 5px);
+  transform: rotate(45deg);
+}
+#bb-tour-tooltip[data-placement="top"] #bb-tour-arrow {
+  bottom: -5px;
+  left: calc(50% - 5px);
+  transform: rotate(225deg);
+}
+#bb-tour-tooltip[data-placement="right"] #bb-tour-arrow {
+  left: -5px;
+  top: calc(50% - 5px);
+  transform: rotate(-45deg);
+}
+#bb-tour-tooltip[data-placement="left"] #bb-tour-arrow {
+  right: -5px;
+  top: calc(50% - 5px);
+  transform: rotate(135deg);
+}
+.bb-tour-centered #bb-tour-arrow {
+  display: none;
+}
+
+/* Tooltip Content */
+.bb-tour-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--fg, #e6e6e6);
+  margin: 0 0 8px;
+}
+
+.bb-tour-content {
+  font-size: 1rem;
+  line-height: 1.5;
+  color: var(--muted, #8b949e);
+  margin-bottom: 16px;
+}
+
+.bb-tour-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.bb-tour-steps {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--muted, #8b949e);
+}
+
+.bb-tour-buttons {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.bb-tour-btn {
+  font-family: "Atkinson Hyperlegible", sans-serif;
+  font-size: 0.9rem;
+  font-weight: 700;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border, #2f2f2f);
+  background: var(--bg-alt, #202020);
+  color: var(--fg, #e6e6e6);
+  cursor: pointer;
+}
+.bb-tour-btn:hover {
+  border-color: var(--muted, #8b949e);
+}
+.bb-tour-btn.bb-tour-btn-primary {
+  background: var(--bb-tour-accent);
+  color: var(--bb-tour-bg);
+  border-color: var(--bb-tour-accent);
+}
+.bb-tour-btn.bb-tour-btn-skip {
+  background: transparent;
+  border: none;
+  color: var(--muted, #8b949e);
+}
+.bb-tour-btn.bb-tour-btn-skip:hover {
+  color: var(--fg, #e6e6e6);
+  background: transparent;
+}
