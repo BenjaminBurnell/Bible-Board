@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Legal — BibleBoard</title>
+
+  <!-- Reuse your app styles & variables -->
+  <link rel="stylesheet" href="../board/style.css" />
+  <link rel="stylesheet" href="../boards.css" />
+
+  <style>
+    /* Light extra polish while honoring your variables from style.css / boards.css */
+    :root {
+      --maxw: 1024px;
+    }
+    body { margin: 0; }
+    header {
+      position: sticky; top: 0; z-index: 5;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+    }
+    .wrap {
+      max-width: var(--maxw);
+      margin: 0 auto;
+      padding: 12px 20px;
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 12px;
+    }
+    .brand {
+      display: flex; align-items: center; gap: 10px;
+      font-weight: 900; letter-spacing: .2px;
+    }
+    .brand .dot {
+      width: 10px; height: 10px; border-radius: 999px;
+      background: var(--accent);
+      box-shadow: 0 0 0 3px rgba(122,162,247,.18);
+      flex: none;
+    }
+    .brand h1 { margin: 0; font-size: 1rem; }
+    .muted { color: var(--muted); }
+
+    main { max-width: var(--maxw); margin: 24px auto 80px; padding: 0 20px; }
+
+    /* Tabs use your button DNA */
+    .tabs { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .tab-btn {
+      /* inherit .dash-btn visuals by layering */
+      composes: dash-btn;
+    }
+    .tab-btn {
+      border-radius: 999px; padding: 8px 14px; height: auto; line-height: 1;
+      background: var(--bg-seethroug); color: var(--fg);
+      border: 1px solid var(--border);
+      font-weight: 800;
+    }
+    .tab-btn[aria-selected="true"] {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(122,162,247,.15) inset;
+    }
+
+    /* Card container borrowing your card feel */
+    .legal-card {
+      background: var(--bg-seethroug);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 18px;
+    }
+
+    .toolbar {
+      margin: 12px 0;
+      display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    }
+    .src {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: .85rem; color: var(--muted);
+      word-break: break-all;
+    }
+
+    /* Markdown presentation */
+    .md h1 { font-size: 1.8rem; margin: .6em 0 .35em; }
+    .md h2 { font-size: 1.35rem; margin: 1.2em 0 .45em; border-bottom: 1px solid var(--border); padding-bottom: .35em; }
+    .md h3 { font-size: 1.1rem; margin: 1em 0 .3em; }
+    .md p { line-height: 1.7; }
+    .md ul, .md ol { padding-left: 1.35em; }
+    .md li { margin: .25em 0; }
+    .md a { color: var(--fg); text-decoration: underline; }
+    .md code { background: var(--bg-alt); padding: .15em .35em; border-radius: 6px; }
+    .md pre { background: var(--bg-alt); padding: 14px; border-radius: 12px; overflow: auto; }
+    .md table { width: 100%; border-collapse: collapse; margin: .9em 0; }
+    .md th, .md td { border: 1px solid var(--border); padding: .5em; text-align: left; }
+
+    .loading { display: none; gap: 10px; align-items: center; color: var(--muted); }
+    .loading.active { display: inline-flex; }
+    .spinner { width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--fg); border-radius: 999px; animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .err { color: #ff9aa2; margin-top: 8px; }
+    footer { max-width: var(--maxw); margin: 40px auto 60px; padding: 0 20px; color: var(--muted); text-align: center; }
+    .legal-links a { color: var(--fg); text-decoration: none; margin: 0 6px; }
+  </style>
+
+  <!-- Markdown + sanitizer -->
+  <script defer src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/dompurify@3.1.7/dist/purify.min.js"></script>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <div class="brand">
+        <div class="dot" aria-hidden="true"></div>
+        <h1>BibleBoard</h1>
+        <span class="muted">Legal</span>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <nav class="tabs" role="tablist" aria-label="Legal documents">
+      <button class="tab-btn" role="tab" data-doc="terms" aria-selected="true">Terms</button>
+      <button class="tab-btn" role="tab" data-doc="privacy" aria-selected="false">Privacy</button>
+    </nav>
+
+    <div class="toolbar">
+      <div class="loading" id="loading"><span class="spinner"></span><span>Loading…</span></div>
+      <a id="openRaw" class="dash-btn" target="_blank" rel="noopener" style="display:none;">Open raw</a>
+    </div>
+
+    <section class="legal-card">
+      <div class="src" id="srcLabel">Source: ./TERMS.md</div>
+      <article id="output" class="md" style="min-height: 50vh;"></article>
+      <div id="error" class="err" style="display:none"></div>
+    </section>
+  </main>
+
+  <footer>
+    <p>© 2025 BibleBoard</p>
+    <p class="legal-links">
+      <a href="../legal/?doc=terms" rel="noopener">Terms</a> ·
+      <a href="../legal/?doc=privacy" rel="noopener">Privacy</a>
+    </p>
+  </footer>
+
+  <script>
+    // ===== Theme toggle (mirrors your dashboard behavior) =====
+    (function() {
+      const body = document.body;
+      const toggle = document.getElementById("theme-toggle");
+      const moon = document.getElementById("moon-icon");
+      const sun  = document.getElementById("sun-icon");
+
+      function setTheme(isLight) {
+        body.classList.toggle("light", !!isLight);
+        localStorage.setItem("theme", isLight ? "light" : "dark");
+        if (moon) moon.style.display = isLight ? "block" : "none";
+        if (sun)  sun.style.display  = isLight ? "none"  : "block";
+      }
+      setTheme(localStorage.getItem("theme") === "light");
+      toggle?.addEventListener("click", () => setTheme(!body.classList.contains("light")));
+    })();
+
+    // ===== Markdown loader =====
+    function q(name){ return new URL(location.href).searchParams.get(name); }
+
+    const MAP = {
+      terms:      "./TERMS.md",
+      privacy:    "./PRIVACY.md",
+    };
+
+    const loading  = document.getElementById("loading");
+    const out      = document.getElementById("output");
+    const errBox   = document.getElementById("error");
+    const srcLabel = document.getElementById("srcLabel");
+    const openRaw  = document.getElementById("openRaw");
+
+    function setActive(doc) {
+      document.querySelectorAll(".tab-btn").forEach(btn => {
+        btn.setAttribute("aria-selected", String(btn.dataset.doc === doc));
+      });
+    }
+    function setBusy(v){ loading.classList.toggle("active", !!v); }
+
+    async function loadDoc(doc) {
+      const url = MAP[doc] || MAP.terms;
+      setActive(doc);
+      setBusy(true);
+      errBox.style.display = "none";
+      out.innerHTML = "";
+      srcLabel.textContent = "Source: " + url;
+      openRaw.href = url;
+
+      try {
+        const res = await fetch(url + "?t=" + Date.now());
+        if (!res.ok) throw new Error("HTTP " + res.status + " " + res.statusText);
+        const md = await res.text();
+        const raw = marked.parse(md, { mangle:false, headerIds:true });
+        const safe = DOMPurify.sanitize(raw, { USE_PROFILES:{ html: true } });
+        out.innerHTML = safe;
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      } catch (e) {
+        errBox.style.display = "block";
+        errBox.textContent = "Failed to load: " + (e && e.message ? e.message : e);
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    // Click handlers for tabs
+    document.querySelectorAll(".tab-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const doc = btn.dataset.doc;
+        const url = new URL(location.href);
+        url.searchParams.set("doc", doc);
+        history.pushState({doc}, "", url.toString());
+        loadDoc(doc);
+      });
+    });
+
+    // Initial load + back/forward support
+    const initialDoc = (q("doc") || "terms").toLowerCase();
+    setActive(initialDoc);
+    loadDoc(initialDoc);
+    window.addEventListener("popstate", (ev) => {
+      const doc = (ev.state && ev.state.doc) || (q("doc") || "terms");
+      setActive(doc);
+      loadDoc(doc);
+    });
+  </script>
+</body>
+</html>
