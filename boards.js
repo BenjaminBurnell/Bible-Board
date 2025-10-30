@@ -268,6 +268,7 @@ function openModal(board) {
   modalBackdrop.classList.remove("hidden");
   modalTitleInput.focus();
 }
+
 function closeModal() {
   currentModalBoard = null;
   modalBackdrop.classList.add("hidden");
@@ -502,9 +503,25 @@ async function init() {
     });
   });
 
-  signoutBtn.addEventListener("click", () => {
-    sb.auth.signOut();
+  // boards.js — replace the existing signout click handler with this
+  signoutBtn.addEventListener("click", async () => {
+    try {
+      // 1) Perform the sign-out
+      await sb.auth.signOut();
+
+      // 2) Proactively reset local UI (don’t wait for the async listener)
+      currentUser = null;
+      handleAuthChange(null); // swaps to auth screen instantly
+
+      // 3) Make it bulletproof: hard-reload to clear any cached state
+      const base = window.location.origin + window.location.pathname;
+      window.location.replace(base); // avoids back-button restoring session
+    } catch (err) {
+      console.error("Sign out failed:", err);
+      alert(`Sign out failed: ${err.message || err}`);
+    }
   });
+
 
   // --- Board Action Listeners ---
   newBoardBtn.addEventListener("click", handleNewBoard);
