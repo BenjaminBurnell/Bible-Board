@@ -644,7 +644,10 @@ async function main() {
         if (window.BibleBoardTour.currentTour?.isOpen) return;
 
         const steps = buildBoardTourSteps();
-        const lsKey = `bb.onboarded.board.${userId}.${boardId}`;
+        
+        // --- FIX 1: Key is now user-specific, not board-specific ---
+        const lsKey = `bb.onboarded.user.${userId}`;
+        
         const shouldShow = force || !localStorage.getItem(lsKey);
 
         if (shouldShow) {
@@ -653,18 +656,10 @@ async function main() {
               window.BibleBoardTour.currentTour = tour;
             },
             onEnd: ({ completed }) => {
-              if (completed) {
-                localStorage.setItem(lsKey, "1");
-                // Optional: Update Supabase user_metadata
-                // if (user) {
-                //   console.log("TODO: Update Supabase user metadata with onboarded status");
-                //   // sb.auth.updateUser({
-                //   //   data: {
-                //   //     onboardedBoardIds: [...(user.user_metadata.onboardedBoardIds || []), boardId]
-                //   //   }
-                //   // }).catch(console.error);
-                // }
-              }
+              
+              // --- FIX 2: Always set the flag, even if skipped (removed "if (completed)") ---
+              localStorage.setItem(lsKey, "1"); 
+              
               window.BibleBoardTour.currentTour = null;
             },
           });

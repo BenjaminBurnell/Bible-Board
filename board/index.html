@@ -121,55 +121,54 @@
           z-index: 10003;
           align-items: center;
         "
+      ></div>
+      <div
+        id="persistence-status"
+        style="
+          display: none;
+          font-size: 12px;
+          font-weight: 700;
+          color: var(--muted);
+          padding: 5px 10px;
+          background: var(--bg-seethroug);
+          border-radius: 10px;
+          -webkit-backdrop-filter: blur(1rem);
+          backdrop-filter: blur(1rem);
+          border: 1px solid var(--fg-seethrough);
+          transition: all 0.3s ease;
+          white-space: nowrap;
+          opacity: 0;
+          position: fixed;
+          top: 25px;
+          left: 50%;
+          transform: translate(-50%);
+        "
       >
-        <div
-          id="persistence-status"
-          style="
-            display: none;
-            font-size: 12px;
-            font-weight: 700;
-            color: var(--muted);
-            padding: 5px 10px;
-            background: var(--bg-seethroug);
-            border-radius: 10px;
-            -webkit-backdrop-filter: blur(1rem);
-            backdrop-filter: blur(1rem);
-            border: 1px solid var(--fg-seethrough);
-            transition: all 0.3s ease;
-            white-space: nowrap;
-            opacity: 0;
-            position: fixed;
-            top:25px;
-            left: 50%;
-            transform:translate(-50%);
-          "
-        >
-          Saving...
-        </div>
-        <button
-          id="bb-tour-help-btn"
-          style="
-            display: none;
-            font-size: 12.5px;
-            font-weight: 700;
-            color: var(--muted);
-            padding: 5px 15px;
-            background: var(--bg-seethroug);
-            border-radius: 10px;
-            border: 1px solid var(--fg-seethrough);
-            -webkit-backdrop-filter: blur(1rem);
-            backdrop-filter: blur(1rem);
-            cursor: pointer;
-            height: 50px;
-            margin-right: 8px;
-            position:absolute;
-            top:0px;
-            right:0px;
-          "
-        >
-          Show Tour
-        </button>
+        Saving...
       </div>
+      <button
+        id="bb-tour-help-btn"
+        style="
+          display: none;
+          font-size: 12.5px;
+          font-weight: 700;
+          color: var(--muted);
+          padding: 5px 15px;
+          background: var(--bg-seethroug);
+          border-radius: 10px;
+          border: 1px solid var(--fg-seethrough);
+          -webkit-backdrop-filter: blur(1rem);
+          backdrop-filter: blur(1rem);
+          cursor: pointer;
+          height: 50px;
+          margin-right: 8px;
+          position: absolute;
+          top: 25px;
+          right: 75px;
+        "
+      >
+        Show Tour
+      </button>
 
       <form id="search-container" onsubmit="return searchForQuery(event)">
         <input
@@ -357,11 +356,11 @@
       </svg>
     </button>
 
-    <div id="bible-board-phone-message">
+    <!-- <div id="bible-board-phone-message">
       <div id="bible-board-text">
         Bible board works best on desktop or tablets.
       </div>
-    </div>
+    </div> -->
 
     <script src="search.js"></script>
     <script src="script.js"></script>
@@ -377,80 +376,6 @@
       function goBackToBoards() {
         window.location.href = "../";
       }
-    </script>
-
-    <script type="module">
-      // Key to store in the browser's local storage
-      const TOUR_STORAGE_KEY = "bibleBoardTourCompleted";
-
-      // This is the "lock" to prevent the double-tour bug.
-      let isTourActive = false;
-
-      /**
-       * Builds and starts the tour.
-       * @param {boolean} [force=false] - If true, ignores localStorage and starts the tour.
-       */
-      function startTour(force = false) {
-        // 1. Check if tour is already running.
-        if (isTourActive) {
-          console.log("Tour is already active. Ignoring request.");
-          return;
-        }
-
-        // 2. Check if we should skip (and are not forcing).
-        if (!force) {
-          const hasCompletedTour = localStorage.getItem(TOUR_STORAGE_KEY);
-          if (hasCompletedTour === "true") {
-            console.log("User has already completed the tour. Skipping.");
-            return;
-          }
-        }
-
-        // 3. SET THE LOCK IMMEDIATELY.
-        // This prevents any other call from starting a second tour.
-        isTourActive = true;
-
-        // 4. Start the tour.
-        try {
-          // Get steps from script.js
-          const tourSteps = buildBoardTourSteps();
-
-          const tour = new Tour(tourSteps, {
-            // This is the UNLOCK.
-            onEnd: ({ completed }) => {
-              isTourActive = false; // Clear the lock so it can run again
-
-              // If the user *finished* (didn't skip), mark as completed.
-              if (completed) {
-                localStorage.setItem(TOUR_STORAGE_KEY, "true");
-              }
-            },
-          });
-
-          // Start the tour. This is async, but our lock is already set.
-          tour.start();
-        } catch (err) {
-          console.error("Failed to start tour:", err);
-          isTourActive = false; // Clear the lock if the tour fails to start
-        }
-      }
-
-      // --- Wire up all the logic ---
-      // Wait for the whole page to be ready
-      window.addEventListener("load", () => {
-        const helpButton = document.getElementById("bb-tour-help-btn");
-
-        // 1. Wire up the "Show Tour" button to *force* the tour
-        if (helpButton) {
-          helpButton.onclick = () => startTour(true); // 'true' forces it
-        }
-
-        // 2. Run the automatic check once on page load
-        // We use a short delay to let the board finish loading first
-        setTimeout(() => {
-          // startTour(false); // 'false' respects the localStorage flag
-        }, 1000); // 1-second delay
-      });
     </script>
   </body>
 </html>

@@ -289,7 +289,7 @@ async function fetchBibleSearchResults(query, limit = 5, signal) {
     effSignal = activeBibleSearchController.signal;
   }
 
-  const url = `https://bible-search-api-huro.onrender.com/search?q=${encodeURIComponent(query)}&limit=${limit}`;
+  const url = `https://bible-search-api-huro.onrender.com/search?q=${encodeURIComponent(query)}&limit=5`;
 
   try {
     // IMPORTANT: use the same multi-proxy CORS bypass helper as verse fetches
@@ -431,9 +431,9 @@ let active = null;
 let offsetX, offsetY;
 let scale = 1;
 let currentIndex = 1;
-const MIN_SCALE = 0.3,
+const MIN_SCALE = 0.15,
   MAX_SCALE = 1.5,
-  PINCH_SENS = 0.005,
+  PINCH_SENS = 0.003,
   WHEEL_SENS = 0.001;
 
 // --- BoardAPI shim (safe to re-declare) ---
@@ -863,6 +863,9 @@ window.addEventListener(
 // ==================== Drag helpers ====================
 function startDragMouse(item, eOrPoint, offX, offY) {
   active = item;
+  // GUARD
+  if (window.__readOnly) return;
+
   currentIndex += 1;
   item.style.zIndex = currentIndex;
   item.style.cursor = "grabbing";
@@ -888,6 +891,9 @@ function dragMouseTo(clientX, clientY) {
 
 function startDragTouch(item, touchPoint, offX, offY) {
   touchDragElement = item;
+  // GUARD
+  if (window.__readOnly) return;
+
   touchMoved = false;
   isTouchPanning = false;
   currentIndex += 1;
@@ -979,6 +985,9 @@ function updateAllConnections() {
 }
 
 function connectItems(a, b) {
+  // GUARD
+  if (window.__readOnly) return;
+
   if (!a || !b || a === b || connectionExists(a, b)) return;
   const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
   path.classList.add("connection-line");
@@ -997,6 +1006,9 @@ function connectItems(a, b) {
 }
 
 function disconnectLine(path) {
+  // GUARD
+  if (window.__readOnly) return;
+
   const idx = connections.findIndex((c) => c.path === path);
   if (idx !== -1) {
     try {
@@ -1008,6 +1020,9 @@ function disconnectLine(path) {
 }
 
 function removeConnectionsFor(el) {
+  // GUARD
+  if (window.__readOnly) return;
+
   let changed = false;
   connections = connections.filter((c) => {
     if (c.itemA === el || c.itemB === el) {
@@ -1024,6 +1039,9 @@ function removeConnectionsFor(el) {
 
 // ==================== Element Creation ====================
 function addBibleVerse(reference, text, createdFromLoad = false) {
+  // GUARD: Allow creation during load/restore, but not by user action
+  if (window.__readOnly && !window.__RESTORING_FROM_SUPABASE) return;
+
   const el = document.createElement("div");
   el.classList.add("board-item", "bible-verse");
   el.style.position = "absolute";
@@ -1072,6 +1090,9 @@ function addBibleVerse(reference, text, createdFromLoad = false) {
 }
 
 function addTextNote(initial = "New note") {
+  // GUARD: Allow creation during load/restore, but not by user action
+  if (window.__readOnly && !window.__RESTORING_FROM_SUPABASE) return;
+
   const el = document.createElement("div");
   el.classList.add("board-item", "text-note");
   el.dataset.type = "note"; // Add data attribute
@@ -1088,10 +1109,7 @@ function addTextNote(initial = "New note") {
   el.style.top = `${y}px`;
 
   el.innerHTML = `
-    <div class="note-content">
-      <div class="verse-text note-label">NOTE</div>
-      <div class="text-content" contenteditable="true" spellcheck="false">${initial}</div>
-    </div>
+    <div class="note-content"><div class="verse-text note-label">NOTE</div><div class="text-content" contenteditable="${!window.__readOnly}" spellcheck="false">${initial}</div></div>
   `;
   workspace.appendChild(el);
   el.dataset.vkey = itemKey(el);
@@ -1102,6 +1120,7 @@ function addTextNote(initial = "New note") {
   // AUTOSAVE on text edit
   // OPTIMIZATION: Use .oninput
   body.oninput = () => {
+    if (window.__readOnly) return;
     onBoardMutated("edit_note_text");
   };
 
@@ -1196,6 +1215,9 @@ function addInterlinearCard({
   strong,
   reference,
 }) {
+  // GUARD: Allow creation during load/restore, but not by user action
+  if (window.__readOnly && !window.__RESTORING_FROM_SUPABASE) return;
+  
   const el = document.createElement("div");
   el.classList.add("board-item", "interlinear-card");
   el.style.position = "absolute";
@@ -1633,6 +1655,9 @@ function clearSelection() {
 
 workspace.addEventListener("click", (e) => {
   if (touchMoved) return;
+  // GUARD: Read-only users can't select or connect
+  if (window.__readOnly) return;
+
   const item = e.target.closest(".board-item");
   if (!item) {
     clearSelection();
@@ -1653,6 +1678,9 @@ document.addEventListener("click", (e) => {
   const insideWorkspace = e.target.closest("#workspace");
   const insideAction = e.target.closest("#action-buttons-container");
   const insideSearch = e.target.closest("#search-container"); // Don't deselect when clicking search
+  // GUARD: Read-only users clicking outside shouldn't clear selection (it's already clear)
+  if (window.__readOnly) return;
+  
   if (!insideWorkspace && !insideAction && !insideSearch) {
     // If click is *outside* search, close it
     if (!e.target.closest("#search-query-container") && !insideSearch) {
@@ -2187,6 +2215,36 @@ function displaySongResults(songs) {
 // ==================== Expose ====================
 window.addBibleVerse = addBibleVerse;
 
+// ==================== Read-Only Mode UI Guards ====================
+
+/**
+ * Applies read-only guards to the UI, disabling all mutation actions.
+ * Called by supabase-sync.js after board load.
+ * @param {boolean} isReadOnly
+ */
+function applyReadOnlyGuards(isReadOnly) {
+  window.__readOnly = isReadOnly; // Set global flag
+  const actionButtons = document.getElementById("action-buttons-container");
+  const titleInput = document.getElementById("title-textbox");
+
+  if (isReadOnly) {
+    // 1. Hide mutation buttons (Connect, Add Note, Delete)
+    if (actionButtons) actionButtons.style.display = "none";
+    // 2. Disable title editing
+    if (titleInput) titleInput.disabled = true;
+    // 3. Disable all text note editing
+    document.querySelectorAll(".text-note .text-content").forEach((el) => {
+      el.contentEditable = false;
+    });
+    // 4. Clear any lingering selection
+    clearSelection();
+  } else {
+    // Restore UI for owner
+    if (actionButtons) actionButtons.style.display = "flex";
+    if (titleInput) titleInput.disabled = false;
+  }
+}
+
 // ==================== Serialization API ====================
 function serializeBoard() {
   try {
@@ -2384,7 +2442,7 @@ function buildBoardTourSteps() {
       },
     },
     {
-      id: "connect",
+      id:"connect",
       target: () => document.getElementById("mobile-action-button"),
       title: "Connect Ideas",
       text: "Select a card, then tap this 'Connect' button. Tap another card to draw a line between them.",
@@ -2459,6 +2517,8 @@ window.BoardAPI = {
 
   // stable key helper
   itemKey, // (el) => string
+  
+  applyReadOnlyGuards, // NEW: Expose for supabase-sync
 
   // Board clear for load/sign-out
   clearBoard: () => {

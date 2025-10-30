@@ -146,7 +146,7 @@ class Tour {
     this.skipBtn = document.createElement("button");
     this.skipBtn.className = "bb-tour-btn bb-tour-btn-skip";
     this.skipBtn.textContent = "Skip";
-    this.skipBtn.onclick = () => this.end({ completed: false });
+    this.skipBtn.onclick = () => this.end({ completed: true });
 
     this.backBtn = document.createElement("button");
     this.backBtn.className = "bb-tour-btn";
