@@ -7,7 +7,7 @@ const BUCKET = "bible-boards";
 // --- State ---
 let currentUser = null;
 let currentModalBoard = null; // Stores {id, path, title} for the modal
-let activeMenu = null;        // Stores the currently open three-dot menu
+let activeMenu = null; // Stores the currently open three-dot menu
 
 // --- DOM Refs ---
 const authContainer = document.getElementById("auth-container");
@@ -16,32 +16,32 @@ const dashboardContainer = document.getElementById("dashboard-container");
 const signoutBtn = document.getElementById("signout-btn");
 const boardGrid = document.getElementById("board-grid");
 const filterInput = document.getElementById("board-filter");
-const sortSelect  = document.getElementById("board-sort");
+const sortSelect = document.getElementById("board-sort");
 
 // Modal Refs
-const modalBackdrop   = document.getElementById("modal-backdrop");
+const modalBackdrop = document.getElementById("modal-backdrop");
 const modalTitleInput = document.getElementById("modal-title-input");
-const modalSaveBtn    = document.getElementById("modal-save-btn");
-const modalCancelBtn  = document.getElementById("modal-cancel-btn");
-const modalDeleteBtn  = document.getElementById("modal-delete-btn");
+const modalSaveBtn = document.getElementById("modal-save-btn");
+const modalCancelBtn = document.getElementById("modal-cancel-btn");
+const modalDeleteBtn = document.getElementById("modal-delete-btn");
 
 // 🔧 Status tile lives *inside* the grid
 const statusTile = document.createElement("div");
 statusTile.id = "status-message";
 statusTile.className = "status-tile hidden"; // hidden by default
-boardGrid.appendChild(statusTile);           // attach once
+boardGrid.appendChild(statusTile); // attach once
 
 // ==================== Theme Toggle ====================
-const toggle   = document.getElementById("theme-toggle");
-const body     = document.body;
+const toggle = document.getElementById("theme-toggle");
+const body = document.body;
 const moonIcon = document.getElementById("moon-icon");
-const sunIcon  = document.getElementById("sun-icon");
+const sunIcon = document.getElementById("sun-icon");
 
 function setTheme(isLight) {
   body.classList.toggle("light", isLight);
   localStorage.setItem("theme", isLight ? "light" : "dark");
   if (moonIcon) moonIcon.style.display = isLight ? "block" : "none";
-  if (sunIcon)  sunIcon.style.display  = isLight ? "none"  : "block";
+  if (sunIcon) sunIcon.style.display = isLight ? "none" : "block";
 }
 setTheme(localStorage.getItem("theme") === "light");
 toggle?.addEventListener("click", () =>
@@ -89,8 +89,6 @@ function buildCardHTML(board) {
          data-title="${board.title}">
       
       <button class="card-main" type="button">
-        <h3 class="card-title">${board.title || "Untitled Board"}</h3>
-        <p class="card-desc">${description}</p>
         <div class="card-footer">
           <span class="card-date">
             <svg xmlns="http://www.w3.org/2000/svg" height="14" width="14" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
@@ -99,6 +97,8 @@ function buildCardHTML(board) {
             ${formattedDate}
           </span>
         </div>
+        <h3 class="card-title">${board.title || "Untitled Board"}</h3>
+        <p class="card-desc">${description}</p>
       </button>
 
       <div class="card-more">
@@ -174,7 +174,11 @@ function renderStatus(state, message = "") {
 }
 
 function normalize(str) {
-  return (str || "").toLowerCase().normalize("NFKD").replace(/\s+/g, " ").trim();
+  return (str || "")
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function applySort(arr, sortKey) {
@@ -197,7 +201,7 @@ function applyFilter(arr, q) {
   if (!qn) return arr;
   return arr.filter((b) => {
     const title = normalize(b.title);
-    const desc  = normalize(b.description);
+    const desc = normalize(b.description);
     return title.includes(qn) || desc.includes(qn);
   });
 }
@@ -207,7 +211,7 @@ function refreshGridFromUI() {
   const q = filterInput?.value || "";
   const sortKey = sortSelect?.value || "updatedDesc";
   const filtered = applyFilter(loadedBoards, q);
-  const sorted   = applySort(filtered, sortKey);
+  const sorted = applySort(filtered, sortKey);
   renderGrid(sorted);
 }
 // expose for HTML that calls window.refreshGridFromUI()
@@ -241,7 +245,9 @@ function closeActiveMenu() {
 }
 
 function toggleMenu(menuButton) {
-  const menu = document.getElementById(menuButton.getAttribute("aria-controls"));
+  const menu = document.getElementById(
+    menuButton.getAttribute("aria-controls")
+  );
   if (!menu) return;
   const isOpening = menu.classList.contains("hidden");
 
@@ -328,7 +334,11 @@ async function handleDelete() {
   if (!currentModalBoard) return;
   const { id, path, title } = currentModalBoard;
 
-  if (!confirm(`Are you sure you want to permanently delete "${title}"?\nThis cannot be undone.`)) {
+  if (
+    !confirm(
+      `Are you sure you want to permanently delete "${title}"?\nThis cannot be undone.`
+    )
+  ) {
     return;
   }
 
@@ -345,7 +355,7 @@ async function handleDelete() {
 
     // If grid (excluding the New Board button + status tile) is empty, show empty state
     const remainingCards = [...boardGrid.children].filter(
-      el => ![newBoardBtn, statusTile].includes(el)
+      (el) => ![newBoardBtn, statusTile].includes(el)
     );
     if (remainingCards.length === 0) renderStatus("empty");
   } catch (error) {
@@ -479,7 +489,9 @@ function handleAuthChange(user) {
 async function init() {
   // --- Auth Listeners ---
   let redirectURL = window.location.origin;
-  if (window.location.href === "https://benjaminburnell.github.io/Bible-Board/") {
+  if (
+    window.location.href === "https://benjaminburnell.github.io/Bible-Board/"
+  ) {
     redirectURL = "https://benjaminburnell.github.io/Bible-Board/";
   }
 
