@@ -264,12 +264,31 @@
       </div>
     </div>
 
+    <div id="best-on-table-laptop">
+      <span id="best-on-table-laptop-text">
+        Bible Board is best on Desktop
+      </span>
+
+      <div id="best-on-table-laptop-final-text-section">
+        <span class="section-text-container">
+          Most Bible apps feel crowded.
+        </span>
+        <span class="section-text-container">
+          Great features stay siloed and hard to connect.
+        </span>
+        <span class="section-text-container">
+          Bible Board is an open canvas to drag verses, link ideas, and build living studies.
+        </span>
+      </div>
+    </div>
+
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <script type="module" src="supabaseClient.js"></script>
     <script type="module" src="boards.js"></script>
     <script>
       // Wait for the page to load
       document.addEventListener("DOMContentLoaded", () => {
+        console.log("Loaded...")
         // 1. Select the elements
         const verseBox = document.querySelectorAll(".bible-verse")[0];
         const noteBox = document.querySelectorAll(".text-note")[0];
@@ -357,7 +376,9 @@
       });
 
       window.addEventListener("click", (e) => {
-        openLoginSection();
+        if(window.innerWidth >= 750) {
+          openLoginSection()
+        }
       });
 
       function openLoginSection() {
