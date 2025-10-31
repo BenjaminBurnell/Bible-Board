@@ -5,4 +5,4 @@ This repository hosts the **built** static files for the Bible Board site on Git
 - Source code is **not** published here.
 - Reuse is **prohibited**. See [LICENSE](./LICENSE) and [TERMS.md](./TERMS.md).
 
-Live: [https://benjaminburnell.github.io/bible-board-site/](https://benjaminburnell.github.io/Bible-Board/)
+Live: [https://bibleboard.ca/](https://bibleboard.ca/)
