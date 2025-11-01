@@ -366,3 +366,155 @@ html, body { overscroll-behavior: none; }
   width: 150px;
   outline: none;
 }
+
+/* === NEW: Share Popover & Toast (as requested) === */
+.share-btn {
+  /* Styles for the main share button (if not already styled inline) */
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.share-popover {
+  position: absolute;
+  top: 85px; /* Positioned below the top bar items */
+  right: 85px; /* Aligned with auth controls */
+  background: var(--bg);
+  border: 1px solid var(--border);
+  padding: 10px;
+  border-radius: 10px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.25);
+  width: min(420px, 92vw);
+  z-index: 10010;
+}
+
+.share-link {
+  width: 100%;
+  font-family: monospace;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-alt);
+  color: var(--muted);
+  box-sizing: border-box; /* Ensure padding doesn't break layout */
+}
+
+.share-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  justify-content: flex-end;
+}
+
+/* Using existing .btn styles from index.html for consistency */
+.share-actions .btn {
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-alt);
+  color: var(--fg);
+  cursor: pointer;
+}
+.share-actions .btn:hover {
+  border-color: var(--muted);
+}
+.share-actions .btn#copy-link-btn {
+  background: var(--fg);
+  color: var(--bg);
+  border-color: var(--fg);
+}
+
+
+.toast {
+  position: fixed;
+  bottom: 25px; /* Raised to avoid search bar */
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  padding: 8px 16px;
+  border-radius: 999px;
+  z-index: 10020;
+  color: var(--fg);
+  font-weight: 700;
+  font-size: 14px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  opacity: 0;
+  animation: bb-toast-fade 1.6s ease-out;
+}
+
+@keyframes bb-toast-fade {
+  0%   { opacity: 0; transform: translate(-50%, 10px); }
+  20%  { opacity: 1; transform: translate(-50%, 0); }
+  80%  { opacity: 1; transform: translate(-50%, 0); }
+  100% { opacity: 0; transform: translate(-50%, -5px); }
+}
+
+.btn[disabled],
+.disabled {
+  opacity: 0.45;
+  pointer-events: none;
+  cursor: not-allowed !important;
+}
+
+input:disabled,
+textarea:disabled {
+  color: var(--muted);
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+input:disabled,
+textarea:disabled {
+  color: var(--muted);
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+/* NEW: Make read-only title input readable */
+#title-textbox[readonly] {
+  opacity: 1; 
+  color: var(--fg);
+  cursor: default;
+}
+
+/* Viewport position bars (visibility-only) */
+#viewbar-x, #viewbar-y {
+  position: fixed;
+  /* background: var(--fg-seethrough); */
+  /* border: 1px solid var(--border); */
+  border-radius: 999px;
+  pointer-events: none;
+  z-index: 10000; /* below top buttons but above canvas */
+  opacity: 0.9;
+  transition: width .06s linear, height .06s linear, left .06s linear, top .06s linear;
+}
+/* Horizontal bar (bottom) */
+#viewbar-x {
+  left: 12px;
+  right: 12px;        /* track width; the thumb is inside via left/width inline styles */
+  height: 5px;
+  bottom: 5px;
+  background: transparent; /* track is transparent; we render the thumb as an inner div */
+}
+/* Vertical bar (right) */
+#viewbar-y {
+  top: 12px;
+  bottom: 12px;       /* track height; the thumb is inside via top/height inline styles */
+  width: 5px;
+  right: 5px;
+  background: transparent;
+}
+/* Thumbs inside tracks */
+#viewbar-x .vb-thumb, #viewbar-y .vb-thumb {
+  position: absolute;
+  background: var(--border);
+  border-radius: 999px;
+  /* border: 1px solid var(--fg-seethrough); */
+  /* opacity: .8; */
+}
+#viewbar-x .vb-thumb { top: 0; bottom: 0; }
+#viewbar-y .vb-thumb { left: 0; right: 0; }

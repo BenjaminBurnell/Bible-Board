@@ -121,7 +121,36 @@
           z-index: 10003;
           align-items: center;
         "
-      ></div>
+      >
+        <button
+          id="share-btn"
+          class="btn share-btn"
+          aria-haspopup="true"
+          aria-expanded="false"
+          title="Share"
+          style="
+            height: 50px;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 15px;
+            background: var(--bg-seethroug);
+            border-radius: 10px;
+            -webkit-backdrop-filter: blur(1rem);
+            backdrop-filter: blur(1rem);
+            border: 1px solid var(--fg-seethrough);
+            padding: 5px 15px;
+            color: var(--muted);
+            position: absolute;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            top: 0px;
+            right: 100px;
+          "
+        >
+          Share
+        </button>
+      </div>
       <div
         id="persistence-status"
         style="
@@ -356,11 +385,13 @@
       </svg>
     </button>
 
-    <!-- <div id="bible-board-phone-message">
-      <div id="bible-board-text">
-        Bible board works best on desktop or tablets.
+    <div id="share-popover" class="share-popover" hidden>
+      <input id="share-link" class="share-link" type="text" readonly />
+      <div class="share-actions">
+        <button id="copy-link-btn" class="btn">Copy link</button>
+        <button id="native-share-btn" class="btn" hidden>Share…</button>
       </div>
-    </div> -->
+    </div>
 
     <script src="search.js"></script>
     <script src="script.js"></script>

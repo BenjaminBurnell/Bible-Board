@@ -155,7 +155,7 @@ async function withRetries(fn, retries = 3, delays = RETRY_DELAYS) {
       
       const isRetryable = isNetworkError || isServerOverload || isServerError;
       
-      const isAuthError = error.status === 401 || error.status === 403;
+      const isAuthError = error.status === 401 || error.status === 403 || error.status === 400;
       if (isAuthError) {
         throw error;
       }
@@ -339,7 +339,7 @@ async function ensureBoardFile(user, ownerId) {
     if (!isMissing) {
       // It's some other error (network, 500, etc.)
       console.warn("Unexpected Storage error (download check):", error);
-      showPersistenceBadge('error-load');
+      // Don't show a badge here, let loadBoard handle it
       return false;
     }
     
@@ -347,7 +347,7 @@ async function ensureBoardFile(user, ownerId) {
     // REQ C: Only create if the owner is the current user.
     if (ownerId !== user.id) {
       console.warn(`Board not found at ${path}, but owner is not current user. Won't create.`);
-      showPersistenceBadge('error-load'); // Or a "Board not found"
+      // Let loadBoard show the 'error-load' badge
       return false; // Don't create
     }
 
@@ -389,6 +389,18 @@ async function ensureBoardFile(user, ownerId) {
   }
 }
 
+// === Safe Storage Download Helper ===
+// Put this right after:  import { sb } from "./supabaseClient.js";  and  const BUCKET = "bible-boards";
+async function downloadOrThrow(path) {
+  const { data, error } = await sb.storage.from(BUCKET).download(path);
+  if (error || !data) {
+    const e = new Error(error?.message || "download failed");
+    e.status = error?.status || error?.statusCode || 0;
+    throw e;
+  }
+  return data; // Blob
+}
+
 /**
  * Loads and hydrates the board from Supabase.
  */
@@ -398,43 +410,38 @@ async function loadBoard(user, ownerId) {
   showPersistenceBadge('loading');
 
   try {
-    const { data: blob } = await withRetries(() => 
-      sb.storage.from(BUCKET).download(path)
-    );
-    
+    const blob = await withRetries(() => downloadOrThrow(path));
     const text = await blob.text();
-    const json = JSON.parse(text || "{}");
+    const json  = JSON.parse(text || "{}");
+    deserializeBoard(json); // This will render items AND connections
+
+    // === FIX: On success, set 'readonly' badge for viewers or hide for owner ===
+    if (isReadOnly) {
+        showPersistenceBadge('readonly');
+    } else {
+        hidePersistenceBadge();
+    }
+    // === END FIX ===
     
-    if (lastLoadedUpdatedAt && json.updatedAt <= lastLoadedUpdatedAt) {
-      console.log("Local board is same or newer, skipping remote load.");
-      hidePersistenceBadge();
-      return;
-    }
-
-    deserializeBoard(json);
-    // Only hide badge if not in read-only mode (which has its own badge)
-    if (!isReadOnly) {
-      hidePersistenceBadge();
-    }
-
   } catch (error) {
-    const isMissing = error?.status === 404 || error?.statusCode === 404;
+    const isMissing   = error?.status === 404 || error?.statusCode === 404;
     const isForbidden = error?.status === 401 || error?.status === 403;
 
     if (isForbidden) {
-      // REQ B: Access denied
       console.warn("Access denied loading board:", path);
       showPersistenceBadge('no-access');
       if (accessBlocker) accessBlocker.style.display = 'flex';
     } else if (isMissing) {
-      console.log("Board file missing on load, attempting to create...");
+      console.log("Board file missing on load, attempting to create.");
+      // ensureBoardFile will check if we are the owner before creating
       const ok = await ensureBoardFile(user, ownerId);
-      if (ok && ownerId === user.id) {
-        // Load the default (empty) board state
-        deserializeBoard(serializeBoard()); 
-        showPersistenceBadge('saved'); // "Saved" (a new empty board)
+      if (ok && user && ownerId === user.id) {
+        // We are the owner, it was just created, so load the new blank state
+        deserializeBoard(serializeBoard());
+        showPersistenceBadge('saved');
       } else {
-        showPersistenceBadge('error-load'); // Failed to create or was not owner
+        // We are a viewer OR we are the owner and creation failed
+        showPersistenceBadge('error-load');
       }
     } else {
       console.warn("Failed to load board after retries:", error);
@@ -442,6 +449,7 @@ async function loadBoard(user, ownerId) {
     }
   }
 }
+
 
 /**
  * Saves the current board state to Supabase.
@@ -541,6 +549,32 @@ document.getElementById("signout-btn")?.addEventListener("click", async () => {
   showPersistenceBadge('login-required'); // Show sign in prompt
 });
 
+// *** NEW: Ownership and Read-Only Management ***
+function applyOwnershipMode() {
+  const user = lastKnownUser; // existing state
+  // Default to self if no owner ID is in the URL
+  const owner = currentOwnerId || user?.id; 
+  
+  // Determine read-only state:
+  // Read-only if:
+  // 1. Not logged in (!user)
+  // 2. Owner ID is missing and not logged in (!owner)
+  // 3. Logged in user is not the owner (user.id !== owner)
+  const readOnly = !user || !owner || user.id !== owner;
+  isReadOnly = !!readOnly; // Set global flag
+
+  // Tell the UI (script.js is the single source of truth)
+  if (window.BoardAPI?.applyReadOnlyGuards) {
+    window.BoardAPI.applyReadOnlyGuards(isReadOnly);
+  }
+  
+  // Show badge *only if* read-only and logged in.
+  // Let load/auth logic handle other states ('loading', 'saved', 'login-required').
+  if (isReadOnly && user) { 
+    showPersistenceBadge('readonly');
+  }
+}
+
 // ---------- Main App Initialization ----------
 async function main() {
   // 1. Get URL params
@@ -556,50 +590,63 @@ async function main() {
   lastKnownUser = user;
   await refreshAuthUI(); // Show/hide sign in buttons immediately
 
-  // 3. Handle auth state
+  // 3. *** NEW: Apply ownership rules ***
+  // This sets isReadOnly and applies UI guards
+  applyOwnershipMode(); 
+
+  // 4. Handle auth/load state
   if (!user) {
     // Not logged in
     showPersistenceBadge('login-required');
-    // Clear board just in case
+    // Clear board just in case (applyReadOnlyGuards should handle hiding UI)
     window.BoardAPI.clearBoard();
     writeTitle(DEFAULT_TITLE);
   } else {
     // Logged in, proceed to load
     const ownerId = currentOwnerId || user.id; // Default to self if no owner
     
-    if (ownerId !== user.id) {
-      // REQ B: Loading someone else's board
-      console.log("Loading as read-only, owner mismatch.");
-      isReadOnly = true;
-      showPersistenceBadge('readonly');
-      await loadBoard(user, ownerId); // This will handle 401/403
-    } else {
-      // Loading your own board
-      isReadOnly = false;
-      // REQ C: This handles 404-create
-      const ok = await ensureBoardFile(user, ownerId);
-      if (ok) {
-        await loadBoard(user, ownerId);
-      }
-    }
+    // =================================================================
+    // *** THE FIX IS HERE ***
+    //
+    // We REMOVE the preliminary `ensureBoardFile` call and the `if (ok)` check.
+    // We will ALWAYS attempt to load the board.
+    // `loadBoard` itself will handle all error cases (404, 403, etc.)
+    // =================================================================
+    
+    // REQ C: ensureBoardFile already checks if owner is current user before creating.
+    // We must load from the correct owner's path.
+    // const ok = await ensureBoardFile(user, ownerId); // <-- REMOVED
+    // if (ok) { // <-- REMOVED
+    
+    await loadBoard(user, ownerId);
+    
+    // } // <-- REMOVED
+    
+    // loadBoard() will show 'loading' and then either 'readonly' (if set) 
+    // or 'no-access' or 'error-load' or hide the badge.
   }
 
-  // 4. Listen for subsequent auth changes
+  // 5. Listen for subsequent auth changes
   sb.auth.onAuthStateChange(async (event, session) => {
-    await refreshAuthUI();
+    const oldUser = lastKnownUser;
     const newUser = session?.user || null;
+    lastKnownUser = newUser; // Update global state
+    await refreshAuthUI();
 
     if (event === 'SIGNED_OUT') {
       console.log("Session signed out.");
-      lastKnownUser = null;
-      isReadOnly = false;
       if (accessBlocker) accessBlocker.style.display = 'none';
       window.BoardAPI.clearBoard();
       writeTitle(DEFAULT_TITLE);
+      applyOwnershipMode(); // Re-run checks (will set read-only, hide UI)
       showPersistenceBadge('login-required');
-    } else if (event === 'SIGNED_IN' && !lastKnownUser) {
+    } else if (event === 'SIGNED_IN' && !oldUser) {
       // User just logged in on this page (was previously null)
       console.log("Session signed in, reloading to fetch board.");
+      window.location.reload(); 
+    } else if (event === 'SIGNED_IN' && oldUser?.id !== newUser?.id) {
+      // User changed (e.g. switch account)
+      console.log("User changed, reloading.");
       window.location.reload();
     }
     // Note: We don't need to handle TOKEN_REFRESHED

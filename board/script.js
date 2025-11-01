@@ -40,6 +40,20 @@ const LOAD_MORE_CHUNK = 5; // How many verses/songs per "load more" click
 // Disable all type-ahead behavior
 const TYPE_AHEAD_ENABLED = false;
 
+// --- NEW: Board Info for Sharing ---
+const params = new URLSearchParams(location.search);
+const BOARD_ID = params.get("board");
+const OWNER_UID = params.get("owner");
+function getShareUrl() {
+  const url = new URL(location.href);
+  url.pathname = "/board/index.html"; // canonical
+  url.searchParams.set("board", BOARD_ID);
+  url.searchParams.set("owner", OWNER_UID);
+  return url.toString();
+}
+
+// --- END NEW ---
+
 // ==================== Performance Helpers ====================
 
 /**
@@ -106,6 +120,7 @@ class LruCache {
 }
 
 // ==================== Bible Book API Codes ====================
+// ... (bibleBookCodes object unchanged) ...
 const bibleBookCodes = {
   Genesis: "GEN",
   Exodus: "EXO",
@@ -176,7 +191,7 @@ const bibleBookCodes = {
 };
 
 // ==================== OPTIMIZATION: Performance Helpers ====================
-
+// ... (LruCache definitions and throttleRAF unchanged) ...
 /**
  * OPTIMIZATION: Use LRU cache to prevent memory leaks.
  */
@@ -224,6 +239,13 @@ function throttleRAF(func) {
  * (Existing)
  */
 function onBoardMutated(reason) {
+  // --- NEW: READ-ONLY GUARD ---
+  if (window.__readOnly) {
+    // console.debug("Save skipped (read-only):", reason);
+    return;
+  }
+  // --- END NEW ---
+
   if (window.__RESTORING_FROM_SUPABASE) {
     // console.debug("Save skipped (restoring):", reason);
     return;
@@ -233,7 +255,7 @@ function onBoardMutated(reason) {
 }
 
 // ==================== NEW: Robust CORS Fetch Helper ====================
-
+// ... (FETCH_STRATEGIES and safeFetchWithFallbacks unchanged) ...
 /**
  * (Existing)
  */
@@ -315,6 +337,7 @@ async function safeFetchWithFallbacks(url, signal) {
 }
 
 // ==================== Fetch Verse Text (KJV) ====================
+// ... (fetchVerseText unchanged) ...
 /**
  * (Existing logic, now uses LRU cache)
  */
@@ -358,7 +381,7 @@ async function fetchVerseText(book, chapter, verse, signal) {
 }
 
 // ==================== NEW: Bible Search API Helpers ====================
-
+// ... (fetchBibleSearchResults, parseReferenceToParts, fetchVersesForReferences unchanged) ...
 // ---- Bible Search API (query -> references) ----
 /**
  * OPTIMIZATION: Use LRU cache
@@ -442,6 +465,7 @@ async function fetchVersesForReferences(refs, { batchSize = 4, signal } = {}) {
 }
 
 // ==================== DOM Refs ====================
+// ... (All DOM refs unchanged) ...
 const viewport = document.querySelector(".viewport");
 const workspace = document.querySelector("#workspace");
 const mainContentContainer = document.getElementById("main-content-container");
@@ -488,7 +512,28 @@ if (!svg) {
   workspace.prepend(svg);
 }
 
+// --- Viewport bars: DOM bootstrap ---
+let viewbarX = document.getElementById("viewbar-x");
+let viewbarY = document.getElementById("viewbar-y");
+if (!viewbarX) {
+  viewbarX = document.createElement("div");
+  viewbarX.id = "viewbar-x";
+  const thumbX = document.createElement("div");
+  thumbX.className = "vb-thumb";
+  viewbarX.appendChild(thumbX);
+  document.body.appendChild(viewbarX);
+}
+if (!viewbarY) {
+  viewbarY = document.createElement("div");
+  viewbarY.id = "viewbar-y";
+  const thumbY = document.createElement("div");
+  thumbY.className = "vb-thumb";
+  viewbarY.appendChild(thumbY);
+  document.body.appendChild(viewbarY);
+}
+
 // ==================== Layout State ====================
+// ... (applyLayout unchanged) ...
 let searchDrawerOpen = false; // 300px
 let interlinearOpen = false; // 340px
 let interlinearInFlight = null; // AbortController for in-flight fetch
@@ -496,6 +541,51 @@ let interlinearSeq = 0; // Sequence number to prevent race conditions
 
 // OPTIMIZATION: Throttled version of updateAllConnections
 const throttledUpdateAllConnections = throttleRAF(updateAllConnections);
+const throttledUpdateViewportBars = throttleRAF(updateViewportBars);
+
+function updateViewportBars() {
+  if (!viewport || !workspace) return;
+
+  // Content extents follow clampScroll(): width/height are scaled by `scale`
+  const contentW = workspace.offsetWidth * (typeof scale === "number" ? scale : 1);
+  const contentH = workspace.offsetHeight * (typeof scale === "number" ? scale : 1);
+
+  const vpW = viewport.clientWidth;
+  const vpH = viewport.clientHeight;
+
+  const maxLeft = Math.max(0, contentW - vpW);
+  const maxTop = Math.max(0, contentH - vpH);
+
+  // Avoid div-by-zero
+  const fracW = contentW > 0 ? vpW / contentW : 1;
+  const fracH = contentH > 0 ? vpH / contentH : 1;
+
+  // Clamp scroll values just like clampScroll()
+  const sL = Math.min(Math.max(viewport.scrollLeft, 0), maxLeft);
+  const sT = Math.min(Math.max(viewport.scrollTop, 0), maxTop);
+
+  const thumbFracLeft = maxLeft > 0 ? sL / maxLeft : 0;
+  const thumbFracTop = maxTop > 0 ? sT / maxTop : 0;
+
+  // --- Horizontal thumb (inside #viewbar-x) ---
+  const trackX = viewbarX.getBoundingClientRect(); // for pixel math of the track itself
+  const thumbX = viewbarX.querySelector(".vb-thumb");
+  // Thumb width is the visible fraction of content along X
+  const thumbXWidthPx = Math.max(10, Math.round(trackX.width * fracW));
+  const thumbXLeftPx = Math.round((trackX.width - thumbXWidthPx) * thumbFracLeft);
+
+  thumbX.style.width = `${thumbXWidthPx}px`;
+  thumbX.style.left = `${thumbXLeftPx}px`;
+
+  // --- Vertical thumb (inside #viewbar-y) ---
+  const trackY = viewbarY.getBoundingClientRect();
+  const thumbY = viewbarY.querySelector(".vb-thumb");
+  const thumbYHeightPx = Math.max(10, Math.round(trackY.height * fracH));
+  const thumbYTopPx = Math.round((trackY.height - thumbYHeightPx) * thumbFracTop);
+
+  thumbY.style.height = `${thumbYHeightPx}px`;
+  thumbY.style.top = `${thumbYTopPx}px`;
+}
 
 function applyLayout(withTransition = true) {
   const offset = (searchDrawerOpen ? 340 : 0) + (interlinearOpen ? 340 : 0);
@@ -519,9 +609,11 @@ function applyLayout(withTransition = true) {
     }, 250);
   }
   throttledUpdateAllConnections(); // OPTIMIZATION: Use throttled version
+  throttledUpdateViewportBars();
 }
 
 // ==================== State ====================
+// ... (All state variables unchanged) ...
 let isPanning = false;
 let startX, startY, scrollLeft, scrollTop;
 let active = null;
@@ -573,6 +665,7 @@ let pendingMouseDrag = null;
 let pendingTouchDrag = null;
 
 // ==================== Helpers ====================
+// ... (isTouchInsideUI unchanged) ...
 function isTouchInsideUI(el) {
   return !!(
     el.closest?.("#search-query-container") ||
@@ -615,7 +708,7 @@ function itemKey(el) {
   }
   return el.dataset.vkey;
 }
-
+// ... (clampScroll unchanged) ...
 function clampScroll() {
   // During restore, skip clamping until layout settles
   if (window.__RESTORING_FROM_SUPABASE) return;
@@ -662,11 +755,13 @@ function applyZoom(e, deltaScale) {
 
   clampScroll();
   throttledUpdateAllConnections(); // OPTIMIZATION: Use throttled version
+  throttledUpdateViewportBars();
   onBoardMutated("zoom_end"); // AUTOSAVE on zoom
   return true;
 }
 
 // ==================== Pan / Zoom ====================
+// ... (Pan/Zoom listeners unchanged) ...
 viewport.addEventListener("mousedown", (e) => {
   if (e.target.closest(".board-item")) return;
   isPanning = true;
@@ -738,6 +833,7 @@ viewport.addEventListener(
   "scroll",
   () => {
     throttledUpdateAllConnections(); // OPTIMIZATION: Use throttled version
+    throttledUpdateViewportBars();
   },
   { passive: true }
 );
@@ -759,13 +855,17 @@ window.addEventListener("load", () => {
   // Update connections and buttons after a short delay
   setTimeout(() => {
     if (updateAllConnections) updateAllConnections(); // Run one non-throttled update on load
+    throttledUpdateViewportBars();
     if (updateActionButtonsEnabled) updateActionButtonsEnabled();
   }, 100);
 });
 
-window.addEventListener("resize", throttledUpdateAllConnections); // OPTIMIZATION: Use throttled version
-
+window.addEventListener("resize", () => {
+  throttledUpdateAllConnections();
+  throttledUpdateViewportBars();
+});
 // Touch pan + pinch
+// ... (getTouchDistance, getTouchMidpoint unchanged) ...
 let touchStartDistance = 0,
   lastScale = 1;
 function getTouchDistance(t) {
@@ -851,7 +951,9 @@ viewport.addEventListener(
 workspace.addEventListener(
   "touchstart",
   (e) => {
-    if (isConnectMode) return;
+    // --- NEW: READ-ONLY GUARD ---
+    if (isConnectMode || window.__readOnly) return;
+    // --- END NEW ---
     if (e.touches.length !== 1) return; // element drag is 1-finger only
     if (isTouchInsideUI?.(e.target)) return; // don’t hijack UI touches
 
@@ -963,6 +1065,10 @@ window.addEventListener(
 
 // ==================== Drag helpers ====================
 function startDragMouse(item, eOrPoint, offX, offY) {
+  // --- NEW: READ-ONLY GUARD ---
+  if (window.__readOnly) return;
+  // --- END NEW ---
+  
   active = item;
   // GUARD
   if (window.__readOnly) return;
@@ -991,6 +1097,10 @@ function dragMouseTo(clientX, clientY) {
 }
 
 function startDragTouch(item, touchPoint, offX, offY) {
+  // --- NEW: READ-ONLY GUARD ---
+  if (window.__readOnly) return;
+  // --- END NEW ---
+
   touchDragElement = item;
   // GUARD
   if (window.__readOnly) return;
@@ -1008,7 +1118,7 @@ function startDragTouch(item, touchPoint, offX, offY) {
     touchDragOffset.y = offY;
   }
 }
-
+// ... (dragTouchTo unchanged) ...
 function dragTouchTo(touchPoint) {
   const vp = viewport.getBoundingClientRect();
   const x =
@@ -1025,6 +1135,7 @@ function dragTouchTo(touchPoint) {
 }
 
 // ==================== Connections ====================
+// ... (connectionExists unchanged) ...
 let connections = [];
 function connectionExists(a, b) {
   const ka = itemKey(a),
@@ -1036,6 +1147,7 @@ function connectionExists(a, b) {
   });
 }
 
+// ... (updateConnection, updateAllConnections unchanged) ...
 function updateConnection(path, el1, el2) {
   const vpRect = viewport.getBoundingClientRect();
   const r1 = el1.getBoundingClientRect(),
@@ -1086,8 +1198,9 @@ function updateAllConnections() {
 }
 
 function connectItems(a, b) {
-  // GUARD
-  if (window.__readOnly) return;
+  // GUARD: allow creating connection paths during a Supabase restore,
+  // but block user-initiated connects in read-only.
+  if (window.__readOnly && !window.__RESTORING_FROM_SUPABASE) return;
 
   if (!a || !b || a === b || connectionExists(a, b)) return;
   const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
@@ -1247,7 +1360,9 @@ function addTextNote(initial = "New note") {
 
   // OPTIMIZATION: Use .ontouch... properties
   el.ontouchstart = (e) => {
-    if (isConnectMode || e.touches.length !== 1) return;
+    // --- NEW: READ-ONLY GUARD ---
+    if (isConnectMode || window.__readOnly || e.touches.length !== 1) return;
+    // --- END NEW ---
     const t = e.touches[0];
     const rect = el.getBoundingClientRect();
     pendingTouchDrag = {
@@ -1385,7 +1500,9 @@ function addInterlinearCard({
     startDragMouse(el, e);
   };
   el.ontouchstart = (e) => {
-    if (isConnectMode || e.touches.length !== 1) return;
+    // --- NEW: READ-ONLY GUARD ---
+    if (isConnectMode || window.__readOnly || e.touches.length !== 1) return;
+    // --- END NEW ---
     const t = e.touches[0];
     const rect = el.getBoundingClientRect();
     pendingTouchDrag = {
@@ -1437,6 +1554,7 @@ function addInterlinearCard({
 }
 
 // ==================== Search UI glue ====================
+// ... (searchForQueryFromSuggestion, displaySearchVerseOption, displayNoVerseFound unchanged) ...
 function searchForQueryFromSuggestion(reference) {
   searchBar.value = reference;
   searchForQuery(new Event("submit")); // Simulate a submit event
@@ -1490,7 +1608,7 @@ function displayNoVerseFound(reference) {
 }
 
 // ==================== Search (Optimized for Progressive Rendering) ====================
-
+// ... (prefetchAdjacentVerses, fetchAndStreamVerseTexts unchanged) ...
 /**
  * OPTIMIZATION: Prefetches adjacent verses on idle.
  */
@@ -1591,9 +1709,8 @@ async function fetchAndStreamVerseTexts(verseElements, signal) {
     });
   }
 }
-
 // ==================== NEW HELPERS FOR PAGINATED/PRIORITY VERSE LOADING ====================
-
+// ... (fillVerseBatch, ensureLoadMoreButton, fetchVerseData, buildVerseCard, buildSongCard, ensureSongsLoadMoreButton unchanged) ...
 /**
  * Fill a batch of verseElements with real text, then enable Add buttons.
  * @param {Array<{ref: string, el: HTMLElement}>} verseBatch
@@ -1786,7 +1903,7 @@ function ensureSongsLoadMoreButton(container, onClick) {
  * OPTIMIZATION: Debounce timer for type-ahead.
  */
 let searchDebounceTimer = null;
-
+// ... (onSearchInput and searchForQuery unchanged) ...
 /**
  * OPTIMIZATION: Debounced input handler.
  */
@@ -2077,7 +2194,7 @@ async function searchForQuery(event) {
 
   return false; // prevent default navigation
 }
-
+// ... (closeSearchQuery unchanged) ...
 function closeSearchQuery() {
   searchDrawerOpen = false;
   applyLayout(true);
@@ -2098,7 +2215,7 @@ function closeSearchQuery() {
 }
 
 // ==================== Theme Toggle ====================
-// ... (Unchanged) ...
+// ... (Theme toggle logic unchanged) ...
 const toggle = document.getElementById("theme-toggle");
 const body = document.body;
 const moonIcon = document.getElementById("moon-icon");
@@ -2116,7 +2233,7 @@ toggle?.addEventListener("click", () =>
 );
 
 // ==================== Selection + Action buttons ====================
-// ... (Unchanged) ...
+// ... (updateActionButtonsEnabled, setConnectMode, selectItem, clearSelection unchanged) ...
 function updateActionButtonsEnabled() {
   const hasSelection = !!selectedItem;
 
@@ -2125,7 +2242,10 @@ function updateActionButtonsEnabled() {
   }
 
   if (connectBtn) {
-    connectBtn.disabled = !hasSelection;
+    // --- NEW: READ-ONLY GUARD ---
+    // Don't allow enabling connect button if read-only, even if selected
+    connectBtn.disabled = !hasSelection || window.__readOnly;
+    // --- END NEW ---
     connectBtn.style.background =
       hasSelection && isConnectMode ? "var(--accent)" : "var(--bg-seethroug)";
     const ic = connectBtn.querySelector(".action-icon");
@@ -2135,7 +2255,9 @@ function updateActionButtonsEnabled() {
   }
 
   if (deleteBtn) {
-    deleteBtn.disabled = !hasSelection;
+    // --- NEW: READ-ONLY GUARD ---
+    deleteBtn.disabled = !hasSelection || window.__readOnly;
+    // --- END NEW ---
   }
 
   if (interlinearBtn) {
@@ -2169,10 +2291,12 @@ function clearSelection() {
   updateActionButtonsEnabled();
 }
 
+
 workspace.addEventListener("click", (e) => {
-  if (touchMoved) return;
-  // GUARD: Read-only users can't select or connect
-  if (window.__readOnly) return;
+  // --- NEW: READ-ONLY GUARD ---
+  // If read-only, don't allow selection or connection
+  if (touchMoved || window.__readOnly) return;
+  // --- END NEW ---
 
   const item = e.target.closest(".board-item");
   if (!item) {
@@ -2194,18 +2318,26 @@ document.addEventListener("click", (e) => {
   const insideWorkspace = e.target.closest("#workspace");
   const insideAction = e.target.closest("#action-buttons-container");
   const insideSearch = e.target.closest("#search-container"); // Don't deselect when clicking search
-  // GUARD: Read-only users clicking outside shouldn't clear selection (it's already clear)
-  if (window.__readOnly) return;
+  
+  // --- NEW: READ-ONLY GUARD (modified) ---
+  // Allow deselecting in read-only, just don't clear if already clear
+  if (window.__readOnly && !selectedItem) return;
+  // --- END NEW ---
   
   if (!insideWorkspace && !insideAction && !insideSearch) {
     // If click is *outside* search, close it
-    if (!e.target.closest("#search-query-container") && !insideSearch) {
+    if (!e.target.closest("#search-query-container") && !insideSearch && !e.target.closest(".share-popover") && !e.target.closest("#share-btn")) {
       closeSearchQuery();
     }
-    clearSelection();
+    // --- NEW: READ-ONLY GUARD ---
+    // Only clear selection if not read-only, or if clicking outside share popover
+    if (!window.__readOnly && !e.target.closest(".share-popover") && !e.target.closest("#share-btn")) {
+       clearSelection();
+    }
+    // --- END NEW ---
   }
 });
-
+// ... (keydown listener unchanged) ...
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") {
     clearSelection();
@@ -2214,8 +2346,9 @@ document.addEventListener("keydown", (e) => {
   }
 });
 
+
 // ==================== Action buttons: Connect / Text / Delete ====================
-// ... (Unchanged) ...
+// ... (Action button listeners unchanged, guards are inside handlers) ...
 connectBtn?.addEventListener("click", (e) => {
   e.preventDefault();
   e.stopPropagation();
@@ -2242,8 +2375,7 @@ deleteBtn?.addEventListener("click", (e) => {
 });
 
 // ==================== Interlinear integration ====================
-// ... (All existing interlinear logic remains unchanged) ...
-// ... (Skipping ~200 lines of unchanged code for brevity) ...
+// ... (Interlinear logic unchanged) ...
 function openInterlinearPanel() {
   interlinearOpen = true;
   closeSearchQuery(); // Close search drawer
@@ -2549,7 +2681,9 @@ interlinearBtn?.addEventListener("click", async (e) => {
   }
 });
 
+
 // ==================== Song search (iTunes public API, CORS-friendly) ====================
+// ... (fetchSongs unchanged) ...
 /**
  * OPTIMIZATION: Added AbortSignal for cancellation.
  */
@@ -2582,8 +2716,12 @@ async function fetchSongs(query, limit = 5, signal = null) {
 }
 
 // ==================== Add song to whiteboard ====================
-// ... (Unchanged) ...
+// ... (addSongElement unchanged, but with read-only guard) ...
 function addSongElement({ title, artist, cover }) {
+  // --- NEW: READ-ONLY GUARD ---
+  if (window.__readOnly && !window.__RESTORING_FROM_SUPABASE) return;
+  // --- END NEW ---
+  
   const el = document.createElement("div");
   el.classList.add("board-item", "song-item");
   el.style.position = "absolute";
@@ -2629,7 +2767,7 @@ function addSongElement({ title, artist, cover }) {
 }
 
 // ---------- AUTOSAVE: Wire title edit ----------
-// ... (Unchanged) ...
+// ... (Unchanged, but with read-only guard) ...
 (function wireTitleAutosave() {
   function getTitleEl() {
     return (
@@ -2642,7 +2780,12 @@ function addSongElement({ title, artist, cover }) {
   const el = getTitleEl();
   if (!el) return;
 
-  const trigger = () => onBoardMutated("edit_title");
+  const trigger = () => {
+    // --- NEW: READ-ONLY GUARD ---
+    if (window.__readOnly) return;
+    // --- END NEW ---
+    onBoardMutated("edit_title");
+  }
 
   el.addEventListener("input", trigger, { passive: true });
   el.addEventListener("change", trigger, { passive: true });
@@ -2653,9 +2796,13 @@ function addSongElement({ title, artist, cover }) {
 })();
 
 // ---------- AUTOSAVE: MutationObserver Fallback ----------
-// ... (Unchanged) ...
+// ... (Unchanged, but with read-only guard) ...
 (function initMutationObserver() {
   const observer = new MutationObserver((mutations) => {
+    // --- NEW: READ-ONLY GUARD ---
+    if (window.__readOnly) return;
+    // --- END NEW ---
+    
     // Skip during restore or active drag
     if (window.__RESTORING_FROM_SUPABASE || active || touchDragElement) return;
 
@@ -2698,9 +2845,92 @@ function addSongElement({ title, artist, cover }) {
 })();
 
 // ==================== Expose ====================
-// ... (Unchanged) ...
+// ... (window.addBibleVerse unchanged) ...
 window.addBibleVerse = addBibleVerse;
 
+// ==================== NEW: Share Button Logic ====================
+const shareBtn = document.getElementById("share-btn");
+const sharePopover = document.getElementById("share-popover");
+const shareLinkInput = document.getElementById("share-link");
+const copyLinkBtn = document.getElementById("copy-link-btn");
+const nativeShareBtn = document.getElementById("native-share-btn");
+
+function getShareUrl() {
+  const url = new URL(location.origin); // Use origin for a clean base
+  url.pathname = "/board/index.html"; // Set canonical path
+  if (BOARD_ID) url.searchParams.set("board", BOARD_ID);
+  if (OWNER_UID) url.searchParams.set("owner", OWNER_UID);
+  return url.toString();
+}
+
+function showToast(msg) {
+  try {
+    const el = document.createElement("div");
+    el.className = "toast";
+    el.textContent = msg;
+    document.body.appendChild(el);
+    // Animation handles fade out, remove after
+    setTimeout(() => {
+      el.remove();
+    }, 1600);
+  } catch (e) {
+    console.warn("Failed to show toast:", e);
+  }
+}
+
+function toggleSharePopover(open) {
+  const willOpen = open ?? sharePopover.hasAttribute("hidden");
+  if (willOpen) {
+    sharePopover.removeAttribute("hidden");
+    shareBtn.setAttribute("aria-expanded", "true");
+    shareLinkInput.value = getShareUrl();
+    setTimeout(() => shareLinkInput.select(), 0); // Select after paint
+  } else {
+    sharePopover.setAttribute("hidden", "");
+    shareBtn.setAttribute("aria-expanded", "false");
+  }
+}
+
+shareBtn?.addEventListener("click", (e) => {
+  e.stopPropagation();
+  toggleSharePopover();
+});
+
+document.addEventListener("click", (e) => {
+  if (
+    sharePopover &&
+    !sharePopover.hasAttribute("hidden") &&
+    !sharePopover.contains(e.target) &&
+    e.target !== shareBtn
+  ) {
+    toggleSharePopover(false);
+  }
+});
+
+copyLinkBtn?.addEventListener("click", async () => {
+  try {
+    await navigator.clipboard.writeText(shareLinkInput.value);
+    showToast("Link copied");
+  } catch {
+    shareLinkInput.select();
+    showToast("Press Ctrl/Cmd+C to copy");
+  }
+  toggleSharePopover(false); // Close popover on action
+});
+
+if (navigator.share) {
+  nativeShareBtn.hidden = false;
+  nativeShareBtn.addEventListener("click", async () => {
+    try {
+      await navigator.share({
+        title: "Bible Board",
+        text: `Check out this Bible Board: ${document.getElementById("title-textbox")?.value || ""}`,
+        url: getShareUrl(),
+      });
+    } catch {}
+    toggleSharePopover(false); // Close popover on action
+  });
+}
 // ==================== Read-Only Mode UI Guards ====================
 // ... (Unchanged) ...
 /**
@@ -2712,27 +2942,55 @@ function applyReadOnlyGuards(isReadOnly) {
   window.__readOnly = isReadOnly; // Set global flag
   const actionButtons = document.getElementById("action-buttons-container");
   const titleInput = document.getElementById("title-textbox");
+  const editIcon = document.getElementById("edit-Icon");
+  const searchForm = document.getElementById('search-container'); // ADDED
+  const tourBtn = document.getElementById('bb-tour-help-btn'); // ADDED
 
   if (isReadOnly) {
     // 1. Hide mutation buttons (Connect, Add Note, Delete)
     if (actionButtons) actionButtons.style.display = "none";
     // 2. Disable title editing
-    if (titleInput) titleInput.disabled = true;
+    if (titleInput) {
+      titleInput.readOnly = true; // CHANGED
+      titleInput.title = "View-only: only the owner can edit.";
+    }
+    if (editIcon) editIcon.style.display = "none";
+
     // 3. Disable all text note editing
     document.querySelectorAll(".text-note .text-content").forEach((el) => {
       el.contentEditable = false;
+      el.title = "View-only: only the owner can edit.";
     });
     // 4. Clear any lingering selection
     clearSelection();
+    
+    // 5. Hide search and tour (NEW)
+    if (searchForm) searchForm.style.display = 'none';
+    if (tourBtn) tourBtn.style.display = 'none';
+
   } else {
     // Restore UI for owner
     if (actionButtons) actionButtons.style.display = "flex";
-    if (titleInput) titleInput.disabled = false;
+    if (titleInput) {
+      titleInput.readOnly = false; // CHANGED
+      titleInput.title = "";
+    }
+    if (editIcon) editIcon.style.display = "block";
+    // --- NEW: Restore contentEditable ---
+    document.querySelectorAll(".text-note .text-content").forEach((el) => {
+      el.contentEditable = true;
+      el.title = "";
+    });
+    // --- END NEW ---
+    
+    // 5. Restore search and tour (NEW)
+    if (searchForm) searchForm.style.display = ''; // Use '' to reset to CSS default
+    if (tourBtn) tourBtn.style.display = 'inline-block'; // Match supabase-sync.js logic
   }
 }
 
 // ==================== Serialization API ====================
-// ... (Unchanged) ...
+// ... (serializeBoard and deserializeBoard unchanged) ...
 function serializeBoard() {
   try {
     const items = Array.from(workspace.querySelectorAll(".board-item")).map(
@@ -2864,6 +3122,7 @@ function deserializeBoard(data) {
     // Trigger a 'soft' layout update
     setTimeout(() => {
       updateAllConnections(); // And one more after a short delay
+      updateViewportBars();
       clampScroll();
     }, 50);
   }
@@ -2975,7 +3234,7 @@ function buildBoardTourSteps() {
 }
 
 // ===== expose a small API for the Supabase module (keep at end of script.js) =====
-// ... (Unchanged) ...
+// ... (BoardAPI definition unchanged) ...
 window.BoardAPI = {
   // DOM
   workspace,
