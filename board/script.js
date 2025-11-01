@@ -267,23 +267,23 @@ const FETCH_STRATEGIES = [
       credentials: "omit",
     }),
 
-  // Strategy 2: Direct Fetch (Original attempt, may fail on 127.0.0.1 but work in production)
-  async (url, signal) =>
-    fetch(url, { mode: "cors", signal, credentials: "omit" }),
-
-  // Strategy 3: CodeTabs (Another CORS proxy)
+  // Strategy 2: CodeTabs (Another CORS proxy)
   async (url, signal) =>
     fetch(`https://api.codetabs.com/v1/proxy?quest=${url}`, {
       signal,
       credentials: "omit",
     }),
 
-  // Strategy 4: thingproxy (CORS-friendly proxy, often slow but a good final backup)
+  // Strategy 3: thingproxy (CORS-friendly proxy, often slow but a good final backup)
   async (url, signal) =>
     fetch(`https://thingproxy.freeboard.io/fetch/${url}`, {
       signal,
       credentials: "omit",
     }),
+
+  // Strategy 4: Direct Fetch (Original attempt, may fail on 127.0.0.1 but work in production)
+  async (url, signal) =>
+    fetch(url, { mode: "cors", signal, credentials: "omit" }),
 ];
 
 /**
@@ -521,7 +521,7 @@ if (!viewbarX) {
   const thumbX = document.createElement("div");
   thumbX.className = "vb-thumb";
   viewbarX.appendChild(thumbX);
-  document.body.appendChild(viewbarX);
+  mainContentContainer.appendChild(viewbarX);
 }
 if (!viewbarY) {
   viewbarY = document.createElement("div");
@@ -529,7 +529,7 @@ if (!viewbarY) {
   const thumbY = document.createElement("div");
   thumbY.className = "vb-thumb";
   viewbarY.appendChild(thumbY);
-  document.body.appendChild(viewbarY);
+  mainContentContainer.appendChild(viewbarY);
 }
 
 // ==================== Layout State ====================

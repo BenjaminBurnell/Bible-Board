@@ -483,7 +483,7 @@ textarea:disabled {
 
 /* Viewport position bars (visibility-only) */
 #viewbar-x, #viewbar-y {
-  position: fixed;
+  position: absolute;
   /* background: var(--fg-seethrough); */
   /* border: 1px solid var(--border); */
   border-radius: 999px;
@@ -511,7 +511,7 @@ textarea:disabled {
 /* Thumbs inside tracks */
 #viewbar-x .vb-thumb, #viewbar-y .vb-thumb {
   position: absolute;
-  background: var(--border);
+  background: var(--fg);
   border-radius: 999px;
   /* border: 1px solid var(--fg-seethrough); */
   /* opacity: .8; */
