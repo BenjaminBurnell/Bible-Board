@@ -3053,31 +3053,33 @@ function serializeBoard() {
 function deserializeBoard(data) {
   if (!data) return;
   window.__RESTORING_FROM_SUPABASE = true;
+
   try {
+    // Start fresh
     BoardAPI.clearBoard();
 
-    // Restore title
+    // Title
     const titleEl = document.getElementById("title-textbox");
     if (titleEl) titleEl.value = data.title || "";
 
-    // Restore items
-    const itemEls = {}; // Map vkey -> element
+    // Items
+    const itemEls = {}; // vkey -> element
     if (data.items) {
       data.items.forEach((item) => {
         let el;
         try {
           switch (item.type) {
             case "verse":
-              el = addBibleVerse(item.reference, item.text, true); // Use true flag
+              el = addBibleVerse(item.reference, item.text, true);
               break;
             case "note":
               el = addTextNote(item.text);
               break;
             case "song":
-              el = addSongElement(item); // Pass the whole item object
+              el = addSongElement(item);
               break;
             case "interlinear":
-              el = addInterlinearCard(item); // Pass the whole item object
+              el = addInterlinearCard(item);
               break;
             default:
               console.warn("Unknown item type during restore:", item.type);
@@ -3086,7 +3088,7 @@ function deserializeBoard(data) {
             el.style.left = item.left;
             el.style.top = item.top;
             el.style.zIndex = item.zIndex || "10";
-            el.dataset.vkey = item.vkey; // CRITICAL: re-assign vkey
+            el.dataset.vkey = item.vkey;
             itemEls[item.vkey] = el;
           }
         } catch (itemErr) {
@@ -3095,7 +3097,7 @@ function deserializeBoard(data) {
       });
     }
 
-    // Restore connections
+    // Connections
     if (data.connections) {
       data.connections.forEach((c) => {
         const elA = itemEls[c.a];
@@ -3104,29 +3106,51 @@ function deserializeBoard(data) {
       });
     }
 
-    // Restore viewport *after* items are placed
+    // Viewport — prefer world-space center if provided
     if (data.viewport) {
       BoardAPI.setScale(data.viewport.scale || 1);
-      viewport.scrollLeft = data.viewport.scrollLeft || 0;
-      viewport.scrollTop = data.viewport.scrollTop || 0;
-      window.__restoredBoard = true; // Tell 'load' handler not to center
+
+      const applyScrollFromCenter = () => {
+        const sc = data.viewport.scale || 1;
+        const targetLeft =
+          data.viewport.centerX != null
+            ? data.viewport.centerX * sc - viewport.clientWidth / 2
+            : (data.viewport.scrollLeft || 0);
+        const targetTop =
+          data.viewport.centerY != null
+            ? data.viewport.centerY * sc - viewport.clientHeight / 2
+            : (data.viewport.scrollTop || 0);
+
+        viewport.scrollLeft = Math.max(0, targetLeft);
+        viewport.scrollTop = Math.max(0, targetTop);
+      };
+
+      applyScrollFromCenter();
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => {
+          applyScrollFromCenter();
+          clampScroll();
+          updateViewportBars();
+        })
+      );
+
+      window.__restoredBoard = true;
     }
 
-    updateAllConnections(); // Run one full, non-throttled update after restore
+    updateAllConnections(); // one full pass
   } catch (err) {
     console.error("❌ Error during board restore:", err);
-    // Board is likely corrupt, clear it to be safe
     BoardAPI.clearBoard();
   } finally {
     window.__RESTORING_FROM_SUPABASE = false;
-    // Trigger a 'soft' layout update
     setTimeout(() => {
-      updateAllConnections(); // And one more after a short delay
+      updateAllConnections();
       updateViewportBars();
       clampScroll();
     }, 50);
   }
 }
+
 
 // ... (Tour logic unchanged) ...
 function buildBoardTourSteps() {
