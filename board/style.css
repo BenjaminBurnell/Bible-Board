@@ -154,42 +154,51 @@ body {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  width: 50px;
+  width:35px;
   position: fixed;
-  left: 25px;
+  left: 15px;
+  /* top:15px; */
   top: 50%;
   transform: translateY(-50%);
   background: var(--bg-seethroug);
+  /* background: none; */
   border: 1px solid var(--fg-seethrough);
+  /* border: none; */
   backdrop-filter: blur(1rem);
   justify-content: center;
   align-items: center;
-  padding: 10px 5px;
-  border-radius: 20px;
+  padding: 7px 4px;
+  border-radius: 15px;
   z-index: 10001;
 }
 .action-button {
-  width: 35px;
-  height: 35px;
+  width: 30px;
+  height: 30px;
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 10px;
-  background: var(--bg-seethroug);
+  padding: 8px;
+  /* background: var(--bg-seethroug); */
+  background:none;
   border-radius: 10px;
   border: 1px solid var(--fg-seethrough);
+  backdrop-filter: blur(1rem);
   cursor: pointer;
   transition: opacity 0.15s ease;
 }
 .action-button:hover {
   background: var(--bg-dots);
+  backdrop-filter: blur(1rem);
 }
 .action-icon {
-  fill: var(--muted);
+  fill: var(--fg);
+  color:var(--fg);
 }
 .action-button:disabled {
-  opacity: 0.4;
+  opacity:0.4;
   cursor: not-allowed;
+  background: var(--bg-seethroug);
+  backdrop-filter: blur(1rem);
 }
 
 #delete-action-button {
@@ -226,8 +235,8 @@ body {
 /* ==================== Search Drawer ==================== */
 #search-container {
   width: calc(100% - 50px);
-  max-width: 650px;
-  height: 60px;
+  max-width: 600px;
+  height: 50px;
   background: var(--bg-seethroug);
   backdrop-filter: blur(1rem);
   position: absolute;
@@ -239,7 +248,7 @@ body {
   z-index: 10000;
 }
 #search-bar {
-  width: calc(100% - 100px);
+  width: calc(100% - 75px);
   max-width: 500px;
   height: 30px;
   position: absolute;
@@ -253,7 +262,7 @@ body {
   color: var(--fg);
 }
 #search-button {
-  width: 60px;
+  width: 50px;
   height: 100%;
   position: absolute;
   right: 0;
@@ -278,8 +287,8 @@ textarea:focus {
   justify-content: center;
   padding: 6px;
   border-radius: 15px;
-  width: 50px;
-  height: 50px;
+  width: 45px;
+  height: 45px;
   transition: 0.3s ease, transform 0.3s ease;
   backdrop-filter: blur(1rem);
   background: var(--bg-seethroug);
@@ -322,10 +331,10 @@ body:not(.light) #sun-icon {
   border: 1px solid var(--fg-seethrough);
   color: var(--fg);
   position: fixed;
-  top: 25px;
-  left: 85px;
+  top: 15px;
+  left: 70px;
   width: fit-content;
-  height: 50px;
+  height: 45px;
 }
 #bible-whiteboard-text {
   display: flex;
@@ -1037,7 +1046,7 @@ textarea:disabled {
   border-radius: 999px;
   pointer-events: none;
   z-index: 10000; /* below top buttons but above canvas */
-  opacity: 0.9;
+  opacity: 0.5;
   transition: width 0.06s linear, height 0.06s linear, left 0.06s linear,
     top 0.06s linear;
 }

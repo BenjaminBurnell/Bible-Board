@@ -108,13 +108,13 @@ function buildCardHTML(board) {
           </svg>
         </button>
         <ul id="${menuId}" class="more-menu hidden" role="menu">
-          <li><button class="menu-item menu-rename" role="menuitem" type="button">Rename</button></li>
           <li><button class="menu-item menu-share" role="menuitem" type="button">Share link</button></li>
           <li><button class="menu-item menu-delete" role="menuitem" type="button">Delete</button></li>
         </ul>
       </div>
     </div>
   `;
+  // <li><button class="menu-item menu-rename" role="menuitem" type="button">Rename</button></li>
 }
 
 /** Ensure the status tile sits right after the New Board button */
@@ -143,7 +143,7 @@ function renderStatus(state, message = "") {
     case "loading": {
       // hide tile; show skeletons as grid items
       statusTile.classList.add("hidden");
-      for (let i = 0; i < 6; i++) {
+      for (let i = 0; i < 10; i++) {
         const skeleton = document.createElement("div");
         skeleton.className = "skeleton-card";
         boardGrid.appendChild(skeleton);

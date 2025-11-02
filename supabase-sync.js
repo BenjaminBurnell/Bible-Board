@@ -164,22 +164,27 @@ function showPersistenceBadge(status) {
     case "login-required":
       statusBadge.textContent = "Please sign in";
       statusBadge.style.color = "var(--muted)";
+      statusBadge.style.border = "1px solid var(--fg-seethrough)";
       break;
     case "creating":
       statusBadge.textContent = "Creating board...";
       statusBadge.style.color = "var(--muted)";
+      statusBadge.style.border = "1px solid var(--fg-seethrough)";
       break;
     case "loading":
       statusBadge.textContent = "Loading...";
       statusBadge.style.color = "var(--muted)";
+      statusBadge.style.border = "1px solid var(--fg-seethrough)";
       break;
     case "saving":
       statusBadge.textContent = "Saving...";
       statusBadge.style.color = "var(--muted)";
+      statusBadge.style.border = "1px solid var(--fg-seethrough)";
       break;
     case "saved":
       statusBadge.textContent = "Saved";
       statusBadge.style.color = "var(--accent)";
+      statusBadge.style.border = "1px solid var(--fg-seethrough)";
       hideBadgeTimer = setTimeout(hidePersistenceBadge, 1500);
       break;
     case "offline":

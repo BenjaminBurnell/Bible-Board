@@ -1408,7 +1408,7 @@ function addTextNote(initial = "New note") {
     }, 0);
   };
 
-  selectItem(el);
+  // selectItem(el);
 
   // Only focus if this is a fresh add, not a restore
   if (!window.__RESTORING_FROM_SUPABASE) {
@@ -3014,7 +3014,7 @@ function sanitizeImagesForCanvas(root) {
 function setTemporarySolidBackgrounds(root = document) {
   const items = root.querySelectorAll('.board-item');
   // Use the app's base bg/alt color—not the translucent token
-  const solid = getComputedStyle(document.body).getPropertyValue('--border')?.trim()
+  const solid = getComputedStyle(document.body).getPropertyValue('--bg-dots')?.trim()
              || getComputedStyle(document.body).getPropertyValue('--bg')?.trim()
              || '#ffffff';
 
@@ -3462,7 +3462,7 @@ function setupBoardSettingsPanel() {
   const runSetup = () => {
     // 1. --- Guards ---
     if (document.getElementById('board-settings-toggle')) return; // Already setup
-    const body = document.body;
+    const body = document.getElementById("main-content-container");
     if (!body) return;
 
     // 2. --- Create Toggle Button ---
@@ -3476,9 +3476,9 @@ function setupBoardSettingsPanel() {
     toggleBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="currentColor" style="width: 22px; height: 22px; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);"><path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.23-.08-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1c.23.08.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"/></svg>`;
     
     // Style toggle button (fixed position, replaces old theme toggle)
-    toggleBtn.style.position = 'fixed';
-    toggleBtn.style.top = '25px';
-    toggleBtn.style.right = '25px';
+    toggleBtn.style.position = 'absolute';
+    toggleBtn.style.top = '15px';
+    toggleBtn.style.right = '15px';
     toggleBtn.style.zIndex = '10003'; 
 
     // 3. --- Create Panel ---
@@ -3489,9 +3489,9 @@ function setupBoardSettingsPanel() {
     panel.setAttribute('aria-labelledby', 'board-settings-title');
     
     // Style panel
-    panel.style.position = 'fixed';
-    panel.style.right = '85px'; // Below 50px button + 25px top + 10px gap
-    panel.style.top = '25px';
+    panel.style.position = 'absolute';
+    panel.style.right = '70px'; // Below 50px button + 25px top + 10px gap
+    panel.style.top = '15px';
     panel.style.minWidth = '240px';
     panel.style.background = 'var(--bg-seethroug)';
     panel.style.border = '1px solid var(--fg-seethrough)';
