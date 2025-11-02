@@ -2931,6 +2931,200 @@ if (navigator.share) {
     toggleSharePopover(false); // Close popover on action
   });
 }
+
+// ==================== NEW: Export Functions ====================
+
+/**
+ * Generates a standard filename for board exports.
+ * @param {string} suffix - e.g., "used_area"
+ * @param {string} ext - e.g., "png"
+ * @returns {string}
+ */
+function makeExportFilename(suffix, ext) {
+  const title = (document.getElementById('title-textbox')?.value || 'BibleBoard')
+    .trim().replace(/\s+/g, '_');
+  const ts = new Date().toISOString().replace(/[:.]/g, '-');
+  return `${title}_${suffix}_${ts}.${ext}`;
+}
+
+/**
+ * Triggers a browser download for a data URL.
+ * @param {string} dataUrl - The base64-encoded data URL.
+ * @param {string} filename - The desired filename.
+ */
+function downloadDataURL(dataUrl, filename) {
+  const a = document.createElement('a');
+  a.href = dataUrl;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
+/**
+ * Finds all .board-item elements and calculates a tight bounding
+ * box that contains all of them, plus padding.
+ * @returns {{x: number, y: number, width: number, height: number} | null}
+ */
+function computeUsedBounds() {
+  const items = Array.from(document.querySelectorAll('.board-item'));
+  if (!items.length) return { x: 0, y: 0, width: 0, height: 0 };
+
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const el of items) {
+    // read absolute position from inline styles (authoring model)
+    const left = parseFloat(el.style.left || '0');
+    const top  = parseFloat(el.style.top  || '0');
+    const w = el.offsetWidth  || 0;
+    const h = el.offsetHeight || 0;
+
+    // Extend bounds to include the FULL element rect
+    minX = Math.min(minX, left);
+    minY = Math.min(minY, top);
+    maxX = Math.max(maxX, left + w);
+    maxY = Math.max(maxY, top  + h);
+  }
+
+  const pad = 64; // breathing room
+  // Clamp min to 0 so we don't request negative origin (keeps math simple)
+  const x = Math.max(0, Math.floor(minX - pad));
+  const y = Math.max(0, Math.floor(minY - pad));
+  // Ceil to ensure we don't chop the bottom/right by a fraction
+  const width  = Math.ceil((maxX + pad) - x);
+  const height = Math.ceil((maxY + pad) - y);
+
+  return { x, y, width, height };
+}
+
+/**
+ * Sets crossOrigin="anonymous" on all images within a node
+ * to prevent canvas tainting during export.
+ * @param {HTMLElement} rootNode
+ */
+function sanitizeImagesForCanvas(root) {
+  const imgs = root.querySelectorAll('img');
+  imgs.forEach(img => {
+    const src = img.getAttribute('src') || '';
+    if (src.startsWith('data:')) return;
+    if (!img.crossOrigin) img.crossOrigin = 'anonymous';
+  });
+}
+
+// Temporarily make .board-item backgrounds solid for export
+function setTemporarySolidBackgrounds(root = document) {
+  const items = root.querySelectorAll('.board-item');
+  // Use the app's base bg/alt color—not the translucent token
+  const solid = getComputedStyle(document.body).getPropertyValue('--border')?.trim()
+             || getComputedStyle(document.body).getPropertyValue('--bg')?.trim()
+             || '#ffffff';
+
+  items.forEach(el => {
+    // stash original inline values (not computed) so we can restore exactly
+    el.dataset._prevBg = el.style.background || '';
+    el.dataset._prevBackdrop = el.style.backdropFilter || '';
+
+    el.style.background = solid;     // solid fill (no alpha)
+    el.style.backdropFilter = 'none'; // disable blur—html-to-image can render weirdly with it
+  });
+}
+
+function restoreBackgrounds(root = document) {
+  const items = root.querySelectorAll('.board-item');
+  items.forEach(el => {
+    el.style.background = el.dataset._prevBg || '';
+    el.style.backdropFilter = el.dataset._prevBackdrop || '';
+    delete el.dataset._prevBg;
+    delete el.dataset._prevBackdrop;
+  });
+}
+
+/**
+ * Main export function. Renders the used area of the board to a PNG.
+ */
+async function exportBoardPNGUsedArea({ scale = 1 } = {}) {
+  const { viewport } = window.BoardAPI;
+  const boardRoot = document.getElementById('workspace'); // wrapper that contains items + connections
+  if (!boardRoot) { alert('Workspace not found'); return; }
+
+  // Ensure connections are up to date, and layout is stable
+  if (typeof updateAllConnections === 'function') updateAllConnections();
+  await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+
+  // Compute tight bounds of used area (see section B)
+  const box = computeUsedBounds();
+  if (!box || box.width <= 0 || box.height <= 0) {
+    alert('Nothing to export yet.');
+    return;
+  }
+
+  // Sanitize images and set temporary solid backgrounds
+  sanitizeImagesForCanvas(boardRoot);
+  setTemporarySolidBackgrounds(boardRoot);
+
+  // Shift the board so the box’s top-left renders at (0,0)
+  const prevTransform = boardRoot.style.transform || '';
+  const prevTransformOrigin = boardRoot.style.transformOrigin || '';
+  boardRoot.style.transformOrigin = 'top left';
+  boardRoot.style.transform = `translate(${-box.x}px, ${-box.y}px) scale(1)`;
+  
+  // Compute pixel size
+  const outW = Math.ceil(box.width * scale);
+  const outH = Math.ceil(box.height * scale);
+
+  // Set a background color on the canvas so no part is transparent
+  const bg = getComputedStyle(document.body).getPropertyValue('--bg')?.trim() || '#ffffff';
+
+  try {
+    const dataUrl = await window.htmlToImage.toPng(boardRoot, {
+      width: outW,
+      height: outH,
+      // Fill the canvas background to avoid any transparent strips
+      backgroundColor: bg,
+      // Prevent clipping issues
+      style: { overflow: 'visible', position: 'relative' },
+      cacheBust: true
+    });
+    downloadDataURL(dataUrl, makeExportFilename('used', 'png'));
+  } catch (e) {
+    console.error('Export failed:', e);
+    alert('Export failed. Try a smaller scale.');
+  } finally {
+    // Restore styles
+    boardRoot.style.transform = prevTransform;
+    boardRoot.style.transformOrigin = prevTransformOrigin;
+    restoreBackgrounds(boardRoot);
+  }
+}
+
+
+/**
+ * Wires up the existing Export button to trigger a direct download.
+ */
+function initExportButton() {
+  const exportBtn = document.getElementById("export-btn");
+
+  if (!exportBtn) {
+    console.warn("Export button not found. Skipping init.");
+    return;
+  }
+
+  // Handle export click
+  exportBtn.addEventListener("click", () => {
+    // Check if there's anything to export
+    const items = BoardAPI.workspace?.querySelectorAll(".board-item");
+    if (!items || items.length === 0) {
+      showToast("Nothing to export yet.");
+      return;
+    }
+    // Trigger the export
+    exportBoardPNGUsedArea();
+  });
+}
+
+
+// Call the new init function on load
+initExportButton();
+
 // ==================== Read-Only Mode UI Guards ====================
 // ... (Unchanged) ...
 /**
@@ -2945,6 +3139,7 @@ function applyReadOnlyGuards(isReadOnly) {
   const editIcon = document.getElementById("edit-Icon");
   const searchForm = document.getElementById('search-container'); // ADDED
   const tourBtn = document.getElementById('bb-tour-help-btn'); // ADDED
+  const exportBtn = document.getElementById('export-btn'); // ADDED FOR EXPORT
 
   if (isReadOnly) {
     // 1. Hide mutation buttons (Connect, Add Note, Delete)
@@ -2968,6 +3163,9 @@ function applyReadOnlyGuards(isReadOnly) {
     if (searchForm) searchForm.style.display = 'none';
     if (tourBtn) tourBtn.style.display = 'none';
 
+    // 6. Show Export button (viewers can export)
+    if (exportBtn) exportBtn.style.display = 'inline-block'; // Make sure it's visible
+
   } else {
     // Restore UI for owner
     if (actionButtons) actionButtons.style.display = "flex";
@@ -2986,6 +3184,9 @@ function applyReadOnlyGuards(isReadOnly) {
     // 5. Restore search and tour (NEW)
     if (searchForm) searchForm.style.display = ''; // Use '' to reset to CSS default
     if (tourBtn) tourBtn.style.display = 'inline-block'; // Match supabase-sync.js logic
+
+    // 6. Show Export button
+    if (exportBtn) exportBtn.style.display = 'inline-block';
   }
 }
 
@@ -3256,6 +3457,181 @@ function buildBoardTourSteps() {
 
   return steps;
 }
+
+function setupBoardSettingsPanel() {
+  const runSetup = () => {
+    // 1. --- Guards ---
+    if (document.getElementById('board-settings-toggle')) return; // Already setup
+    const body = document.body;
+    if (!body) return;
+
+    // 2. --- Create Toggle Button ---
+    const toggleBtn = document.createElement('button');
+    toggleBtn.id = 'board-settings-toggle';
+    toggleBtn.className = 'toggle-btn'; // Use existing class from index.html
+    toggleBtn.setAttribute('aria-label', 'Board Settings');
+    toggleBtn.setAttribute('aria-haspopup', 'true');
+    toggleBtn.setAttribute('aria-expanded', 'false');
+    // Simple Gear SVG Icon
+    toggleBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="currentColor" style="width: 22px; height: 22px; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);"><path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.23-.08-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1c.23.08.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"/></svg>`;
+    
+    // Style toggle button (fixed position, replaces old theme toggle)
+    toggleBtn.style.position = 'fixed';
+    toggleBtn.style.top = '25px';
+    toggleBtn.style.right = '25px';
+    toggleBtn.style.zIndex = '10003'; 
+
+    // 3. --- Create Panel ---
+    const panel = document.createElement('div');
+    panel.id = 'board-settings-panel';
+    panel.setAttribute('role', 'dialog');
+    panel.setAttribute('aria-modal', 'false');
+    panel.setAttribute('aria-labelledby', 'board-settings-title');
+    
+    // Style panel
+    panel.style.position = 'fixed';
+    panel.style.right = '85px'; // Below 50px button + 25px top + 10px gap
+    panel.style.top = '25px';
+    panel.style.minWidth = '240px';
+    panel.style.background = 'var(--bg-seethroug)';
+    panel.style.border = '1px solid var(--fg-seethrough)';
+    panel.style.backdropFilter = 'blur(1rem)';
+    panel.style.borderRadius = '12px';
+    panel.style.padding = '12px';
+    panel.style.zIndex = '10004';
+    panel.style.display = 'none'; // Start hidden
+
+    // 4. --- Create Panel Internals ---
+    panel.innerHTML = `<div id="board-settings-title" style="font-size: 1rem; font-weight: 700; color: var(--fg); padding-bottom: 8px; border-bottom: 1px solid var(--border); margin-bottom: 12px;">Settings</div>
+                       <div id="board-settings-content" style="display: flex; flex-direction: column; gap: 8px;"></div>`;
+    const content = panel.querySelector('#board-settings-content');
+
+    // Helper to create muted labels
+    const createLabel = (text) => {
+      const label = document.createElement('div');
+      label.textContent = text;
+      label.style.fontSize = '0.75rem';
+      label.style.fontWeight = '700';
+      label.style.color = 'var(--muted)';
+      label.style.textTransform = 'uppercase';
+      label.style.padding = '8px 0 4px 4px';
+      label.style.marginTop = '4px';
+      return label;
+    };
+
+    // Helper to reset moved button styles for stacking
+    const resetPosition = (el) => {
+      if (!el) return;
+      el.style.position = 'relative';
+      el.style.top = 'auto';
+      el.style.left = 'auto';
+      el.style.right = 'auto';
+      el.style.width = '100%';
+      el.style.boxSizing = 'border-box'; // Ensure padding doesn't break 100% width
+    };
+
+    // 5. --- Find and Move Elements ---
+    const themeToggle = document.getElementById('theme-toggle');
+    const exportBtn = document.getElementById('export-btn');
+    const shareBtn = document.getElementById('share-btn');
+    const tourBtn = document.getElementById('bb-tour-help-btn');
+
+    // Appearance Section
+    if (themeToggle) {
+      content.appendChild(createLabel('Appearance'));
+      resetPosition(themeToggle);
+      
+      // Add a text label *inside* the button (modifies button, but required for context)
+      const themeLabel = document.createElement('span');
+      themeLabel.textContent = 'Theme';
+      themeLabel.style.fontWeight = '700';
+      themeLabel.style.fontSize = '15px';
+      themeToggle.style.justifyContent = 'space-between';
+      themeToggle.style.padding = '5px 15px';
+      themeToggle.style.height = '40px';
+      themeToggle.prepend(themeLabel); // Add label
+      
+      content.appendChild(themeToggle);
+    }
+    
+    // Board Actions Section
+    if (exportBtn || shareBtn) {
+       content.appendChild(createLabel('Board Actions'));
+       if (exportBtn) {
+         resetPosition(exportBtn);
+         content.appendChild(exportBtn);
+       }
+       if (shareBtn) {
+         resetPosition(shareBtn);
+         content.appendChild(shareBtn);
+       }
+    }
+
+    // Help Section
+    if (tourBtn) {
+      content.appendChild(createLabel('Help'));
+      resetPosition(tourBtn);
+      content.appendChild(tourBtn);
+    }
+    
+    // 6. --- Append New UI to Body ---
+    body.appendChild(toggleBtn);
+    body.appendChild(panel);
+
+    // 7. --- Open/Close/Focus Logic ---
+    const openPanel = () => {
+      panel.style.display = 'block';
+      toggleBtn.setAttribute('aria-expanded', 'true');
+      localStorage.setItem('bb_settings_open', 'true');
+      
+      // Focus first focusable element in panel
+      const firstFocusable = panel.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+      if (firstFocusable) firstFocusable.focus();
+    };
+
+    const closePanel = () => {
+      panel.style.display = 'none';
+      toggleBtn.setAttribute('aria-expanded', 'false');
+      localStorage.setItem('bb_settings_open', 'false');
+      toggleBtn.focus(); // Return focus to the toggle
+    };
+
+    toggleBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isHidden = panel.style.display === 'none';
+      if (isHidden) openPanel();
+      else closePanel();
+    });
+
+    // Close on Escape
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && panel.style.display !== 'none') {
+        closePanel();
+      }
+    });
+
+    // Close on click outside
+    document.addEventListener('click', (e) => {
+      if (panel.style.display !== 'none' && !panel.contains(e.target) && e.target !== toggleBtn && !toggleBtn.contains(e.target)) {
+        closePanel();
+      }
+    });
+
+    // 8. --- Restore State from localStorage ---
+    if (localStorage.getItem('bb_settings_open') === 'true') {
+      openPanel();
+    }
+  };
+
+  // --- Invocation ---
+  if (document.readyState !== 'loading') {
+    runSetup();
+  } else {
+    document.addEventListener('DOMContentLoaded', runSetup);
+  }
+}
+
+setupBoardSettingsPanel();
 
 // ===== expose a small API for the Supabase module (keep at end of script.js) =====
 // ... (BoardAPI definition unchanged) ...

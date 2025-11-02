@@ -109,6 +109,7 @@ function buildCardHTML(board) {
         </button>
         <ul id="${menuId}" class="more-menu hidden" role="menu">
           <li><button class="menu-item menu-rename" role="menuitem" type="button">Rename</button></li>
+          <li><button class="menu-item menu-share" role="menuitem" type="button">Share link</button></li>
           <li><button class="menu-item menu-delete" role="menuitem" type="button">Delete</button></li>
         </ul>
       </div>
@@ -540,7 +541,7 @@ async function init() {
     }
 
     // 2) If click is on a MENU ITEM → action (no navigation)
-    if (e.target.closest(".menu-rename") || e.target.closest(".menu-delete")) {
+    if (e.target.closest(".menu-rename") || e.target.closest(".menu-delete") || e.target.closest(".menu-share")) {
       const board = {
         id: card.dataset.id,
         path: card.dataset.path,
@@ -554,6 +555,25 @@ async function init() {
         closeActiveMenu();
         currentModalBoard = board;
         handleDelete();
+      } else if (e.target.closest(".menu-share")) {
+        closeActiveMenu();
+        if (currentUser) {
+          const url = new URL(window.location.origin + "/board/index.html");
+          url.searchParams.set("board", board.id);
+          url.searchParams.set("owner", currentUser.id);
+          const shareUrl = url.toString();
+
+          try {
+            navigator.clipboard.writeText(shareUrl);
+            alert("Link copied!");
+          } catch (err) {
+            console.error('Failed to copy link: ', err);
+            alert("Could not copy link. It has been logged to the console.");
+            console.log("Here is your link:", shareUrl);
+          }
+        } else {
+          alert("Please sign in to share a link.");
+        }
       }
       return;
     }
@@ -607,6 +627,28 @@ async function init() {
     if (!typing && (e.key === "n" || e.key === "N")) {
       e.preventDefault();
       newBoardBtn?.click();
+    }
+    if (!typing && (e.key === "s" || e.key === "S")) {
+      const card = document.activeElement?.closest(".board-card");
+      if (card) {
+        e.preventDefault();
+        const boardId = card.dataset.id;
+        if (boardId && currentUser) {
+          const url = new URL(window.location.origin + "/board/index.html");
+          url.searchParams.set("board", boardId);
+          url.searchParams.set("owner", currentUser.id);
+          const shareUrl = url.toString();
+          // Copy to clipboard
+          try {
+            navigator.clipboard.writeText(shareUrl);
+            alert("Link copied!"); 
+          } catch (err) {
+            console.error('Failed to copy link: ', err);
+            alert("Could not copy link. It has been logged to the console.");
+            console.log("Here is your link:", shareUrl);
+          }
+        }
+      }
     }
   });
 

@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="stylesheet" href="style.css" />
     <title>Bible Board</title>
+    <script src="https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.min.js"></script>
     <style>
       #access-denied-blocker {
         position: fixed;
@@ -84,7 +85,7 @@
       <div class="viewport">
         <div id="workspace" class="workspace">
           <svg id="connections" class="connections"></svg>
-        </div>
+          </div>
       </div>
 
       <button id="theme-toggle" class="toggle-btn" aria-label="Toggle Theme">
@@ -122,6 +123,32 @@
           align-items: center;
         "
       >
+        <button
+          id="export-btn"
+          class="btn"
+          title="Export Image"
+          style="
+            height: 50px;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 15px;
+            background: var(--bg-seethroug);
+            border-radius: 10px;
+            -webkit-backdrop-filter: blur(1rem);
+            backdrop-filter: blur(1rem);
+            border: 1px solid var(--fg-seethrough);
+            padding: 5px 15px;
+            color: var(--muted);
+            position: absolute;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            top: 0px;
+            right: 180px; /* Positioned next to Share */
+          "
+        >
+          Export
+        </button>
         <button
           id="share-btn"
           class="btn share-btn"
@@ -393,6 +420,33 @@
       </div>
     </div>
 
+    <div id="export-modal-overlay" class="export-modal-overlay">
+      <div id="export-modal" class="export-modal">
+        <div class="export-modal-header">
+          <h2 class="export-modal-title">Export board</h2>
+          <button id="export-modal-close" class="export-modal-close">
+            &times;
+          </button>
+        </div>
+        <div class="export-modal-content">
+          <div class="export-form-row">
+            <label for="export-scale-input">Scale</label>
+            <input
+              id="export-scale-input"
+              type="number"
+              value="2"
+              min="1"
+              max="4"
+              step="0.5"
+            />
+          </div>
+          <button id="export-png-used-area-btn" class="btn btn-primary">
+            PNG (used area)
+          </button>
+          <div id="export-status-text" class="export-status-text"></div>
+        </div>
+      </div>
+    </div>
     <script src="search.js"></script>
     <script src="script.js"></script>
     <script src="persist-helper.js"></script>
