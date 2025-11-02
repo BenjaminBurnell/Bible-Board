@@ -240,7 +240,7 @@ body {
   background: var(--bg-seethroug);
   backdrop-filter: blur(1rem);
   position: absolute;
-  bottom: 25px;
+  bottom: 15px;
   left: 50%;
   transform: translateX(-50%);
   border-radius: 20px;
@@ -248,7 +248,7 @@ body {
   z-index: 10000;
 }
 #search-bar {
-  width: calc(100% - 75px);
+  width: calc(100% - 185px);
   max-width: 500px;
   height: 30px;
   position: absolute;
@@ -261,6 +261,63 @@ body {
   font-weight: 800;
   color: var(--fg);
 }
+
+
+/* ADDED: Version Select Styling */
+#version-select {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 50px; /* Next to the 50px search button */
+  width: 100px; /* Fixed width */
+  height: 100%;
+  background: transparent;
+  border: none;
+  border-left: 1px solid var(--fg-seethrough);
+  border-right: 1px solid var(--fg-seethrough);
+  color: var(--fg);
+  font-size: 15px;
+  font-weight: 700;
+  padding: 0 10px;
+  border-radius: 0;
+  cursor: pointer;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%27292.4%27%20height%3D%27292.4%27%3E%3Cpath%20fill%3D%27%23e6e6e6%27%20d%3D%27M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%27%2F%3E%3C%2Fsvg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 0.65em auto;
+  padding-right: 30px; /* Space for arrow */
+}
+
+#version-select option {
+  background: var(--bg);
+  color: var(--fg);
+  font-weight: 700;
+}
+
+body.light #version-select {
+  background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%27292.4%27%20height%3D%27292.4%27%3E%3Cpath%20fill%3D%27%23343434%27%20d%3D%27M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%27%2F%3E%3C%2Fsvg%3E");
+}
+
+@media (max-width: 500px) {
+  #search-bar {
+    width: calc(100% - 150px); /* Tighter width */
+  }
+  #version-select {
+    width: 75px; /* Narrower select */
+    padding-left: 5px;
+    padding-right: 25px; /* Tighter padding */
+    background-position: right 5px center;
+  }
+}
+
+
+
+
+
+
 #search-button {
   width: 50px;
   height: 100%;
@@ -268,13 +325,15 @@ body {
   right: 0;
   top: 50%;
   transform: translateY(-50%);
-  border-radius: 20px;
+  border-top-right-radius: 20px;
+  border-bottom-right-radius: 20px;
   border: 1px solid var(--muted);
   background: var(--fg);
   cursor: pointer;
 }
 input,
 button,
+select,
 textarea:focus {
   outline: none;
 }
@@ -296,8 +355,8 @@ textarea:focus {
   color: var(--fg);
   cursor: pointer;
   position: absolute;
-  top: 25px;
-  right: 25px;
+  top: 15px;
+  right: 15px;
 }
 #moon-icon,
 #sun-icon {

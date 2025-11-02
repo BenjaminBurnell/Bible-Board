@@ -336,19 +336,51 @@ async function safeFetchWithFallbacks(url, signal) {
   throw lastError || new Error("All fetch strategies failed");
 }
 
+// ==================== NEW: Version Picker Helpers ====================
+function getSelectedVersion() {
+  const el = document.getElementById("version-select");
+  return (el && el.value) || "KJV"; // Fallback
+}
+
+// Function to set the picker value and save to localStorage
+function setVersion(version) {
+  const el = document.getElementById("version-select");
+  if (el && version) {
+    // Find the option that matches
+    const opt = Array.from(el.options).find(
+      (o) => o.value.toUpperCase() === version.toUpperCase()
+    );
+    if (opt) {
+      el.value = opt.value;
+      localStorage.setItem("bb:lastVersion", el.value);
+    }
+  }
+}
+
+(function initVersionPicker() {
+  document
+    .getElementById("version-select")
+    ?.addEventListener("change", () => {
+      const newVersion = getSelectedVersion();
+      localStorage.setItem("bb:lastVersion", newVersion);
+      // Trigger a save to update board settings
+      onBoardMutated("version_change");
+    });
+})();
+
 // ==================== Fetch Verse Text (KJV) ====================
 // ... (fetchVerseText unchanged) ...
 /**
  * (Existing logic, now uses LRU cache)
  */
-async function fetchVerseText(book, chapter, verse, signal) {
+async function fetchVerseText(book, chapter, verse, signal, version = "KJV") {
   const code = bibleBookCodes[book] || book;
-  const apiUrl = `https://bible-api-5jrz.onrender.com/verse/KJV/${encodeURIComponent(
-    code
-  )}/${chapter}/${verse}`;
+  const apiUrl = `https://bible-api-5jrz.onrender.com/verse/${encodeURIComponent(
+    version
+  )}/${encodeURIComponent(code)}/${chapter}/${verse}`;
 
   // OPTIMIZATION: Use LRU cache
-  const cacheKey = `${code}:${chapter}:${verse}`;
+  const cacheKey = `${version}:${code}:${chapter}:${verse}`;
   const cached = verseCache.get(cacheKey); // .get() updates recency
   if (cached) {
     return cached;
@@ -450,7 +482,10 @@ async function fetchVersesForReferences(refs, { batchSize = 4, signal } = {}) {
             parts.book,
             parts.chapter,
             parts.verse,
-            signal
+            signal,
+            // This function is old, but if used, pass the global version
+            // Note: This is NOT the primary search path anymore.
+            getSelectedVersion()
           );
           return { reference: ref, text };
         } catch (e) {
@@ -1252,7 +1287,13 @@ function removeConnectionsFor(el) {
 }
 
 // ==================== Element Creation ====================
-function addBibleVerse(reference, text, createdFromLoad = false) {
+function addBibleVerse(
+  reference,
+  text,
+  createdFromLoad = false,
+  version = null
+) {
+  currentIndex += 1;
   // GUARD: Allow creation during load/restore, but not by user action
   if (window.__readOnly && !window.__RESTORING_FROM_SUPABASE) return;
 
@@ -1264,25 +1305,33 @@ function addBibleVerse(reference, text, createdFromLoad = false) {
   el.dataset.type = "verse";
   el.dataset.reference = reference;
   el.dataset.text = text;
+  if (version) {
+    el.dataset.version = version;
+  }
 
   const vpRect = viewport.getBoundingClientRect();
   const visibleX = viewport.scrollLeft / scale,
     visibleY = viewport.scrollTop / scale;
   const visibleW = vpRect.width / scale,
     visibleH = vpRect.height / scale;
-  const randX = visibleX + Math.random() * (visibleW - 300);
-  const randY = visibleY + Math.random() * (visibleH - 200);
+  // const randX = visibleX + Math.random() * (visibleW - 300);
+  // const randY = visibleY + Math.random() * (visibleH - 200);
+  const randX = visibleX + .5 * (visibleW - 300);
+  const randY = visibleY + .5 * (visibleH - 200);
   el.style.left = `${randX}px`;
   el.style.top = `${randY}px`;
+  el.style.zIndex = currentIndex
 
   // Use createdFromLoad flag to determine reference format
   const displayReference = createdFromLoad ? reference : `- ${reference}`;
+  // ADDED: Version label
+  const versionLabel = version ? ` ${version.toUpperCase()}` : "";
 
   el.innerHTML = `
     <div id="bible-text-content">
       <div class="verse-text">VERSE</div>
       <div class="verse-text-content">${text}</div>
-      <div class="verse-text-reference">${displayReference}</div>
+      <div class="verse-text-reference">${displayReference}${versionLabel}</div>
     </div>
   `;
 
@@ -1304,6 +1353,7 @@ function addBibleVerse(reference, text, createdFromLoad = false) {
 }
 
 function addTextNote(initial = "New note") {
+  currentIndex += 1;
   // GUARD: Allow creation during load/restore, but not by user action
   if (window.__readOnly && !window.__RESTORING_FROM_SUPABASE) return;
 
@@ -1321,6 +1371,7 @@ function addTextNote(initial = "New note") {
   const y = visibleY + (visibleH - 50) / 2;
   el.style.left = `${x}px`;
   el.style.top = `${y}px`;
+  el.style.zIndex = currentIndex
 
   el.innerHTML = `
     <div class="note-content"><div class="verse-text note-label">NOTE</div><div class="text-content" contenteditable="${!window.__readOnly}" spellcheck="false">${initial}</div></div>
@@ -1431,6 +1482,7 @@ function addInterlinearCard({
   strong,
   reference,
 }) {
+  currentIndex += 1;
   // GUARD: Allow creation during load/restore, but not by user action
   if (window.__readOnly && !window.__RESTORING_FROM_SUPABASE) return;
 
@@ -1457,6 +1509,7 @@ function addInterlinearCard({
   }
   el.style.left = `${targetLeft}px`;
   el.style.top = `${targetTop}px`;
+  el.style.zIndex = currentIndex
 
   // Build content
   const chips = [];
@@ -1547,7 +1600,7 @@ function addInterlinearCard({
   };
 
   // Select on create (nice UX)
-  selectItem(el);
+  // selectItem(el);
 
   onBoardMutated("add_interlinear_card"); // AUTOSAVE (safe)
   return el;
@@ -1560,7 +1613,7 @@ function searchForQueryFromSuggestion(reference) {
   searchForQuery(new Event("submit")); // Simulate a submit event
 }
 
-function displaySearchVerseOption(reference, text) {
+function displaySearchVerseOption(reference, text, version) {
   const versesHeader = document.getElementById("search-query-verses-text");
   const verseContainer = document.getElementById(
     "search-query-verse-container"
@@ -1577,15 +1630,15 @@ function displaySearchVerseOption(reference, text) {
     item.classList.add("search-query-verse-container");
     item.innerHTML = `
       <div class="search-query-verse-text">${text}</div>
-      <div class="search-query-verse-reference">– ${reference} KJV</div>
+      <div class="search-query-verse-reference">– ${reference} ${version.toUpperCase()}</div>
       <button class="search-query-verse-add-button">add</button>
     `;
 
     // OPTIMIZATION: Use .onclick for robust listener management
     item.querySelector(".search-query-verse-add-button").onclick = () => {
-      addBibleVerse(`${reference} KJV`, text, false); // Pass false for createdFromLoad
+      addBibleVerse(`${reference}`, text, false, version); // Pass false for createdFromLoad
       // OPTIMIZATION: Prefetch adjacent verses
-      prefetchAdjacentVerses(reference, globalSearchController?.signal);
+      prefetchAdjacentVerses(reference, globalSearchController?.signal, version);
     };
 
     verseContainer.appendChild(item);
@@ -1612,7 +1665,7 @@ function displayNoVerseFound(reference) {
 /**
  * OPTIMIZATION: Prefetches adjacent verses on idle.
  */
-function prefetchAdjacentVerses(reference, signal) {
+function prefetchAdjacentVerses(reference, signal, version = "KJV") {
   requestIdleCallback(async () => {
     if (signal?.aborted) return;
     try {
@@ -1620,13 +1673,14 @@ function prefetchAdjacentVerses(reference, signal) {
       if (!parts || !parts.book) return;
 
       const { book, chapter, verse } = parts;
+      const ver = version || "KJV"; // Ensure version is set
 
       // Prefetch previous (if > 1)
       if (verse > 1) {
-        fetchVerseText(book, chapter, verse - 1, signal).catch(() => {}); // Fire and forget
+        fetchVerseText(book, chapter, verse - 1, signal, ver).catch(() => {}); // Fire and forget
       }
       // Prefetch next
-      fetchVerseText(book, chapter, verse + 1, signal).catch(() => {}); // Fire and forget
+      fetchVerseText(book, chapter, verse + 1, signal, ver).catch(() => {}); // Fire and forget
     } catch (e) {
       // Squelch errors, this is best-effort
     }
@@ -1642,6 +1696,7 @@ function prefetchAdjacentVerses(reference, signal) {
  * The new `fillVerseBatch` is now used by `searchForQuery`.
  */
 async function fetchAndStreamVerseTexts(verseElements, signal) {
+  const version = getSelectedVersion(); // Get version once for the batch
   let firstVerseLoaded = false;
   for (let i = 0; i < verseElements.length; i += BATCH_SIZE) {
     if (signal?.aborted) return;
@@ -1655,7 +1710,8 @@ async function fetchAndStreamVerseTexts(verseElements, signal) {
         parts.book,
         parts.chapter,
         parts.verse,
-        signal
+        signal,
+        version
       );
       return { el, text, ref };
     });
@@ -1700,8 +1756,8 @@ async function fetchAndStreamVerseTexts(verseElements, signal) {
           if (addBtn) {
             addBtn.disabled = false;
             addBtn.onclick = () => {
-              addBibleVerse(`${ref} KJV`, text, false);
-              prefetchAdjacentVerses(ref, signal); // Prefetch on add
+              addBibleVerse(`${ref}`, text, false, version);
+              prefetchAdjacentVerses(ref, signal, version); // Prefetch on add
             };
           }
         }
@@ -1716,7 +1772,7 @@ async function fetchAndStreamVerseTexts(verseElements, signal) {
  * @param {Array<{ref: string, el: HTMLElement}>} verseBatch
  * @param {AbortSignal} signal
  */
-async function fillVerseBatch(verseBatch, signal) {
+async function fillVerseBatch(verseBatch, signal, version) {
   for (const { ref, el } of verseBatch) {
     if (signal?.aborted) return;
     // Skip if already ready
@@ -1728,7 +1784,13 @@ async function fillVerseBatch(verseBatch, signal) {
       el.querySelector(".search-query-verse-text").textContent = "Verse not found.";
       continue;
     }
-    const text = await fetchVerseText(parts.book, parts.chapter, parts.verse, signal);
+    const text = await fetchVerseText(
+      parts.book,
+      parts.chapter,
+      parts.verse,
+      signal,
+      version
+    );
     if (signal?.aborted) return;
 
     // If we received an error string, treat as not ready
@@ -1755,8 +1817,8 @@ async function fillVerseBatch(verseBatch, signal) {
     addBtn.onclick = () => {
       // Final guard: never add placeholders
       if (el.dataset.status !== "ready" || !text || !text.trim()) return;
-      addBibleVerse(`${ref} KJV`, text, false);
-      prefetchAdjacentVerses(ref, signal); // Prefetch on add
+      addBibleVerse(`${ref}`, text, false, version);
+      prefetchAdjacentVerses(ref, signal, version); // Prefetch on add
     };
   }
 }
@@ -1787,7 +1849,7 @@ function ensureLoadMoreButton(container, onClick) {
  * @param {AbortSignal} signal
  * @returns {Promise<{ref: string, text: string} | null>}
  */
-async function fetchVerseData(ref, signal) {
+async function fetchVerseData(ref, signal, version) {
   const parts = parseReferenceToParts(ref);
   if (!parts) return null;
 
@@ -1796,7 +1858,8 @@ async function fetchVerseData(ref, signal) {
       parts.book,
       parts.chapter,
       parts.verse,
-      signal
+      signal,
+      version
     );
     if (signal?.aborted) return null; // Check after await
 
@@ -1820,14 +1883,14 @@ async function fetchVerseData(ref, signal) {
  * @param {AbortSignal} signal
  * @returns {HTMLElement}
  */
-function buildVerseCard(ref, text, signal) {
+function buildVerseCard(ref, text, signal, version) {
   const item = document.createElement("div");
   item.classList.add("search-query-verse-container");
   item.dataset.status = "ready"; // Mark as ready
 
   item.innerHTML = `
     <div class="search-query-verse-text">${text}</div>
-    <div class="search-query-verse-reference">– ${ref} KJV</div>
+    <div class="search-query-verse-reference">– ${ref} ${version.toUpperCase()}</div>
     <button class="search-query-verse-add-button">add</button>
   `;
 
@@ -1835,8 +1898,8 @@ function buildVerseCard(ref, text, signal) {
   addBtn.onclick = () => {
     // Guard: Check status and text again
     if (item.dataset.status === "ready" && text && text.trim()) {
-      addBibleVerse(`${ref} KJV`, text, false);
-      prefetchAdjacentVerses(ref, signal); // Use the passed-in signal
+      addBibleVerse(`${ref}`, text, false, version);
+      prefetchAdjacentVerses(ref, signal, version); // Use the passed-in signal
     }
   };
   return item;
@@ -1959,6 +2022,7 @@ async function searchForQuery(event) {
   }
   globalSearchController = new AbortController();
   const { signal } = globalSearchController;
+  const version = getSelectedVersion(); // ADDED
 
   // --- 2. Show Skeleton UI ---
   if (typeof didYouMeanText !== "undefined") didYouMeanText.style.display = "none";
@@ -2060,7 +2124,13 @@ async function searchForQuery(event) {
       // --- FAST PATH: Direct verse reference ("John 3:16") ---
       const chap = result.chapter || 1;
       const vrse = result.verse || 1;
-      const text = await fetchVerseText(result.book, chap, vrse, signal);
+      const text = await fetchVerseText(
+        result.book,
+        chap,
+        vrse,
+        signal,
+        version
+      );
 
       if (signal.aborted) return false;
       logPerf("first_verse_text_rendered");
@@ -2078,7 +2148,7 @@ async function searchForQuery(event) {
       if (isError) {
         displayNoVerseFound(result.reference);
       } else {
-        displaySearchVerseOption(result.reference, text);
+        displaySearchVerseOption(result.reference, text, version);
       }
     } else {
       // --- TOPIC PATH: No direct reference found ---
@@ -2113,7 +2183,9 @@ async function searchForQuery(event) {
         const initialRefs = refs.slice(0, INITIAL_VISIBLE_COUNT);
         const remainingRefs = refs.slice(INITIAL_VISIBLE_COUNT);
 
-        const fetchPromises = initialRefs.map(ref => fetchVerseData(ref, signal));
+        const fetchPromises = initialRefs.map((ref) =>
+          fetchVerseData(ref, signal, version)
+        );
         const results = await Promise.allSettled(fetchPromises);
 
         if (signal.aborted) return false; // Check after await
@@ -2124,7 +2196,7 @@ async function searchForQuery(event) {
         for (const result of results) {
           if (result.status === "fulfilled" && result.value) {
             const { ref, text } = result.value;
-            const card = buildVerseCard(ref, text, signal); // Pass signal
+            const card = buildVerseCard(ref, text, signal, version); // Pass signal
             verseContainer.appendChild(card);
             loadedCount++;
           }
@@ -2142,7 +2214,9 @@ async function searchForQuery(event) {
             }
 
             const nextRefs = remainingRefs.splice(0, LOAD_MORE_CHUNK);
-            const nextPromises = nextRefs.map(ref => fetchVerseData(ref, signal));
+            const nextPromises = nextRefs.map((ref) =>
+              fetchVerseData(ref, signal, version)
+            );
             const nextResults = await Promise.allSettled(nextPromises);
 
             if (signal.aborted) return;
@@ -2151,7 +2225,7 @@ async function searchForQuery(event) {
             for (const result of nextResults) {
               if (result.status === "fulfilled" && result.value) {
                 const { ref, text } = result.value;
-                const card = buildVerseCard(ref, text, signal); // Pass signal
+                const card = buildVerseCard(ref, text, signal, version); // Pass signal
                 // Insert before the button (if it exists)
                 if (btn) {
                   verseContainer.insertBefore(card, btn);
@@ -2596,6 +2670,7 @@ function parseSelectedVerseRef() {
   const cleanedRef = rawRef
     .replace("-", "")
     .replace(/\s+KJV$/, "")
+    .replace(/\s+&middot;.*$/, "") // ADDED: Remove new version label
     .trim();
   console.log(cleanedRef);
 
@@ -2718,6 +2793,7 @@ async function fetchSongs(query, limit = 5, signal = null) {
 // ==================== Add song to whiteboard ====================
 // ... (addSongElement unchanged, but with read-only guard) ...
 function addSongElement({ title, artist, cover }) {
+  currentIndex += 1;
   // --- NEW: READ-ONLY GUARD ---
   if (window.__readOnly && !window.__RESTORING_FROM_SUPABASE) return;
   // --- END NEW ---
@@ -2933,6 +3009,38 @@ if (navigator.share) {
 }
 
 // ==================== NEW: Export Functions ====================
+
+/**
+ * Helper function to find the version picker in the settings panel.
+ * @returns {HTMLSelectElement | null}
+ */
+function getSettingsVersionPicker() {
+  return document.getElementById("board-settings-version-select");
+}
+
+/**
+ * Syncs the settings panel picker FROM the search picker.
+ */
+function syncSettingsPickerFromSearch() {
+  const searchPicker = document.getElementById("version-select");
+  const settingsPicker = getSettingsVersionPicker();
+  if (searchPicker && settingsPicker) {
+    settingsPicker.value = searchPicker.value;
+  }
+}
+
+/**
+ * Syncs the search picker FROM the settings panel picker.
+ */
+function syncSearchPickerFromSettings() {
+  const searchPicker = document.getElementById("version-select");
+  const settingsPicker = getSettingsVersionPicker();
+  if (searchPicker && settingsPicker) {
+    // This updates the search picker AND localStorage
+    setVersion(settingsPicker.value);
+    onBoardMutated("settings_change"); // Trigger save
+  }
+}
 
 /**
  * Generates a standard filename for board exports.
@@ -3384,6 +3492,17 @@ function buildBoardTourSteps() {
       },
     },
     {
+      id: "Choose Version",
+      target: () => document.getElementById("version-select"),
+      title: "Choose your version",
+      text: "Use the Version menu beside the search bar to choose your version. Searches fetch in that version, and any verse you add keeps its version label. You can change this anytime.",
+      placement: "top",
+      beforeStep: () => {
+        // Ensure search panel is open if we add that logic later
+        // For now, it's always visible.
+      },
+    },
+    {
       id: "board-element",
       target: () => document.querySelector(".board-item.bible-verse"),
       title: "Arrange Your Cards",
@@ -3721,3 +3840,45 @@ window.BoardAPI = {
    */
   deserializeBoard,
 };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

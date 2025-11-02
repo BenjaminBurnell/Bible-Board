@@ -91,22 +91,22 @@ body {
 
 #get-started-button {
   position: fixed;
-  right: 25px;
-  top: 25px;
+  right: 15px;
+  top: 15px;
   z-index: 102;
   font-size: 15px;
   font-weight: 800;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 6px 16px;
+  padding: 6px 13px;
   border-radius: 15px;
   backdrop-filter: blur(1rem);
   background: var(--fg);
   border: 1px solid var(--border);
   color: var(--bg);
   width: fit-content;
-  height: 50px;
+  height: 45px;
   cursor: pointer;
 }
 
@@ -114,7 +114,7 @@ body {
   opacity: 0.7;
 }
 
-#board-filter{ width:calc(100% - 100px); max-width:500px; height:30px; position:absolute; top:50%; left:25px; transform:translateY(-50%); background:transparent; border:none; font-size:17.5px; font-weight:800; color:var(--fg); }
+#board-filter{ width:calc(100%); max-width:500px; height:30px; position:absolute; top:50%; left:13px; transform:translateY(-50%); background:transparent; border:none; font-size:17.5px; font-weight:800; color:var(--fg); }
 
 
 /* Basic styling for the button */
@@ -235,15 +235,15 @@ body {
 /* === Buttons === */
 #signout-btn {
   position: fixed;
-  right: 90px;
-  top: 25px;
+  right: 70px;
+  top: 15px;
   z-index: 1000;
-  padding: 10px 20px;
+  padding: 10px 15px;
 }
 
 .dash-btn {
   font-family: inherit;
-  height:50px;
+  height:45px;
   font-size: 1rem;
   font-weight: 700;
   border-radius: 10px;
@@ -618,7 +618,7 @@ body {
 
 #dashboard-title {
   font-family: inherit;
-  height:50px;
+  height:45px;
   font-size: 1rem;
   font-weight: 700;
   border-radius: 10px;
@@ -628,8 +628,8 @@ body {
   -webkit-backdrop-filter: blur(1rem);
   color: var(--fg);
   position: fixed;
-  left: 25px;
-  top: 25px;
+  left: 15px;
+  top: 15px;
   z-index: 1000;
   padding: 10px 20px;
   height:28px;
