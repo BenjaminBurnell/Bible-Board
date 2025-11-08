@@ -358,14 +358,12 @@ function setVersion(version) {
 }
 
 (function initVersionPicker() {
-  document
-    .getElementById("version-select")
-    ?.addEventListener("change", () => {
-      const newVersion = getSelectedVersion();
-      localStorage.setItem("bb:lastVersion", newVersion);
-      // Trigger a save to update board settings
-      onBoardMutated("version_change");
-    });
+  document.getElementById("version-select")?.addEventListener("change", () => {
+    const newVersion = getSelectedVersion();
+    localStorage.setItem("bb:lastVersion", newVersion);
+    // Trigger a save to update board settings
+    onBoardMutated("version_change");
+  });
 })();
 
 // ==================== Fetch Verse Text (KJV) ====================
@@ -458,7 +456,8 @@ function parseReferenceToParts(reference) {
   const [chapterStr, verseStr] = chapVerse.split(":");
   const chapter = Number(chapterStr);
   const verse = Number(verseStr);
-  if (!book || !Number.isFinite(chapter) || !Number.isFinite(verse)) return null;
+  if (!book || !Number.isFinite(chapter) || !Number.isFinite(verse))
+    return null;
   return { book, chapter, verse };
 }
 
@@ -582,8 +581,10 @@ function updateViewportBars() {
   if (!viewport || !workspace) return;
 
   // Content extents follow clampScroll(): width/height are scaled by `scale`
-  const contentW = workspace.offsetWidth * (typeof scale === "number" ? scale : 1);
-  const contentH = workspace.offsetHeight * (typeof scale === "number" ? scale : 1);
+  const contentW =
+    workspace.offsetWidth * (typeof scale === "number" ? scale : 1);
+  const contentH =
+    workspace.offsetHeight * (typeof scale === "number" ? scale : 1);
 
   const vpW = viewport.clientWidth;
   const vpH = viewport.clientHeight;
@@ -607,7 +608,9 @@ function updateViewportBars() {
   const thumbX = viewbarX.querySelector(".vb-thumb");
   // Thumb width is the visible fraction of content along X
   const thumbXWidthPx = Math.max(10, Math.round(trackX.width * fracW));
-  const thumbXLeftPx = Math.round((trackX.width - thumbXWidthPx) * thumbFracLeft);
+  const thumbXLeftPx = Math.round(
+    (trackX.width - thumbXWidthPx) * thumbFracLeft
+  );
 
   thumbX.style.width = `${thumbXWidthPx}px`;
   thumbX.style.left = `${thumbXLeftPx}px`;
@@ -616,7 +619,9 @@ function updateViewportBars() {
   const trackY = viewbarY.getBoundingClientRect();
   const thumbY = viewbarY.querySelector(".vb-thumb");
   const thumbYHeightPx = Math.max(10, Math.round(trackY.height * fracH));
-  const thumbYTopPx = Math.round((trackY.height - thumbYHeightPx) * thumbFracTop);
+  const thumbYTopPx = Math.round(
+    (trackY.height - thumbYHeightPx) * thumbFracTop
+  );
 
   thumbY.style.height = `${thumbYHeightPx}px`;
   thumbY.style.top = `${thumbYTopPx}px`;
@@ -795,6 +800,28 @@ function applyZoom(e, deltaScale) {
   return true;
 }
 
+// ==================== Action helpers ====================
+
+/**
+ * Deletes a board item, removing it and its connections.
+ * This is the canonical entry point for deletion, allowing
+ * it to be wrapped by the undo/redo manager.
+ * @param {HTMLElement} el The board item to delete.
+ */
+function deleteBoardItem(el) {
+  // GUARD: Do not allow deletion in read-only mode
+  if (!el || window.__readOnly) return;
+
+  // Use BoardAPI functions if available (they are)
+  window.BoardAPI.removeConnectionsFor(el);
+  try {
+    el.remove();
+  } catch (_e) {}
+
+  // Trigger save (safe due to onBoardMutated restore check)
+  onBoardMutated("delete_item");
+}
+
 // ==================== Pan / Zoom ====================
 // ... (Pan/Zoom listeners unchanged) ...
 viewport.addEventListener("mousedown", (e) => {
@@ -821,7 +848,10 @@ window.addEventListener("mousemove", (e) => {
       if (Math.hypot(dx, dy) > DRAG_SLOP) {
         startDragMouse(
           pendingMouseDrag.item,
-          { clientX: pendingMouseDrag.startX, clientY: pendingMouseDrag.startY },
+          {
+            clientX: pendingMouseDrag.startX,
+            clientY: pendingMouseDrag.startY,
+          },
           pendingMouseDrag.offX,
           pendingMouseDrag.offY
         );
@@ -833,7 +863,7 @@ window.addEventListener("mousemove", (e) => {
   if (isPanning) {
     // ⛏️ BUGFIX: use startY (not startX) for vertical delta
     viewport.scrollLeft = scrollLeft - (e.clientX - startX);
-    viewport.scrollTop  = scrollTop  - (e.clientY - startY);  // ← fixed
+    viewport.scrollTop = scrollTop - (e.clientY - startY); // ← fixed
 
     clampScroll();
     throttledUpdateAllConnections();
@@ -843,7 +873,6 @@ window.addEventListener("mousemove", (e) => {
     dragMouseTo(e.clientX, e.clientY);
   }
 });
-
 
 viewport.addEventListener(
   "wheel",
@@ -1103,7 +1132,7 @@ function startDragMouse(item, eOrPoint, offX, offY) {
   // --- NEW: READ-ONLY GUARD ---
   if (window.__readOnly) return;
   // --- END NEW ---
-  
+
   active = item;
   // GUARD
   if (window.__readOnly) return;
@@ -1245,7 +1274,7 @@ function connectItems(a, b) {
   // OPTIMIZATION: Use .onclick for robust listener management
   path.onclick = (e) => {
     e.stopPropagation();
-    disconnectLine(path);
+    window.BoardAPI.disconnectLine(path);
   };
 
   svg.appendChild(path);
@@ -1316,11 +1345,11 @@ function addBibleVerse(
     visibleH = vpRect.height / scale;
   // const randX = visibleX + Math.random() * (visibleW - 300);
   // const randY = visibleY + Math.random() * (visibleH - 200);
-  const randX = visibleX + .5 * (visibleW - 300);
-  const randY = visibleY + .5 * (visibleH - 200);
+  const randX = visibleX + 0.5 * (visibleW - 300);
+  const randY = visibleY + 0.5 * (visibleH - 200);
   el.style.left = `${randX}px`;
   el.style.top = `${randY}px`;
-  el.style.zIndex = currentIndex
+  el.style.zIndex = currentIndex;
 
   // Use createdFromLoad flag to determine reference format
   const displayReference = createdFromLoad ? reference : `- ${reference}`;
@@ -1371,7 +1400,7 @@ function addTextNote(initial = "New note") {
   const y = visibleY + (visibleH - 50) / 2;
   el.style.left = `${x}px`;
   el.style.top = `${y}px`;
-  el.style.zIndex = currentIndex
+  el.style.zIndex = currentIndex;
 
   el.innerHTML = `
     <div class="note-content"><div class="verse-text note-label">NOTE</div><div class="text-content" contenteditable="${!window.__readOnly}" spellcheck="false">${initial}</div></div>
@@ -1509,7 +1538,7 @@ function addInterlinearCard({
   }
   el.style.left = `${targetLeft}px`;
   el.style.top = `${targetTop}px`;
-  el.style.zIndex = currentIndex
+  el.style.zIndex = currentIndex;
 
   // Build content
   const chips = [];
@@ -1636,9 +1665,13 @@ function displaySearchVerseOption(reference, text, version) {
 
     // OPTIMIZATION: Use .onclick for robust listener management
     item.querySelector(".search-query-verse-add-button").onclick = () => {
-      addBibleVerse(`${reference}`, text, false, version); // Pass false for createdFromLoad
+      window.BoardAPI.addBibleVerse(`${reference}`, text, false, version); // Pass false for createdFromLoad
       // OPTIMIZATION: Prefetch adjacent verses
-      prefetchAdjacentVerses(reference, globalSearchController?.signal, version);
+      prefetchAdjacentVerses(
+        reference,
+        globalSearchController?.signal,
+        version
+      );
     };
 
     verseContainer.appendChild(item);
@@ -1781,7 +1814,8 @@ async function fillVerseBatch(verseBatch, signal, version) {
     const parts = parseReferenceToParts(ref);
     if (!parts) {
       el.dataset.status = "error";
-      el.querySelector(".search-query-verse-text").textContent = "Verse not found.";
+      el.querySelector(".search-query-verse-text").textContent =
+        "Verse not found.";
       continue;
     }
     const text = await fetchVerseText(
@@ -1796,7 +1830,8 @@ async function fillVerseBatch(verseBatch, signal, version) {
     // If we received an error string, treat as not ready
     if (!text || /not\s*found|unavailable|error/i.test(String(text))) {
       el.dataset.status = "error";
-      el.querySelector(".search-query-verse-text").textContent = "Verse not found.";
+      el.querySelector(".search-query-verse-text").textContent =
+        "Verse not found.";
       continue;
     }
 
@@ -1840,7 +1875,6 @@ function ensureLoadMoreButton(container, onClick) {
   }
   return btn;
 }
-
 
 /**
  * Fetches and validates text for a single verse reference.
@@ -1898,7 +1932,7 @@ function buildVerseCard(ref, text, signal, version) {
   addBtn.onclick = () => {
     // Guard: Check status and text again
     if (item.dataset.status === "ready" && text && text.trim()) {
-      addBibleVerse(`${ref}`, text, false, version);
+      window.BoardAPI.addBibleVerse(`${ref}`, text, false, version);
       prefetchAdjacentVerses(ref, signal, version); // Use the passed-in signal
     }
   };
@@ -1937,7 +1971,7 @@ function buildSongCard(song) {
     // Guard: ensure the song card is indeed complete
     if (!songForBoard.title || !songForBoard.artist) return;
     // Call the existing add-to-board utility
-    addSongElement(songForBoard);
+    window.BoardAPI.addSongElement(songForBoard);
   };
 
   return card;
@@ -1960,7 +1994,6 @@ function ensureSongsLoadMoreButton(container, onClick) {
   }
   return btn;
 }
-
 
 /**
  * OPTIMIZATION: Debounce timer for type-ahead.
@@ -2025,7 +2058,8 @@ async function searchForQuery(event) {
   const version = getSelectedVersion(); // ADDED
 
   // --- 2. Show Skeleton UI ---
-  if (typeof didYouMeanText !== "undefined") didYouMeanText.style.display = "none";
+  if (typeof didYouMeanText !== "undefined")
+    didYouMeanText.style.display = "none";
   if (typeof searchQueryFullContainer !== "undefined")
     searchQueryFullContainer.style.display = "none";
   if (typeof loader !== "undefined") loader.style.display = "flex";
@@ -2063,8 +2097,10 @@ async function searchForQuery(event) {
       songsContainer.style.display = "grid"; // Ensure it's visible
 
       // Filter to only fully ready items (no placeholders)
-      const readySongs = (songs || []).filter(s => s && s.trackName && s.artistName);
-      
+      const readySongs = (songs || []).filter(
+        (s) => s && s.trackName && s.artistName
+      );
+
       // === THIS IS THE FIX: Use shared constants ===
       const initialSongs = readySongs.slice(0, INITIAL_VISIBLE_COUNT);
       const remainingSongs = readySongs.slice(INITIAL_VISIBLE_COUNT);
@@ -2248,7 +2284,7 @@ async function searchForQuery(event) {
 
           ensureLoadMoreButton(verseContainer, loadMore);
         }
-        
+
         // 6. Handle case where initial batch fails and no more refs
         if (loadedCount === 0 && remainingRefs.length === 0) {
           displayNoVerseFound(query);
@@ -2263,7 +2299,8 @@ async function searchForQuery(event) {
   } finally {
     // Hide main loader once refs are processed (texts stream after)
     if (loader) loader.style.display = "none";
-    if (searchQueryFullContainer) searchQueryFullContainer.style.display = "flex";
+    if (searchQueryFullContainer)
+      searchQueryFullContainer.style.display = "flex";
   }
 
   return false; // prevent default navigation
@@ -2365,7 +2402,6 @@ function clearSelection() {
   updateActionButtonsEnabled();
 }
 
-
 workspace.addEventListener("click", (e) => {
   // --- NEW: READ-ONLY GUARD ---
   // If read-only, don't allow selection or connection
@@ -2382,7 +2418,7 @@ workspace.addEventListener("click", (e) => {
     return;
   }
   if (selectedItem && item !== selectedItem) {
-    connectItems(selectedItem, item);
+    window.BoardAPI.connectItems(selectedItem, item);
     throttledUpdateAllConnections(); // OPTIMIZATION: Use throttled version
     clearSelection();
   }
@@ -2392,21 +2428,30 @@ document.addEventListener("click", (e) => {
   const insideWorkspace = e.target.closest("#workspace");
   const insideAction = e.target.closest("#action-buttons-container");
   const insideSearch = e.target.closest("#search-container"); // Don't deselect when clicking search
-  
+
   // --- NEW: READ-ONLY GUARD (modified) ---
   // Allow deselecting in read-only, just don't clear if already clear
   if (window.__readOnly && !selectedItem) return;
   // --- END NEW ---
-  
+
   if (!insideWorkspace && !insideAction && !insideSearch) {
     // If click is *outside* search, close it
-    if (!e.target.closest("#search-query-container") && !insideSearch && !e.target.closest(".share-popover") && !e.target.closest("#share-btn")) {
+    if (
+      !e.target.closest("#search-query-container") &&
+      !insideSearch &&
+      !e.target.closest(".share-popover") &&
+      !e.target.closest("#share-btn")
+    ) {
       closeSearchQuery();
     }
     // --- NEW: READ-ONLY GUARD ---
     // Only clear selection if not read-only, or if clicking outside share popover
-    if (!window.__readOnly && !e.target.closest(".share-popover") && !e.target.closest("#share-btn")) {
-       clearSelection();
+    if (
+      !window.__readOnly &&
+      !e.target.closest(".share-popover") &&
+      !e.target.closest("#share-btn")
+    ) {
+      clearSelection();
     }
     // --- END NEW ---
   }
@@ -2420,7 +2465,6 @@ document.addEventListener("keydown", (e) => {
   }
 });
 
-
 // ==================== Action buttons: Connect / Text / Delete ====================
 // ... (Action button listeners unchanged, guards are inside handlers) ...
 connectBtn?.addEventListener("click", (e) => {
@@ -2433,19 +2477,21 @@ connectBtn?.addEventListener("click", (e) => {
 textBtn?.addEventListener("click", (e) => {
   e.preventDefault();
   e.stopPropagation();
-  addTextNote("New note");
+  window.BoardAPI.addTextNote("New note");
 });
 
 deleteBtn?.addEventListener("click", (e) => {
   e.preventDefault();
   e.stopPropagation();
   if (!selectedItem) return;
-  removeConnectionsFor(selectedItem);
-  try {
-    selectedItem.remove();
-  } catch (_e) {}
+
+  // Call the new BoardAPI function
+  window.BoardAPI.deleteItem(selectedItem);
+
+  // clearSelection is still handled here as it's UI state, not
+  // part of the core deletion action.
   clearSelection();
-  onBoardMutated("delete_item"); // AUTOSAVE
+  // NOTE: onBoardMutated is now called inside deleteBoardItem
 });
 
 // ==================== Interlinear integration ====================
@@ -2636,7 +2682,7 @@ function renderInterlinearTokens(data) {
     // ⬇️ Add dedicated interlinear card on board
     // OPTIMIZATION: Use .onclick
     row.querySelector(".interlinear-add").onclick = () => {
-      addInterlinearCard({
+      window.BoardAPI.addInterlinearCard({
         surface,
         english,
         translit,
@@ -2756,7 +2802,6 @@ interlinearBtn?.addEventListener("click", async (e) => {
   }
 });
 
-
 // ==================== Song search (iTunes public API, CORS-friendly) ====================
 // ... (fetchSongs unchanged) ...
 /**
@@ -2797,7 +2842,7 @@ function addSongElement({ title, artist, cover }) {
   // --- NEW: READ-ONLY GUARD ---
   if (window.__readOnly && !window.__RESTORING_FROM_SUPABASE) return;
   // --- END NEW ---
-  
+
   const el = document.createElement("div");
   el.classList.add("board-item", "song-item");
   el.style.position = "absolute";
@@ -2861,7 +2906,7 @@ function addSongElement({ title, artist, cover }) {
     if (window.__readOnly) return;
     // --- END NEW ---
     onBoardMutated("edit_title");
-  }
+  };
 
   el.addEventListener("input", trigger, { passive: true });
   el.addEventListener("change", trigger, { passive: true });
@@ -2878,7 +2923,7 @@ function addSongElement({ title, artist, cover }) {
     // --- NEW: READ-ONLY GUARD ---
     if (window.__readOnly) return;
     // --- END NEW ---
-    
+
     // Skip during restore or active drag
     if (window.__RESTORING_FROM_SUPABASE || active || touchDragElement) return;
 
@@ -3000,7 +3045,9 @@ if (navigator.share) {
     try {
       await navigator.share({
         title: "Bible Board",
-        text: `Check out this Bible Board: ${document.getElementById("title-textbox")?.value || ""}`,
+        text: `Check out this Bible Board: ${
+          document.getElementById("title-textbox")?.value || ""
+        }`,
         url: getShareUrl(),
       });
     } catch {}
@@ -3049,9 +3096,12 @@ function syncSearchPickerFromSettings() {
  * @returns {string}
  */
 function makeExportFilename(suffix, ext) {
-  const title = (document.getElementById('title-textbox')?.value || 'BibleBoard')
-    .trim().replace(/\s+/g, '_');
-  const ts = new Date().toISOString().replace(/[:.]/g, '-');
+  const title = (
+    document.getElementById("title-textbox")?.value || "BibleBoard"
+  )
+    .trim()
+    .replace(/\s+/g, "_");
+  const ts = new Date().toISOString().replace(/[:.]/g, "-");
   return `${title}_${suffix}_${ts}.${ext}`;
 }
 
@@ -3061,7 +3111,7 @@ function makeExportFilename(suffix, ext) {
  * @param {string} filename - The desired filename.
  */
 function downloadDataURL(dataUrl, filename) {
-  const a = document.createElement('a');
+  const a = document.createElement("a");
   a.href = dataUrl;
   a.download = filename;
   document.body.appendChild(a);
@@ -3075,22 +3125,25 @@ function downloadDataURL(dataUrl, filename) {
  * @returns {{x: number, y: number, width: number, height: number} | null}
  */
 function computeUsedBounds() {
-  const items = Array.from(document.querySelectorAll('.board-item'));
+  const items = Array.from(document.querySelectorAll(".board-item"));
   if (!items.length) return { x: 0, y: 0, width: 0, height: 0 };
 
-  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  let minX = Infinity,
+    minY = Infinity,
+    maxX = -Infinity,
+    maxY = -Infinity;
   for (const el of items) {
     // read absolute position from inline styles (authoring model)
-    const left = parseFloat(el.style.left || '0');
-    const top  = parseFloat(el.style.top  || '0');
-    const w = el.offsetWidth  || 0;
+    const left = parseFloat(el.style.left || "0");
+    const top = parseFloat(el.style.top || "0");
+    const w = el.offsetWidth || 0;
     const h = el.offsetHeight || 0;
 
     // Extend bounds to include the FULL element rect
     minX = Math.min(minX, left);
     minY = Math.min(minY, top);
     maxX = Math.max(maxX, left + w);
-    maxY = Math.max(maxY, top  + h);
+    maxY = Math.max(maxY, top + h);
   }
 
   const pad = 64; // breathing room
@@ -3098,8 +3151,8 @@ function computeUsedBounds() {
   const x = Math.max(0, Math.floor(minX - pad));
   const y = Math.max(0, Math.floor(minY - pad));
   // Ceil to ensure we don't chop the bottom/right by a fraction
-  const width  = Math.ceil((maxX + pad) - x);
-  const height = Math.ceil((maxY + pad) - y);
+  const width = Math.ceil(maxX + pad - x);
+  const height = Math.ceil(maxY + pad - y);
 
   return { x, y, width, height };
 }
@@ -3110,37 +3163,38 @@ function computeUsedBounds() {
  * @param {HTMLElement} rootNode
  */
 function sanitizeImagesForCanvas(root) {
-  const imgs = root.querySelectorAll('img');
-  imgs.forEach(img => {
-    const src = img.getAttribute('src') || '';
-    if (src.startsWith('data:')) return;
-    if (!img.crossOrigin) img.crossOrigin = 'anonymous';
+  const imgs = root.querySelectorAll("img");
+  imgs.forEach((img) => {
+    const src = img.getAttribute("src") || "";
+    if (src.startsWith("data:")) return;
+    if (!img.crossOrigin) img.crossOrigin = "anonymous";
   });
 }
 
 // Temporarily make .board-item backgrounds solid for export
 function setTemporarySolidBackgrounds(root = document) {
-  const items = root.querySelectorAll('.board-item');
+  const items = root.querySelectorAll(".board-item");
   // Use the app's base bg/alt color—not the translucent token
-  const solid = getComputedStyle(document.body).getPropertyValue('--bg-dots')?.trim()
-             || getComputedStyle(document.body).getPropertyValue('--bg')?.trim()
-             || '#ffffff';
+  const solid =
+    getComputedStyle(document.body).getPropertyValue("--bg-dots")?.trim() ||
+    getComputedStyle(document.body).getPropertyValue("--bg")?.trim() ||
+    "#ffffff";
 
-  items.forEach(el => {
+  items.forEach((el) => {
     // stash original inline values (not computed) so we can restore exactly
-    el.dataset._prevBg = el.style.background || '';
-    el.dataset._prevBackdrop = el.style.backdropFilter || '';
+    el.dataset._prevBg = el.style.background || "";
+    el.dataset._prevBackdrop = el.style.backdropFilter || "";
 
-    el.style.background = solid;     // solid fill (no alpha)
-    el.style.backdropFilter = 'none'; // disable blur—html-to-image can render weirdly with it
+    el.style.background = solid; // solid fill (no alpha)
+    el.style.backdropFilter = "none"; // disable blur—html-to-image can render weirdly with it
   });
 }
 
 function restoreBackgrounds(root = document) {
-  const items = root.querySelectorAll('.board-item');
-  items.forEach(el => {
-    el.style.background = el.dataset._prevBg || '';
-    el.style.backdropFilter = el.dataset._prevBackdrop || '';
+  const items = root.querySelectorAll(".board-item");
+  items.forEach((el) => {
+    el.style.background = el.dataset._prevBg || "";
+    el.style.backdropFilter = el.dataset._prevBackdrop || "";
     delete el.dataset._prevBg;
     delete el.dataset._prevBackdrop;
   });
@@ -3151,17 +3205,22 @@ function restoreBackgrounds(root = document) {
  */
 async function exportBoardPNGUsedArea({ scale = 1 } = {}) {
   const { viewport } = window.BoardAPI;
-  const boardRoot = document.getElementById('workspace'); // wrapper that contains items + connections
-  if (!boardRoot) { alert('Workspace not found'); return; }
+  const boardRoot = document.getElementById("workspace"); // wrapper that contains items + connections
+  if (!boardRoot) {
+    alert("Workspace not found");
+    return;
+  }
 
   // Ensure connections are up to date, and layout is stable
-  if (typeof updateAllConnections === 'function') updateAllConnections();
-  await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+  if (typeof updateAllConnections === "function") updateAllConnections();
+  await new Promise((r) =>
+    requestAnimationFrame(() => requestAnimationFrame(r))
+  );
 
   // Compute tight bounds of used area (see section B)
   const box = computeUsedBounds();
   if (!box || box.width <= 0 || box.height <= 0) {
-    alert('Nothing to export yet.');
+    alert("Nothing to export yet.");
     return;
   }
 
@@ -3170,17 +3229,19 @@ async function exportBoardPNGUsedArea({ scale = 1 } = {}) {
   setTemporarySolidBackgrounds(boardRoot);
 
   // Shift the board so the box’s top-left renders at (0,0)
-  const prevTransform = boardRoot.style.transform || '';
-  const prevTransformOrigin = boardRoot.style.transformOrigin || '';
-  boardRoot.style.transformOrigin = 'top left';
+  const prevTransform = boardRoot.style.transform || "";
+  const prevTransformOrigin = boardRoot.style.transformOrigin || "";
+  boardRoot.style.transformOrigin = "top left";
   boardRoot.style.transform = `translate(${-box.x}px, ${-box.y}px) scale(1)`;
-  
+
   // Compute pixel size
   const outW = Math.ceil(box.width * scale);
   const outH = Math.ceil(box.height * scale);
 
   // Set a background color on the canvas so no part is transparent
-  const bg = getComputedStyle(document.body).getPropertyValue('--bg')?.trim() || '#ffffff';
+  const bg =
+    getComputedStyle(document.body).getPropertyValue("--bg")?.trim() ||
+    "#ffffff";
 
   try {
     const dataUrl = await window.htmlToImage.toPng(boardRoot, {
@@ -3189,13 +3250,13 @@ async function exportBoardPNGUsedArea({ scale = 1 } = {}) {
       // Fill the canvas background to avoid any transparent strips
       backgroundColor: bg,
       // Prevent clipping issues
-      style: { overflow: 'visible', position: 'relative' },
-      cacheBust: true
+      style: { overflow: "visible", position: "relative" },
+      cacheBust: true,
     });
-    downloadDataURL(dataUrl, makeExportFilename('used', 'png'));
+    downloadDataURL(dataUrl, makeExportFilename("used", "png"));
   } catch (e) {
-    console.error('Export failed:', e);
-    alert('Export failed. Try a smaller scale.');
+    console.error("Export failed:", e);
+    alert("Export failed. Try a smaller scale.");
   } finally {
     // Restore styles
     boardRoot.style.transform = prevTransform;
@@ -3203,7 +3264,6 @@ async function exportBoardPNGUsedArea({ scale = 1 } = {}) {
     restoreBackgrounds(boardRoot);
   }
 }
-
 
 /**
  * Wires up the existing Export button to trigger a direct download.
@@ -3229,7 +3289,6 @@ function initExportButton() {
   });
 }
 
-
 // Call the new init function on load
 initExportButton();
 
@@ -3245,9 +3304,9 @@ function applyReadOnlyGuards(isReadOnly) {
   const actionButtons = document.getElementById("action-buttons-container");
   const titleInput = document.getElementById("title-textbox");
   const editIcon = document.getElementById("edit-Icon");
-  const searchForm = document.getElementById('search-container'); // ADDED
-  const tourBtn = document.getElementById('bb-tour-help-btn'); // ADDED
-  const exportBtn = document.getElementById('export-btn'); // ADDED FOR EXPORT
+  const searchForm = document.getElementById("search-container"); // ADDED
+  const tourBtn = document.getElementById("bb-tour-help-btn"); // ADDED
+  const exportBtn = document.getElementById("export-btn"); // ADDED FOR EXPORT
 
   if (isReadOnly) {
     // 1. Hide mutation buttons (Connect, Add Note, Delete)
@@ -3266,14 +3325,13 @@ function applyReadOnlyGuards(isReadOnly) {
     });
     // 4. Clear any lingering selection
     clearSelection();
-    
+
     // 5. Hide search and tour (NEW)
-    if (searchForm) searchForm.style.display = 'none';
-    if (tourBtn) tourBtn.style.display = 'none';
+    if (searchForm) searchForm.style.display = "none";
+    if (tourBtn) tourBtn.style.display = "none";
 
     // 6. Show Export button (viewers can export)
-    if (exportBtn) exportBtn.style.display = 'inline-block'; // Make sure it's visible
-
+    if (exportBtn) exportBtn.style.display = "inline-block"; // Make sure it's visible
   } else {
     // Restore UI for owner
     if (actionButtons) actionButtons.style.display = "flex";
@@ -3288,13 +3346,13 @@ function applyReadOnlyGuards(isReadOnly) {
       el.title = "";
     });
     // --- END NEW ---
-    
+
     // 5. Restore search and tour (NEW)
-    if (searchForm) searchForm.style.display = ''; // Use '' to reset to CSS default
-    if (tourBtn) tourBtn.style.display = 'inline-block'; // Match supabase-sync.js logic
+    if (searchForm) searchForm.style.display = ""; // Use '' to reset to CSS default
+    if (tourBtn) tourBtn.style.display = "inline-block"; // Match supabase-sync.js logic
 
     // 6. Show Export button
-    if (exportBtn) exportBtn.style.display = 'inline-block';
+    if (exportBtn) exportBtn.style.display = "inline-block";
   }
 }
 
@@ -3424,11 +3482,11 @@ function deserializeBoard(data) {
         const targetLeft =
           data.viewport.centerX != null
             ? data.viewport.centerX * sc - viewport.clientWidth / 2
-            : (data.viewport.scrollLeft || 0);
+            : data.viewport.scrollLeft || 0;
         const targetTop =
           data.viewport.centerY != null
             ? data.viewport.centerY * sc - viewport.clientHeight / 2
-            : (data.viewport.scrollTop || 0);
+            : data.viewport.scrollTop || 0;
 
         viewport.scrollLeft = Math.max(0, targetLeft);
         viewport.scrollTop = Math.max(0, targetTop);
@@ -3459,7 +3517,6 @@ function deserializeBoard(data) {
     }, 50);
   }
 }
-
 
 // ... (Tour logic unchanged) ...
 function buildBoardTourSteps() {
@@ -3520,8 +3577,12 @@ function buildBoardTourSteps() {
           tempVerse.id = "temp-tour-board-verse";
           // Position it in view
           const vpRect = viewport.getBoundingClientRect();
-          tempVerse.style.left = `${(viewport.scrollLeft + vpRect.width / 2 - 150) / scale}px`;
-          tempVerse.style.top = `${(viewport.scrollTop + vpRect.height / 2 - 100) / scale}px`;
+          tempVerse.style.left = `${
+            (viewport.scrollLeft + vpRect.width / 2 - 150) / scale
+          }px`;
+          tempVerse.style.top = `${
+            (viewport.scrollTop + vpRect.height / 2 - 100) / scale
+          }px`;
         }
       },
       afterStep: () => {
@@ -3533,7 +3594,23 @@ function buildBoardTourSteps() {
       },
     },
     {
-      id:"connect",
+      id: "undo",
+      target: () => document.getElementById("undo-btn"),
+      title: "Undo Your Last Action",
+      text: "Made a mistake? Tap this button to undo your last action, like adding an item or making a connection. You can also use the shortcut Ctrl+Z.",
+      placement: "right",
+      allowPointerThrough: true,
+    },
+    {
+      id: "redo",
+      target: () => document.getElementById("redo-btn"),
+      title: "Redo an Action",
+      text: "If you undo too far, tap this button to bring your action back. The shortcut for this is Ctrl+Shift+Z.",
+      placement: "right",
+      allowPointerThrough: true,
+    },
+    {
+      id: "connect",
       target: () => document.getElementById("mobile-action-button"),
       title: "Connect Ideas",
       text: "Select a card, then tap this 'Connect' button. Tap another card to draw a line between them.",
@@ -3569,7 +3646,7 @@ function buildBoardTourSteps() {
     {
       id: "finish",
       title: "You're All Set!",
-      text: "You're ready to build your board. Try searching for a verse now to get started."
+      text: "You're ready to build your board. Try searching for a verse now to get started.",
       // allowPointerThrough: true, // <-- ADD THIS LINE
     },
   ];
@@ -3580,173 +3657,180 @@ function buildBoardTourSteps() {
 function setupBoardSettingsPanel() {
   const runSetup = () => {
     // 1. --- Guards ---
-    if (document.getElementById('board-settings-toggle')) return; // Already setup
+    if (document.getElementById("board-settings-toggle")) return; // Already setup
     const body = document.getElementById("main-content-container");
     if (!body) return;
 
     // 2. --- Create Toggle Button ---
-    const toggleBtn = document.createElement('button');
-    toggleBtn.id = 'board-settings-toggle';
-    toggleBtn.className = 'toggle-btn'; // Use existing class from index.html
-    toggleBtn.setAttribute('aria-label', 'Board Settings');
-    toggleBtn.setAttribute('aria-haspopup', 'true');
-    toggleBtn.setAttribute('aria-expanded', 'false');
+    const toggleBtn = document.createElement("button");
+    toggleBtn.id = "board-settings-toggle";
+    toggleBtn.className = "toggle-btn"; // Use existing class from index.html
+    toggleBtn.setAttribute("aria-label", "Board Settings");
+    toggleBtn.setAttribute("aria-haspopup", "true");
+    toggleBtn.setAttribute("aria-expanded", "false");
     // Simple Gear SVG Icon
     toggleBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="currentColor" style="width: 22px; height: 22px; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);"><path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.23-.08-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1c.23.08.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"/></svg>`;
-    
+
     // Style toggle button (fixed position, replaces old theme toggle)
-    toggleBtn.style.position = 'absolute';
-    toggleBtn.style.top = '15px';
-    toggleBtn.style.right = '15px';
-    toggleBtn.style.zIndex = '10003'; 
+    toggleBtn.style.position = "absolute";
+    toggleBtn.style.top = "15px";
+    toggleBtn.style.right = "15px";
+    toggleBtn.style.zIndex = "10003";
 
     // 3. --- Create Panel ---
-    const panel = document.createElement('div');
-    panel.id = 'board-settings-panel';
-    panel.setAttribute('role', 'dialog');
-    panel.setAttribute('aria-modal', 'false');
-    panel.setAttribute('aria-labelledby', 'board-settings-title');
-    
+    const panel = document.createElement("div");
+    panel.id = "board-settings-panel";
+    panel.setAttribute("role", "dialog");
+    panel.setAttribute("aria-modal", "false");
+    panel.setAttribute("aria-labelledby", "board-settings-title");
+
     // Style panel
-    panel.style.position = 'absolute';
-    panel.style.right = '70px'; // Below 50px button + 25px top + 10px gap
-    panel.style.top = '15px';
-    panel.style.minWidth = '240px';
-    panel.style.background = 'var(--bg-seethroug)';
-    panel.style.border = '1px solid var(--fg-seethrough)';
-    panel.style.backdropFilter = 'blur(1rem)';
-    panel.style.borderRadius = '12px';
-    panel.style.padding = '12px';
-    panel.style.zIndex = '10004';
-    panel.style.display = 'none'; // Start hidden
+    panel.style.position = "absolute";
+    panel.style.right = "70px"; // Below 50px button + 25px top + 10px gap
+    panel.style.top = "15px";
+    panel.style.minWidth = "240px";
+    panel.style.background = "var(--bg-seethroug)";
+    panel.style.border = "1px solid var(--fg-seethrough)";
+    panel.style.backdropFilter = "blur(1rem)";
+    panel.style.borderRadius = "12px";
+    panel.style.padding = "12px";
+    panel.style.zIndex = "10004";
+    panel.style.display = "none"; // Start hidden
 
     // 4. --- Create Panel Internals ---
     panel.innerHTML = `<div id="board-settings-title" style="font-size: 1rem; font-weight: 700; color: var(--fg); padding-bottom: 8px; border-bottom: 1px solid var(--border); margin-bottom: 12px;">Settings</div>
                        <div id="board-settings-content" style="display: flex; flex-direction: column; gap: 8px;"></div>`;
-    const content = panel.querySelector('#board-settings-content');
+    const content = panel.querySelector("#board-settings-content");
 
     // Helper to create muted labels
     const createLabel = (text) => {
-      const label = document.createElement('div');
+      const label = document.createElement("div");
       label.textContent = text;
-      label.style.fontSize = '0.75rem';
-      label.style.fontWeight = '700';
-      label.style.color = 'var(--muted)';
-      label.style.textTransform = 'uppercase';
-      label.style.padding = '8px 0 4px 4px';
-      label.style.marginTop = '4px';
+      label.style.fontSize = "0.75rem";
+      label.style.fontWeight = "700";
+      label.style.color = "var(--muted)";
+      label.style.textTransform = "uppercase";
+      label.style.padding = "8px 0 4px 4px";
+      label.style.marginTop = "4px";
       return label;
     };
 
     // Helper to reset moved button styles for stacking
     const resetPosition = (el) => {
       if (!el) return;
-      el.style.position = 'relative';
-      el.style.top = 'auto';
-      el.style.left = 'auto';
-      el.style.right = 'auto';
-      el.style.width = '100%';
-      el.style.boxSizing = 'border-box'; // Ensure padding doesn't break 100% width
+      el.style.position = "relative";
+      el.style.top = "auto";
+      el.style.left = "auto";
+      el.style.right = "auto";
+      el.style.width = "100%";
+      el.style.boxSizing = "border-box"; // Ensure padding doesn't break 100% width
     };
 
     // 5. --- Find and Move Elements ---
-    const themeToggle = document.getElementById('theme-toggle');
-    const exportBtn = document.getElementById('export-btn');
-    const shareBtn = document.getElementById('share-btn');
-    const tourBtn = document.getElementById('bb-tour-help-btn');
+    const themeToggle = document.getElementById("theme-toggle");
+    const exportBtn = document.getElementById("export-btn");
+    const shareBtn = document.getElementById("share-btn");
+    const tourBtn = document.getElementById("bb-tour-help-btn");
 
     // Appearance Section
     if (themeToggle) {
-      content.appendChild(createLabel('Appearance'));
+      content.appendChild(createLabel("Appearance"));
       resetPosition(themeToggle);
-      
+
       // Add a text label *inside* the button (modifies button, but required for context)
-      const themeLabel = document.createElement('span');
-      themeLabel.textContent = 'Theme';
-      themeLabel.style.fontWeight = '700';
-      themeLabel.style.fontSize = '15px';
-      themeToggle.style.justifyContent = 'space-between';
-      themeToggle.style.padding = '5px 15px';
-      themeToggle.style.height = '40px';
+      const themeLabel = document.createElement("span");
+      themeLabel.textContent = "Theme";
+      themeLabel.style.fontWeight = "700";
+      themeLabel.style.fontSize = "15px";
+      themeToggle.style.justifyContent = "space-between";
+      themeToggle.style.padding = "5px 15px";
+      themeToggle.style.height = "40px";
       themeToggle.prepend(themeLabel); // Add label
-      
+
       content.appendChild(themeToggle);
     }
-    
+
     // Board Actions Section
     if (exportBtn || shareBtn) {
-       content.appendChild(createLabel('Board Actions'));
-       if (exportBtn) {
-         resetPosition(exportBtn);
-         content.appendChild(exportBtn);
-       }
-       if (shareBtn) {
-         resetPosition(shareBtn);
-         content.appendChild(shareBtn);
-       }
+      content.appendChild(createLabel("Board Actions"));
+      if (exportBtn) {
+        resetPosition(exportBtn);
+        content.appendChild(exportBtn);
+      }
+      if (shareBtn) {
+        resetPosition(shareBtn);
+        content.appendChild(shareBtn);
+      }
     }
 
     // Help Section
     if (tourBtn) {
-      content.appendChild(createLabel('Help'));
+      content.appendChild(createLabel("Help"));
       resetPosition(tourBtn);
       content.appendChild(tourBtn);
     }
-    
+
     // 6. --- Append New UI to Body ---
     body.appendChild(toggleBtn);
     body.appendChild(panel);
 
     // 7. --- Open/Close/Focus Logic ---
     const openPanel = () => {
-      panel.style.display = 'block';
-      toggleBtn.setAttribute('aria-expanded', 'true');
-      localStorage.setItem('bb_settings_open', 'true');
-      
+      panel.style.display = "block";
+      toggleBtn.setAttribute("aria-expanded", "true");
+      localStorage.setItem("bb_settings_open", "true");
+
       // Focus first focusable element in panel
-      const firstFocusable = panel.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+      const firstFocusable = panel.querySelector(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
       if (firstFocusable) firstFocusable.focus();
     };
 
     const closePanel = () => {
-      panel.style.display = 'none';
-      toggleBtn.setAttribute('aria-expanded', 'false');
-      localStorage.setItem('bb_settings_open', 'false');
+      panel.style.display = "none";
+      toggleBtn.setAttribute("aria-expanded", "false");
+      localStorage.setItem("bb_settings_open", "false");
       toggleBtn.focus(); // Return focus to the toggle
     };
 
-    toggleBtn.addEventListener('click', (e) => {
+    toggleBtn.addEventListener("click", (e) => {
       e.stopPropagation();
-      const isHidden = panel.style.display === 'none';
+      const isHidden = panel.style.display === "none";
       if (isHidden) openPanel();
       else closePanel();
     });
 
     // Close on Escape
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && panel.style.display !== 'none') {
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && panel.style.display !== "none") {
         closePanel();
       }
     });
 
     // Close on click outside
-    document.addEventListener('click', (e) => {
-      if (panel.style.display !== 'none' && !panel.contains(e.target) && e.target !== toggleBtn && !toggleBtn.contains(e.target)) {
+    document.addEventListener("click", (e) => {
+      if (
+        panel.style.display !== "none" &&
+        !panel.contains(e.target) &&
+        e.target !== toggleBtn &&
+        !toggleBtn.contains(e.target)
+      ) {
         closePanel();
       }
     });
 
     // 8. --- Restore State from localStorage ---
-    if (localStorage.getItem('bb_settings_open') === 'true') {
+    if (localStorage.getItem("bb_settings_open") === "true") {
       openPanel();
     }
   };
 
   // --- Invocation ---
-  if (document.readyState !== 'loading') {
+  if (document.readyState !== "loading") {
     runSetup();
   } else {
-    document.addEventListener('DOMContentLoaded', runSetup);
+    document.addEventListener("DOMContentLoaded", runSetup);
   }
 }
 
@@ -3774,6 +3858,9 @@ window.BoardAPI = {
   addInterlinearCard, // ({surface, english, translit, morph, strong, reference}) => HTMLElement
   addSongElement, // ({title, artist, cover}) => HTMLElement
 
+  // NEW: Add the deleteItem function
+  deleteItem: deleteBoardItem,
+
   // connections management used during load/hydration
   getConnections: () => connections, // Expose for serialization
   connectItems, // (aEl, bEl) => void
@@ -3784,7 +3871,7 @@ window.BoardAPI = {
 
   // stable key helper
   itemKey, // (el) => string
-  
+
   applyReadOnlyGuards, // NEW: Expose for supabase-sync
 
   // Board clear for load/sign-out
@@ -3840,45 +3927,3 @@ window.BoardAPI = {
    */
   deserializeBoard,
 };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
