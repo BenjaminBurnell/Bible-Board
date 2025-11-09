@@ -55,7 +55,7 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        padding: 6px;
+        padding: 13px;
         border-radius: 15px;
         width: 45px;
         height: 45px;
@@ -256,10 +256,10 @@
           <svg
             class="action-icon"
             xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
+            viewBox="0 -960 960 960"
           >
             <path
-              d="M12.5 8C9.85 8 7.45 8.99 5.6 10.6L2 7V16H11L7.38 12.38C8.77 11.22 10.54 10.5 12.5 10.5C16.04 10.5 19.05 12.81 20.1 16L22.47 15.22C21.08 11.03 17.15 8 12.5 8Z"
+              d="M292-166v-126h293q51 0 87-35.5t36-86.5q0-51-36-87t-87-36H366l83 83-88 88-235-234 235-234 88 88-83 83h219q103 0 176 72.5T834-415q0 103-73 176t-176 73H292Z"
             />
           </svg>
         </button>
@@ -272,10 +272,10 @@
           <svg
             class="action-icon"
             xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
+            viewBox="0 -960 960 960"
           >
             <path
-              d="M18.4 10.6C16.55 8.99 14.15 8 11.5 8C6.85 8 2.92 11.03 1.53 15.22L3.9 16C5.05 12.81 8.04 10.5 11.5 10.5C13.46 10.5 15.23 11.22 16.62 12.38L13 16H22V7L18.4 10.6Z"
+              d="M375-166q-103 0-176-72.5T126-414q0-103 73-176t176-73h219l-83-83 88-88 235 234-235 234-88-88 83-83H375q-51 0-87 35.5T252-415q0 51 36 87t87 36h293v126H375Z"
             />
           </svg>
         </button>
@@ -288,22 +288,30 @@
           <svg
             class="action-icon"
             xmlns="http://www.w3.org/2000/svg"
-            height="24px"
+            height="25px"
             viewBox="0 -960 960 960"
-            width="24px"
+            width="25px"
           >
             <path
-              d="M200-120q-17 0-28.5-11.5T160-160v-40h-40v-160
-                q0-17 11.5-28.5T160-400h40v-280q0-66 47-113t113-47
-                q66 0 113 47t47 113v400q0 33 23.5 56.5T600-200
-                q33 0 56.5-23.5T680-280v-280h-40q-17 0-28.5-11.5
-                T600-600v-160h40v-40q0-17 11.5-28.5T680-840h80
-                q17 0 28.5 11.5T800-800v40h40v160q0 17-11.5
-                28.5T800-560h-40v280q0 66-47 113t-113 47
-                q-66 0-113-47t-47-113v-400q0-33-23.5
-                -56.5T360-760q-33 0-56.5 23.5T280-680v280h40
-                q17 0 28.5 11.5T360-360v160h-40v40q0
-                17-11.5 28.5T280-120h-80Z"
+              d="M425-246H280q-97.11 0-165.56-68.42Q46-382.84 46-479.92t68.44-165.58Q182.89-714 280-714h145v126H280.43q-45.18 0-76.8 31.5Q172-525 172-480t31.63 76.5q31.62 31.5 76.8 31.5H425v126ZM297-432v-96h366v96H297Zm238 186v-126h144.57q45.18 0 76.81-31.5Q788-435 788-480t-31.62-76.5Q724.75-588 679.57-588H535v-126h145q97.11 0 165.55 68.42Q914-577.16 914-480.08T845.55-314.5Q777.11-246 680-246H535Z"
+            />
+          </svg>
+        </button>
+
+        <button
+          id="disconnect-mode-btn"
+          class="action-button"
+          aria-label="Toggle disconnect mode"
+          title="Disconnect mode: click lines to remove"
+        >
+          
+          <svg
+            class="action-icon"
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 -960 960 960"
+          >
+            <path
+              d="m791-283-93-93q35-10 63-38.5t28-65.93q0-44.57-31.21-76.07Q726.58-588 682-588H526v-126h155q97.11 0 165.55 68.45Q915-577.11 915-480q0 62-35 115t-89 82ZM641-432l-94-96h107v96h-13ZM770-56 45-781l67-67 725 725-67 67ZM424-246H279q-97.11 0-165.56-68.45Q45-382.89 45-480q0-71 38.5-129.5T188-696l108 108h-17q-45 0-76.5 31.5T171-480q0 45 31.63 76.5 31.62 31.5 76.8 31.5H424v126ZM306-432v-96h61l95 96H306Z"
             />
           </svg>
         </button>
@@ -321,7 +329,7 @@
             viewBox="0 -960 960 960"
           >
             <path
-              d="M160-120v-80h240v-560H240v-80h480v80H560v560h240v80H160Z"
+              d="M280-160v-520H80v-120h520v120H400v520H280Zm360 0v-320H520v-120h360v120H760v320H640Z"
             />
           </svg>
         </button>
@@ -359,7 +367,7 @@
             viewBox="0 -960 960 960"
           >
             <path
-              d="M280-120q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520ZM360-280h80v-360h-80v360Zm160 0h80v-360h-80v360Z"
+              d="M269-86q-53 0-89.5-36.5T143-212v-497H80v-126h257v-63h284v63h259v126h-63v497q0 53-36.5 89.5T691-86H269Zm422-623H269v497h422v-497ZM342-281h103v-360H342v360Zm173 0h103v-360H515v360ZM269-709v497-497Z"
             />
           </svg>
         </button>
@@ -436,13 +444,13 @@
     <button id="back-to-boards-btn" onclick="goBackToBoards()">
       <svg
         xmlns="http://www.w3.org/2000/svg"
-        height="24px"
+        height="20px"
         viewBox="0 -960 960 960"
-        width="24px"
+        width="20px"
         fill="var(--fg)"
       >
         <path
-          d="m313-440 224 224-57 56-320-320 320-320 57 56-224 224h487v80H313Z"
+          d="m368-417 202 202-90 89-354-354 354-354 90 89-202 202h466v126H368Z"
         />
       </svg>
     </button>
@@ -460,6 +468,9 @@
     <script src="script.js"></script>
     <script src="undo-redo.js"></script>
     <script src="persist-helper.js"></script>
+
+    <script src="connection-colors.js"></script>
+
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <script type="module" src="../supabaseClient.js"></script>
     <link rel="stylesheet" href="tour.css" />

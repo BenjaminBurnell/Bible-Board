@@ -314,6 +314,10 @@ function serializeBoard() {
   const connections = getConnections().map((c) => ({
     a: itemKey(c.itemA),
     b: itemKey(c.itemB),
+    color:
+      c.color ||
+      (c.path && (c.path.dataset.color || c.path.style.stroke)) ||
+      undefined,
   }));
 
   // Viewport (save both raw scrolls and world-space center)
@@ -394,7 +398,17 @@ function deserializeBoard(payload) {
     (payload.connections || []).forEach((c) => {
       const elA = getElementByVKey(c.a);
       const elB = getElementByVKey(c.b);
-      if (elA && elB) connectItems(elA, elB);
+      if (!elA || !elB) return; // Skip if elements aren't found
+
+      const color = c.color; // Get color from payload
+
+      if (typeof color === "string" && color.length) {
+        // Use the color-aware wrapper from connection-colors.js
+        connectItems(elA, elB, color);
+      } else {
+        // Backwards compatibility: no color in payload -> use normal call
+        connectItems(elA, elB);
+      }
     });
 
     // Viewport restore (prefer world-space center if available)

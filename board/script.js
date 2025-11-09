@@ -1199,111 +1199,227 @@ function dragTouchTo(touchPoint) {
 }
 
 // ==================== Connections ====================
-// ... (connectionExists unchanged) ...
+
 let connections = [];
+let disconnectMode = false;
+
+function setDisconnectMode(enabled) {
+  disconnectMode = !!enabled;
+  document.body.classList.toggle("disconnect-mode", disconnectMode);
+}
+
+function toggleDisconnectMode() {
+  setDisconnectMode(!disconnectMode);
+}
+
+function isDisconnectMode() {
+  return !!disconnectMode;
+}
+
 function connectionExists(a, b) {
-  const ka = itemKey(a),
-    kb = itemKey(b);
+  if (!a || !b) return false;
+  const ka = itemKey(a);
+  const kb = itemKey(b);
   return connections.some((c) => {
-    const ca = itemKey(c.itemA),
-      cb = itemKey(c.itemB);
+    const ca = itemKey(c.itemA);
+    const cb = itemKey(c.itemB);
     return (ca === ka && cb === kb) || (ca === kb && cb === ka);
   });
 }
 
-// ... (updateConnection, updateAllConnections unchanged) ...
-function updateConnection(path, el1, el2) {
+/**
+ * Center-to-center curved connection (original behavior),
+ * plus optional midpoint handle positioning.
+ * Expects a full connection object: { path, itemA, itemB, handle? }
+ */
+function updateConnection(conn) {
+  if (!conn) return;
+  const { path, itemA, itemB, handle } = conn;
+  if (!path || !itemA || !itemB) return;
+
   const vpRect = viewport.getBoundingClientRect();
-  const r1 = el1.getBoundingClientRect(),
-    r2 = el2.getBoundingClientRect();
+  const r1 = itemA.getBoundingClientRect();
+  const r2 = itemB.getBoundingClientRect();
+
+  if ((!r1.width && !r1.height) || (!r2.width && !r2.height)) return;
+
   const p1 = {
-    x: (viewport.scrollLeft + (r1.left - vpRect.left) + r1.width / 2) / scale,
-    y: (viewport.scrollTop + (r1.top - vpRect.top) + r1.height / 2) / scale,
+    x:
+      (viewport.scrollLeft +
+        (r1.left - vpRect.left) +
+        r1.width / 2) / scale,
+    y:
+      (viewport.scrollTop +
+        (r1.top - vpRect.top) +
+        r1.height / 2) / scale,
   };
+
   const p2 = {
-    x: (viewport.scrollLeft + (r2.left - vpRect.left) + r2.width / 2) / scale,
-    y: (viewport.scrollTop + (r2.top - vpRect.top) + r2.height / 2) / scale,
+    x:
+      (viewport.scrollLeft +
+        (r2.left - vpRect.left) +
+        r2.width / 2) / scale,
+    y:
+      (viewport.scrollTop +
+        (r2.top - vpRect.top) +
+        r2.height / 2) / scale,
   };
-  const dx = p2.x - p1.x,
-    dy = p2.y - p1.y,
-    absDx = Math.abs(dx),
-    absDy = Math.abs(dy);
+
+  const dx = p2.x - p1.x;
+  const dy = p2.y - p1.y;
+  const absDx = Math.abs(dx);
+  const absDy = Math.abs(dy);
+
+  let d;
+
   if (absDx < 40 || absDy < 40) {
-    path.setAttribute("d", `M${p1.x},${p1.y} L${p2.x},${p2.y}`);
-    return;
-  }
-  const s = 0.7;
-  let c1x = p1.x,
-    c1y = p1.y,
-    c2x = p2.x,
-    c2y = p2.y;
-  if (absDx > absDy) {
-    c1x += dx * s;
-    c2x -= dx * s;
-    c1y += dy * 0.1;
-    c2y -= dy * 0.1;
+    // Short distance → straight line
+    d = `M${p1.x},${p1.y} L${p2.x},${p2.y}`;
   } else {
-    c1y += dy * s;
-    c2y -= dy * s;
-    c1x += dx * 0.1;
-    c2x -= dx * 0.1;
+    // Original smooth curve
+    const s = 0.7;
+    let c1x = p1.x;
+    let c1y = p1.y;
+    let c2x = p2.x;
+    let c2y = p2.y;
+
+    if (absDx > absDy) {
+      // Mostly horizontal layout
+      c1x += dx * s;
+      c2x -= dx * s;
+      c1y += dy * 0.1;
+      c2y -= dy * 0.1;
+    } else {
+      // Mostly vertical layout
+      c1y += dy * s;
+      c2y -= dy * s;
+      c1x += dx * 0.1;
+      c2x -= dx * 0.1;
+    }
+
+    d = `M${p1.x},${p1.y} C${c1x},${c1y} ${c2x},${c2y} ${p2.x},${p2.y}`;
   }
-  path.setAttribute(
-    "d",
-    `M${p1.x},${p1.y} C${c1x},${c1y} ${c2x},${c2y} ${p2.x},${p2.y}`
-  );
+
+  path.setAttribute("d", d);
+
+  // Keep handle at midpoint of current path
+  if (handle) {
+    try {
+      const length = path.getTotalLength();
+      if (length > 0 && Number.isFinite(length)) {
+        const mid = path.getPointAtLength(length / 2);
+        if (mid && Number.isFinite(mid.x) && Number.isFinite(mid.y)) {
+          handle.setAttribute(
+            "transform",
+            `translate(${mid.x}, ${mid.y})`
+          );
+        }
+      }
+    } catch {
+      // don't break drawing if geometry not ready
+    }
+  }
 }
 
 function updateAllConnections() {
-  // This is the raw function. It will be wrapped by throttleRAF.
-  connections.forEach(({ path, itemA, itemB }) =>
-    updateConnection(path, itemA, itemB)
-  );
+  connections.forEach((c) => updateConnection(c));
 }
 
+/**
+ * Create a new connection: center-to-center curve
+ * + hidden X-handle that becomes visible only in disconnect mode.
+ */
 function connectItems(a, b) {
-  // GUARD: allow creating connection paths during a Supabase restore,
-  // but block user-initiated connects in read-only.
   if (window.__readOnly && !window.__RESTORING_FROM_SUPABASE) return;
-
   if (!a || !b || a === b || connectionExists(a, b)) return;
-  const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+
+  const SVG_NS = "http://www.w3.org/2000/svg";
+
+  const path = document.createElementNS(SVG_NS, "path");
   path.classList.add("connection-line");
   path.style.pointerEvents = "stroke";
+  svg.appendChild(path);
 
-  // OPTIMIZATION: Use .onclick for robust listener management
-  path.onclick = (e) => {
+  // Midpoint delete handle (only shown in disconnect mode via CSS)
+  const handleGroup = document.createElementNS(SVG_NS, "g");
+  handleGroup.classList.add("connection-handle");
+
+  const circle = document.createElementNS(SVG_NS, "circle");
+  circle.classList.add("handle-circle");
+  circle.setAttribute("r", "9");
+
+  const line1 = document.createElementNS(SVG_NS, "line");
+  line1.classList.add("handle-cross");
+  line1.setAttribute("x1", "-4");
+  line1.setAttribute("y1", "-4");
+  line1.setAttribute("x2", "4");
+  line1.setAttribute("y2", "4");
+
+  const line2 = document.createElementNS(SVG_NS, "line");
+  line2.classList.add("handle-cross");
+  line2.setAttribute("x1", "-4");
+  line2.setAttribute("y1", "4");
+  line2.setAttribute("x2", "4");
+  line2.setAttribute("y2", "-4");
+
+  handleGroup.appendChild(circle);
+  handleGroup.appendChild(line1);
+  handleGroup.appendChild(line2);
+
+  // Only active in disconnect mode
+  handleGroup.onclick = (e) => {
     e.stopPropagation();
+    if (!disconnectMode || window.__readOnly) return;
     window.BoardAPI.disconnectLine(path);
   };
 
-  svg.appendChild(path);
-  connections.push({ path, itemA: a, itemB: b });
-  updateConnection(path, a, b); // Update immediately on creation
-  onBoardMutated("connect_items"); // AUTOSAVE
+  svg.appendChild(handleGroup);
+
+  const conn = { path, itemA: a, itemB: b, handle: handleGroup };
+  connections.push(conn);
+
+  updateConnection(conn);
+  onBoardMutated("connect_items");
 }
 
+/**
+ * Remove a single connection by its path element.
+ */
 function disconnectLine(path) {
-  // GUARD
   if (window.__readOnly) return;
 
   const idx = connections.findIndex((c) => c.path === path);
-  if (idx !== -1) {
+  if (idx === -1) return;
+
+  const conn = connections[idx];
+
+  if (conn.handle) {
     try {
-      svg.removeChild(connections[idx].path);
+      svg.removeChild(conn.handle);
     } catch (_e) {}
-    connections.splice(idx, 1);
-    onBoardMutated("disconnect_line"); // AUTOSAVE
   }
+  try {
+    svg.removeChild(conn.path);
+  } catch (_e) {}
+
+  connections.splice(idx, 1);
+  onBoardMutated("disconnect_line");
 }
 
+/**
+ * Remove all connections touching the given element.
+ */
 function removeConnectionsFor(el) {
-  // GUARD
   if (window.__readOnly) return;
 
   let changed = false;
   connections = connections.filter((c) => {
     if (c.itemA === el || c.itemB === el) {
+      if (c.handle) {
+        try {
+          svg.removeChild(c.handle);
+        } catch (_e) {}
+      }
       try {
         svg.removeChild(c.path);
       } catch (_e) {}
@@ -1312,8 +1428,25 @@ function removeConnectionsFor(el) {
     }
     return true;
   });
-  if (changed) onBoardMutated("remove_connections_for_item"); // AUTOSAVE
+
+  if (changed) onBoardMutated("remove_connections_for_item");
 }
+
+// --- Expose to other modules (undo-redo, colors, supabase, UI, etc.) ---
+
+window.BoardAPI = window.BoardAPI || {};
+window.BoardAPI.connectItems = connectItems;
+window.BoardAPI.disconnectLine = disconnectLine;
+window.BoardAPI.removeConnectionsFor = removeConnectionsFor;
+window.BoardAPI.getConnections = () => connections;
+window.BoardAPI.itemKey = itemKey;
+window.BoardAPI.updateAllConnections = updateAllConnections;
+
+window.BoardAPI.setDisconnectMode = setDisconnectMode;
+window.BoardAPI.toggleDisconnectMode = toggleDisconnectMode;
+window.BoardAPI.isDisconnectMode = isDisconnectMode;
+
+
 
 // ==================== Element Creation ====================
 function addBibleVerse(
@@ -2467,6 +2600,20 @@ document.addEventListener("keydown", (e) => {
 
 // ==================== Action buttons: Connect / Text / Delete ====================
 // ... (Action button listeners unchanged, guards are inside handlers) ...
+const disconnectModeBtn = document.getElementById("disconnect-mode-btn");
+if (disconnectModeBtn) {
+  disconnectModeBtn.addEventListener("click", () => {
+    if (!window.BoardAPI || typeof window.BoardAPI.toggleDisconnectMode !== "function") return;
+
+    window.BoardAPI.toggleDisconnectMode();
+    const on =
+      typeof window.BoardAPI.isDisconnectMode === "function" &&
+      window.BoardAPI.isDisconnectMode();
+    disconnectModeBtn.classList.toggle("active", !!on);
+  });
+}
+
+
 connectBtn?.addEventListener("click", (e) => {
   e.preventDefault();
   e.stopPropagation();
@@ -3243,6 +3390,9 @@ async function exportBoardPNGUsedArea({ scale = 1 } = {}) {
     getComputedStyle(document.body).getPropertyValue("--bg")?.trim() ||
     "#ffffff";
 
+  // --- NEW: Add exporting class to hide handles ---
+  document.body.classList.add("is-exporting");
+
   try {
     const dataUrl = await window.htmlToImage.toPng(boardRoot, {
       width: outW,
@@ -3262,6 +3412,8 @@ async function exportBoardPNGUsedArea({ scale = 1 } = {}) {
     boardRoot.style.transform = prevTransform;
     boardRoot.style.transformOrigin = prevTransformOrigin;
     restoreBackgrounds(boardRoot);
+    // --- NEW: Always remove exporting class ---
+    document.body.classList.remove("is-exporting");
   }
 }
 
@@ -3300,6 +3452,7 @@ initExportButton();
  * @param {boolean} isReadOnly
  */
 function applyReadOnlyGuards(isReadOnly) {
+  document.body.classList.toggle("read-only", isReadOnly);
   window.__readOnly = isReadOnly; // Set global flag
   const actionButtons = document.getElementById("action-buttons-container");
   const titleInput = document.getElementById("title-textbox");
@@ -3400,6 +3553,10 @@ function serializeBoard() {
     const conns = connections.map((c) => ({
       a: itemKey(c.itemA),
       b: itemKey(c.itemB),
+      color:
+        c.color ||
+        (c.path && (c.path.dataset.color || c.path.style.stroke)) ||
+        undefined,
     }));
 
     const title = document.getElementById("title-textbox")?.value || "";
@@ -3531,7 +3688,7 @@ function buildBoardTourSteps() {
     },
     {
       id: "workspace",
-      target: () => document.getElementById("workspace"),
+      target: () => document.getElementById("viewport"),
       title: "Your Workspace",
       text: "This is your canvas. Drag with your mouse or finger to pan, and use the scroll wheel or pinch to zoom.",
       placement: "right",
@@ -3540,23 +3697,29 @@ function buildBoardTourSteps() {
     {
       id: "search",
       target: () => document.getElementById("search-bar"),
-      title: "Search Anything",
-      text: "Search for verses (like 'John 1:1') or topics (like 'love'). Press Enter or tap the search icon to begin.",
+      title: "Search anything",
+      text:
+        "Use this search bar to find verses, topics, and songs. It's your quick entry into the board.",
       placement: "top",
+      allowPointerThrough: true,
       beforeStep: () => {
-        // Ensure search panel is open if we add that logic later
-        // For now, it's always visible.
+        const el = document.getElementById("search-bar");
+        if (el) el.focus();
       },
     },
     {
-      id: "Choose Version",
+      id: "choose-version",
       target: () => document.getElementById("version-select"),
       title: "Choose your version",
-      text: "Use the Version menu beside the search bar to choose your version. Searches fetch in that version, and any verse you add keeps its version label. You can change this anytime.",
+      text: "Use this menu beside the search bar to choose your Bible version. Searches and added verses use this selection.",
       placement: "top",
+      allowPointerThrough: true,
       beforeStep: () => {
-        // Ensure search panel is open if we add that logic later
-        // For now, it's always visible.
+        const select = document.getElementById("version-select");
+        if (select) {
+          // small UX touch so it's obvious this is interactive
+          select.focus();
+        }
       },
     },
     {
@@ -3619,6 +3782,14 @@ function buildBoardTourSteps() {
       allowPointerThrough: true, // <-- ADD THIS LINE
     },
     {
+      id: "disconnect",
+      target: () => document.getElementById("disconnect-mode-btn"),
+      title: "Disconnect Ideas",
+      text: "Made a mistake? Connecting some ideas just click this and enter 'Disconnect Mode' allowing you to disconnect any connections.",
+      placement: "right",
+      allowPointerThrough: true,
+    },
+    {
       id: "notes",
       target: () => document.getElementById("text-action-button"),
       title: "Add Notes",
@@ -3642,6 +3813,14 @@ function buildBoardTourSteps() {
       text: "Select a item on the bible board, then tap the 'Delete' button to delete the selected item.",
       placement: "right",
       allowPointerThrough: true, // <-- ADD THIS LINE
+    },
+    {
+      id: "colors",
+      target: () => document.getElementById("connection-color-toolbar"),
+      title: "Colors for your connections",
+      text: "If you want to add some color to your board select a color and when connecting ideas the 'Connection Lines' will be the selected color.",
+      placement: "left",
+      allowPointerThrough: true,
     },
     {
       id: "finish",
@@ -3669,7 +3848,7 @@ function setupBoardSettingsPanel() {
     toggleBtn.setAttribute("aria-haspopup", "true");
     toggleBtn.setAttribute("aria-expanded", "false");
     // Simple Gear SVG Icon
-    toggleBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="currentColor" style="width: 22px; height: 22px; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);"><path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.23-.08-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1c.23.08.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"/></svg>`;
+    toggleBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="width: 18px; height: 18px; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);"><path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.23-.08-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1c.23.08.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"/></svg>`;
 
     // Style toggle button (fixed position, replaces old theme toggle)
     toggleBtn.style.position = "absolute";
@@ -3860,14 +4039,17 @@ window.BoardAPI = {
 
   // NEW: Add the deleteItem function
   deleteItem: deleteBoardItem,
-
-  // connections management used during load/hydration
-  getConnections: () => connections, // Expose for serialization
-  connectItems, // (aEl, bEl) => void
-  disconnectLine, // (svgPath) => void
-  removeConnectionsFor, // (el) => void
-  updateAllConnections, // () => void
+  getConnections: () => connections,
+  connectItems,
+  disconnectLine,
+  removeConnectionsFor,
+  updateAllConnections,
   getElementByVKey: (key) => document.querySelector(`[data-vkey="${key}"]`),
+
+  // 🆕 disconnection mode
+  setDisconnectMode,
+  toggleDisconnectMode,
+  isDisconnectMode,
 
   // stable key helper
   itemKey, // (el) => string

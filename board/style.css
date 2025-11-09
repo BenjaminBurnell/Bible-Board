@@ -21,7 +21,7 @@
 body.light {
   --bg: #ffffff;
   --bg-seethroug: #f2f2f2ab;
-  --bg-dots: #f3f3f3;
+  --bg-dots: #ebe9e9;
   --bg-alt: #dadada;
   --fg: #343434;
   --fg-seethrough: #29292920;
@@ -89,7 +89,7 @@ body {
   font-weight: 800;
   cursor: grab;
   z-index: 10; /* UPDATED: Was 5, now 10 to render above connections */
-  background: var(--bg-seethroug);
+  background: var(--bg-dots);
   backdrop-filter: blur(1rem);
   border-radius: 10px;
   border: 1px solid var(--fg-seethrough);
@@ -167,7 +167,7 @@ body {
   backdrop-filter: blur(1rem);
   justify-content: center;
   align-items: center;
-  padding: 7px 4px;
+  padding: 8px 4px;
   border-radius: 15px;
   z-index: 10001;
 }
@@ -225,11 +225,7 @@ body {
   opacity: 0.9;
   stroke-linecap: round;
   stroke-linejoin: round;
-  cursor: pointer;
   pointer-events: stroke;
-}
-.connection-line:hover {
-  stroke: rgb(173, 28, 28);
 }
 
 /* ==================== Search Drawer ==================== */
@@ -240,12 +236,13 @@ body {
   background: var(--bg-seethroug);
   backdrop-filter: blur(1rem);
   position: absolute;
+  display:flex;
   bottom: 15px;
   left: 50%;
   transform: translateX(-50%);
   border-radius: 20px;
   border: 1px solid var(--fg-seethrough);
-  z-index: 10000;
+  z-index: 20000;
 }
 #search-bar {
   width: calc(100% - 185px);
@@ -254,6 +251,7 @@ body {
   position: absolute;
   top: 50%;
   left: 25px;
+  display:flex;
   transform: translateY(-50%);
   background: transparent;
   border: none;
@@ -344,7 +342,7 @@ textarea:focus {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 6px;
+  padding: 12px;
   border-radius: 15px;
   width: 45px;
   height: 45px;
@@ -620,6 +618,8 @@ body:not(.light) #sun-icon {
   padding: 12px;
   display: flex;
   flex-direction: column;
+  overflow-y: scroll;
+  overflow-x: hidden;
   gap: 10px;
 }
 #interlinear-panel.open {
@@ -657,10 +657,10 @@ body:not(.light) #sun-icon {
   padding: 0 2px;
 }
 #interlinear-list {
-  overflow-y: auto;
   flex: 1;
   display: flex;
   flex-direction: column;
+  overflow: visible;
   gap: 10px;
 }
 .interlinear-row {
@@ -981,9 +981,11 @@ body {
 
 .share-popover {
   position: absolute;
-  top: 85px; /* Positioned below the top bar items */
-  right: 85px; /* Aligned with auth controls */
-  background: var(--bg);
+  top: 420px; /* Positioned below the top bar items */
+  right: 70px; /* Aligned with auth controls */
+  background: var(--bg-seethroug);
+  backdrop-filter: blur(1rem);
+  -webkit-backdrop-filter: blur(1rem);
   border: 1px solid var(--border);
   padding: 10px;
   border-radius: 10px;
@@ -1252,4 +1254,70 @@ textarea:disabled {
   color: var(--muted);
   text-align: center;
   min-height: 1.2em;
+}
+
+
+.action-button.active > svg > path {
+  fill:var(--bg);
+}
+
+.action-button.active {
+  background: var(--accent);
+  fill: var(--muted);
+}
+
+.disconnect-mode .connection-line {
+  cursor: pointer;
+  stroke-dasharray: 5 3; /* Optional: show "edit mode" */
+}
+
+
+
+
+
+/* Default: hide handles */
+.connection-handle {
+  display: none;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+/* Only show delete handles when in disconnect mode */
+.disconnect-mode .connection-handle {
+  display: block;
+}
+
+/* Existing visual styling */
+.connection-handle .handle-circle {
+  r: 15;
+  fill: var(--bg-dots);
+  stroke-width: 2px;
+  backdrop-filter: blur(1rem);
+  -webkit-backdrop-filter: blur(1rem);
+}
+
+.connection-handle .handle-cross {
+  stroke: var(--muted);
+  stroke-width: 2.5px;
+  stroke-linecap: round;
+}
+
+.connection-handle:hover .handle-circle {
+  r: 15;
+  fill: var(--bg-alt);
+}
+
+.connection-handle:hover .handle-cross {
+  stroke: var(--fg);
+}
+
+/* Optional: highlight lines in disconnect mode */
+.disconnect-mode .connection-line {
+  cursor: pointer;
+  stroke-dasharray: 5 3;
+}
+
+/* Hide handles in read-only mode */
+body.read-only .connection-handle {
+  display: none;
 }

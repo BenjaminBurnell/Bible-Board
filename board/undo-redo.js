@@ -4,7 +4,7 @@
  * A self-contained object to manage all undo/redo logic.
  * V2: Includes support for element add/delete.
  */
-const UndoRedoManager = {
+window.UndoRedoManager = {
   // --- State ---
   undoStack: [],
   redoStack: [],
@@ -559,3 +559,5 @@ const UndoRedoManager = {
 
 // --- Kick off the poller ---
 UndoRedoManager.startPoller();
+
+window.UndoRedoManager = UndoRedoManager;
