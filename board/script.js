@@ -373,7 +373,7 @@ function setVersion(version) {
  */
 async function fetchVerseText(book, chapter, verse, signal, version = "KJV") {
   const code = bibleBookCodes[book] || book;
-  const apiUrl = `https://bible-api-5jrz.onrender.com/verse/${encodeURIComponent(
+  const apiUrl = `https://full-bible-api.onrender.com/verse/${encodeURIComponent(
     version
   )}/${encodeURIComponent(code)}/${chapter}/${verse}`;
 
@@ -427,7 +427,7 @@ async function fetchBibleSearchResults(query, limit = 5, signal) {
   // Use the provided signal from searchForQuery
   const effSignal = signal;
 
-  const url = `https://bible-search-api-huro.onrender.com/search?q=${encodeURIComponent(
+  const url = `https://full-bible-api.onrender.com/search?q=${encodeURIComponent(
     query
   )}&limit=${limit}`;
 
@@ -2676,7 +2676,7 @@ interClose?.addEventListener("click", (e) => {
 });
 
 async function fetchInterlinear(book, chapter, verse, signal) {
-  const base = `https://interlinear-api.onrender.com/interlinear/${encodeURIComponent(
+  const base = `https://full-bible-api.onrender.com/interlinear/${encodeURIComponent(
     book
   )}/${chapter}/${verse}`;
   const prox = `https://api.allorigins.win/raw?url=${encodeURIComponent(base)}`;
