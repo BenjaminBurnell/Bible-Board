@@ -3,6 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="shortcut icon" href="assets/logo_with_bg.png" type="image/x-icon">
     <title>My Boards - Bible Board</title>
     <link rel="stylesheet" href="board/style.css" />
     <link rel="stylesheet" href="boards.css" />
@@ -131,6 +132,14 @@
       </div>
       <div id="bible-whiteboard-title" style="left: 15px;">
         <div id="bible-whiteboard-text">
+          <img id="bible-board-logo" src="../assets/logo_no_bg.png">
+          <input
+            id="title-textbox"
+            type="text"
+            value="Landing Page"
+            readonly
+            placeholder="Untitled Bible Board"
+          />
           <svg
             xmlns="http://www.w3.org/2000/svg"
             height="24px"
@@ -143,13 +152,6 @@
               d="M200-200h57l391-391-57-57-391 391v57Zm-80 80v-170l528-527q12-11 26.5-17t30.5-6q16 0 31 6t26 18l55 56q12 11 17.5 26t5.5 30q0 16-5.5 30.5T817-647L290-120H120Zm640-584-56-56 56 56Zm-141 85-28-29 57 57-29-28Z"
             />
           </svg>
-          <input
-            id="title-textbox"
-            type="text"
-            value="Landing Page"
-            readonly
-            placeholder="Untitled Bible Board"
-          />
         </div>
       </div>
       <div id="search-container" onclick="openLoginSection()" style="z-index:100;">
@@ -192,7 +194,10 @@
       <!-- Sign out stays -->
       <button id="signout-btn" class="dash-btn">Sign Out</button>
 
-      <h1 id="dashboard-title">Bible Boards</h1>
+      <h1 id="dashboard-title">
+        <img id="bible-board-logo" style="margin-left: -5px;" src="../assets/logo_no_bg.png">
+        <span>Bible Boards</span>
+      </h1>
 
       <!-- Theme Toggle Button -->
       <button

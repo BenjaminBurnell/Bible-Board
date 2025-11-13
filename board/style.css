@@ -17,6 +17,7 @@
   --accent: #67e495;
   --border: #2f2f2f;
   --muted: #8b949e;
+  --brightness:1000%;
 }
 body.light {
   --bg: #ffffff;
@@ -28,6 +29,7 @@ body.light {
   --border: #dfdfdf;
   --accent: #2ea043;
   --muted: #57606a;
+  --brightness:30%;
 }
 
 html,
@@ -400,6 +402,12 @@ body:not(.light) #sun-icon {
   gap: 5px;
   padding: 5px;
 }
+
+#bible-board-logo {
+  width:25px;
+  height:25px;
+  filter:brightness(var(--brightness));
+}
 #edit-Icon {
   width: 17.5px;
   height: 17.5px;
@@ -411,7 +419,13 @@ body:not(.light) #sun-icon {
   color: var(--fg);
   font-size: 15px;
   font-weight: 800;
+  border-bottom: 1px solid transparent;
 }
+
+#title-textbox:focus {
+  border-bottom: 1px solid var(--border);
+}
+
 #title-textbox::placeholder {
   font-weight: 600;
 }

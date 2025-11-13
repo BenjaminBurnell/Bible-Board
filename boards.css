@@ -222,9 +222,11 @@ body {
 }
 
 #dashboard-title {
+  height:23px !important;
   font-size: 1.8rem;
   font-weight: 700;
   margin: 0;
+  gap: 5px;
 }
 
 .header-actions {
