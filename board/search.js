@@ -134,11 +134,40 @@ function extractBookToken(input) {
 }
 
 /**
+ * NEW: Checks if an input string looks like a Bible reference
+ * (e.g., "John 3", "1 Sam 1:1") vs. a plain word ("love").
+ * @param {string} input
+ * @returns {boolean}
+ */
+function isReferenceShaped(input) {
+  const trimmed = (input || "").trim();
+  // Regex:
+  // - Optional "1", "2", or "3" at the start
+  // - Optional space
+  // - One or more letters (the book name)
+  // - Required space
+  // - One or more digits (the chapter number)
+  // This correctly matches "John 3" or "1 Sam 17"
+  // but correctly rejects "love" or "faith".
+  return /[1-3]?\s*[A-Za-z]+\s+\d+/.test(trimmed);
+}
+
+/**
  * OPTIMIZATION: This function now uses the `precomputedBibleBooks`
  * list to avoid normalizing aliases on every call.
+ *
+ * MODIFIED: Now checks `isReferenceShaped` first.
  */
 function findBibleVerseReference(input) {
   if (!input) return null;
+
+  // --- NEW (USER REQUEST): Guard ---
+  // Only run parsing logic if the input *looks like* a reference.
+  // This prevents "love" from matching "Luke".
+  if (!isReferenceShaped(input)) {
+    return null;
+  }
+  // --- END NEW ---
 
   // --- Step 1: extract and normalize ---
   const bookTokenRaw = extractBookToken(input);
@@ -212,7 +241,8 @@ function findBibleVerseReference(input) {
     };
   }
 
-  if (bestBook && bestScore >= 0.5) {
+  // MODIFIED: Use 0.7 as per user suggestion for better accuracy
+  if (bestBook && bestScore >= 0.7) {
     return { didYouMean: bestBook, reference: buildRef(bestBook) };
   }
 
@@ -220,3 +250,5 @@ function findBibleVerseReference(input) {
 }
 
 window.findBibleVerseReference = findBibleVerseReference;
+// NEW: Expose the helper for script.js
+window.isReferenceShaped = isReferenceShaped;

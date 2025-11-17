@@ -1,0 +1,708 @@
+/* Relies on variables from style.css (e.g., --bg, --fg, --border, --accent) */
+
+body {
+  background-color: var(--bg);
+  color: var(--fg);
+  font-family: "Atkinson Hyperlegible", sans-serif;
+  margin: 0;
+  padding: 0px;
+  overflow-y: auto;
+}
+
+/* === Auth Screen === */
+#auth-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  text-align: center;
+  position: relative;
+  background-color: var(--bg);
+  background-image: radial-gradient(
+    circle at center,
+    var(--bg-dots) 2px,
+    transparent 2px
+  );
+  background-size: 30px 30px;
+}
+
+#sign-in-form-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content:center;
+  width: 100vw;
+  height: 100vh;
+  background: var(--bg-seethroug);
+  backdrop-filter: blur(1.5rem);
+  -webkit-backdrop-filter: blur(1.5rem);
+  position: fixed;
+}
+
+#sign-in-form-container.hidden {
+  display:none;
+}
+
+#sign-in-form {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0px;
+  background:transparent;
+  position: fixed;
+  width:100%;
+  max-width:400px;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 101;
+}
+
+#bible-board-text {
+  font-size: 50px;
+  font-weight: 700;
+  margin:0px;
+}
+
+/* .connection-svg-overlay {
+  display:none;
+} */
+
+.board-item {
+  position: relative;
+  width: 100%;
+  max-width: 600px;
+  margin: 16px 0;
+  border-radius: 16px;
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.board-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #e5e7eb;
+  margin: 0;
+}
+
+.board-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #9ca3af;
+  font-size: 0.875rem;
+}
+
+.board-meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.board-meta svg {
+  width: 16px;
+  height: 16px;
+}
+
+.board-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.board-tag {
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.2);
+  color: #bfdbfe;
+  font-size: 0.75rem;
+}
+
+.board-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.board-actions button {
+  background: #1f2933;
+  color: #e5e7eb;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.board-actions button:hover {
+  background: #111827;
+  border-color: #60a5fa;
+}
+
+#auth-container p {
+  font-size: 1.1rem;
+  color: var(--muted);
+}
+
+/* Logo Styling */
+#auth-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+#auth-logo img {
+  width: 40px;
+  height: 40px;
+}
+
+#auth-logo span {
+  font-size: 1.4rem;
+  font-weight: 600;
+}
+
+/* Google Sign-in button styling */
+.google-signin-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px; /* Slightly reduced space between logo and text */
+
+  /* Box Model */
+  padding: 10px 24px;
+  border: 1px solid var(--border); /* Light grey border */
+  border-radius: 15px;
+
+  /* Typography */
+  font-family: "Roboto", Arial, sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--bg); /* Google's standard dark grey text */
+
+  /* Appearance */
+  background-color: var(--fg); /* White background */
+  cursor: pointer;
+  transition: background-color 0.3s, box-shadow 0.3s;
+
+  /* Remove default button styles */
+  outline: none;
+}
+
+/* Style for the SVG logo */
+.google-signin-button svg {
+  width: 18px;
+  height: 18px;
+  /* filter: brightness(0%); */
+}
+
+/* Hover effect */
+.google-signin-button:hover {
+  background-color: #f5f5f5;
+  box-shadow: 0 1px 3px rgba(60, 64, 67, 0.3);
+}
+
+/* Active (pressed) effect */
+.google-signin-button:active {
+  background-color: #e8e8e8;
+}
+
+/* === Dashboard Layout === */
+#dashboard-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px; /* Added padding for layout */
+}
+
+#dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding-bottom: 20px;
+  /* border-bottom: 1px solid var(--border); */
+  margin-bottom: 24px;
+}
+
+#dashboard-title {
+  height:23px !important;
+  font-size: 1.8rem;
+  font-weight: 700;
+  margin: 0;
+  gap: 5px;
+}
+
+.header-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.header-actions .dash-btn {
+  padding-inline: 16px;
+}
+
+/* Theme toggle button */
+#theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg-alt);
+  cursor: pointer;
+}
+
+#theme-toggle span {
+  font-size: 18px;
+}
+
+/* New board button and status tile */
+#board-grid{
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+  align-items: stretch;
+}
+
+#board-grid{
+  margin-top:15px;
+}
+
+/* New board button (injected by JS) */
+#new-board-btn {
+  border: 1px dashed var(--border);
+  background: var(--bg-alt);
+  color: var(--muted);
+  justify-content: center;
+}
+
+/* Status tile */
+.status-tile {
+  border: 1px solid var(--border);
+  background: var(--bg-alt);
+  padding: 16px;
+  border-radius: 12px;
+  text-align: center;
+  color: var(--muted);
+}
+
+#status-message.hidden {
+  display:none;
+}
+
+.skeleton-card {
+  background: var(--bg-alt);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  height: 145px; /* Matches min-height of real card */
+  opacity: 0.5;
+  animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+@keyframes pulse {
+  0% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0.5;
+  }
+}
+
+/* Board card */
+.card-main{
+  position:relative;
+  display:flex;
+  flex-direction:column;
+  gap:0px;
+  align-items:flex-start;
+  justify-content:space-between;
+  padding:17px 17px 17px 17px;
+  background:var(--bg-alt);
+  border: 1px solid var(--border);
+  border-radius:12px;
+  cursor:pointer;
+  min-height:145px;
+  outline:none;
+  width:100%;
+  transition: box-shadow 0.12s ease, border-color 0.12s ease, transform 0.12s ease;
+}
+
+/* Card container that wraps card-main + menu */
+.board-card {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+}
+
+/* clickable area should flex to fill width */
+.card-main {
+  flex: 1;
+}
+
+/* Tag & date row footer pinned bottom */
+.card-footer{
+  width:100%;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  margin-top:auto;
+}
+
+.card-title{
+  margin:0px;
+  font-size:16.5px;
+  font-weight:650;
+  color:var(--fg);
+  margin-bottom:3px;
+}
+
+.card-desc {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  display:-webkit-box;
+  justify-content:center;
+  align-items: center;
+  -webkit-box-orient:vertical;
+  -webkit-line-clamp:3;
+  overflow:hidden;
+
+  line-height:1.35;
+  font-size:15px;
+  margin-top:0px;
+}
+
+/* Footer pinned to bottom-left */
+.card-footer{
+  height:100%;
+}
+
+/* Last opened pill styling */
+.card-tags {
+  display:flex;
+  gap:8px;
+  align-items:center;
+}
+
+.card-tag{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding-inline:9px;
+  padding-block:3.5px;
+  border-radius:999px;
+  border: 1px solid var(--border);
+  background: var(--bg) !important;
+  color:var(--muted);
+  font-size:13px;
+}
+
+/* Date + icon */
+.card-date{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
+  font-size:13px;
+  color:var(--muted);
+}
+
+.card-date svg{
+  opacity:0.7;
+}
+
+/* action menu container */
+.card-more{
+  position:absolute;
+  top:9px;
+  right:9px;
+}
+
+/* ellipsis btn */
+.more-btn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:32px;
+  height:32px;
+  border-radius:999px;
+  border:none;
+  background:transparent;
+  color:var(--muted);
+  cursor:pointer;
+  transition:background 0.12s ease, color 0.12s ease;
+}
+
+.more-btn:hover{
+  background:rgba(148,163,184,0.1);
+  color:var(--fg);
+}
+
+/* menu dropdown */
+.more-menu{
+  position:absolute;
+  top:40px;
+  right:0px;
+  min-width:145px;
+  border-radius:12px;
+  border:1px solid var(--border);
+  background:var(--bg-alt);
+  box-shadow:0 18px 45px rgba(15,23,42,0.45);
+  padding:5px;
+  list-style:none;
+  margin:0px;
+  z-index:200;
+}
+
+.more-menu.hidden{
+  display:none;
+}
+
+.menu-item{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  width:100%;
+  border:none;
+  border-radius:9px;
+  background:transparent;
+  color:var(--fg);
+  padding:7px 11px;
+  text-align:left;
+  font-size:14px;
+  cursor:pointer;
+  transition:background 0.12s ease;
+}
+
+.menu-item:hover{
+  background:rgba(148,163,184,0.12);
+}
+
+/* tweak board hover border */
+.card-main:hover{
+  border-color:var(--accent);
+  box-shadow:0 18px 40px rgba(15,23,42,0.58);
+  transform: translateY(-1px);
+}
+
+/* === Filters / Search === */
+
+#dashboard-filters {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.dash-input,
+.dash-select,
+.dash-btn {
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg-alt);
+  color: var(--fg);
+  padding: 8px 14px;
+  font-size: 0.95rem;
+}
+
+.dash-input {
+  flex: 1;
+  min-width: 180px;
+}
+
+.dash-select {
+  min-width: 160px;
+}
+
+.dash-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease,
+    color 0.15s ease, transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.dash-btn.primary {
+  background: var(--accent);
+  color: #0b1020;
+  border-color: var(--accent);
+  font-weight: 600;
+}
+
+.dash-btn.primary:hover {
+  box-shadow: 0 10px 30px rgba(59, 130, 246, 0.5);
+  transform: translateY(-0.5px);
+}
+
+.dash-btn.secondary {
+  background: var(--bg-alt);
+  color: var(--fg);
+}
+
+.dash-btn.secondary:hover {
+  border-color: var(--accent);
+}
+
+/* === Modal === */
+
+#modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  background: rgba(15, 23, 42, 0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#modal-backdrop.hidden {
+  display: none;
+}
+
+#modal {
+  background: var(--bg-alt);
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  padding: 20px 18px 16px;
+  width: 100%;
+  max-width: 400px;
+  box-shadow: 0 22px 60px rgba(15, 23, 42, 0.7);
+}
+
+#modal h2 {
+  margin: 0 0 12px;
+  font-size: 1.2rem;
+}
+
+#modal label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+#modal-title-input {
+  width: 100%;
+  margin-bottom: 16px;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.modal-actions-right {
+  display: flex;
+  gap: 8px;
+}
+
+#modal-cancel-btn {
+  border-radius: 999px;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+#modal-delete-btn.danger {
+  border-radius: 999px;
+  border: 1px solid rgba(239, 68, 68, 0.5);
+  background: rgba(239, 68, 68, 0.06);
+  color: rgb(248, 113, 113);
+  padding: 7px 14px;
+  cursor: pointer;
+}
+
+#modal-delete-btn.danger:hover {
+  border-color: rgb(239, 68, 68);
+}
+
+#modal-save-btn.primary {
+  padding: 7px 14px;
+}
+
+/* === Error message in status tile === */
+
+.error-message {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.error-message strong {
+  color: #fca5a5;
+}
+
+/* === Dashboard Footer === */
+
+#dashboard-footer {
+  margin-top: 32px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: flex-end;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+#dashboard-footer .legal-links {
+  display: flex;
+  gap: 6px;
+}
+
+#dashboard-footer a {
+  color: var(--muted);
+  text-decoration: none;
+}
+
+#dashboard-footer a:hover {
+  text-decoration: underline;
+}
+
+/* === Media Queries === */
+
+@media (max-width: 768px) {
+  #dashboard-container {
+    padding: 16px;
+  }
+
+  #dashboard-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  #dashboard-title {
+    font-size: 1.5rem;
+  }
+
+  #board-grid {
+    grid-template-columns: 1fr;
+  }
+
+  #dashboard-filters {
+    flex-direction: column;
+  }
+
+  .header-actions {
+    align-self: stretch;
+    justify-content: flex-end;
+  }
+}

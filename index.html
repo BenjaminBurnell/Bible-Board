@@ -1,402 +1,324 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
     <link rel="shortcut icon" href="assets/logo_with_bg.png" type="image/x-icon">
-    <title>My Boards - Bible Board</title>
-    <link rel="stylesheet" href="board/style.css" />
-    <link rel="stylesheet" href="boards.css" />
-  </head>
-  <body>
-    <div id="auth-container">
-      <div id="auth-content-container">
-        <svg class="connection-svg-overlay">
-          <path id="connection-path-verse-note" class="connection-line"></path>
-          <path id="connection-path-verse-song" class="connection-line"></path>
-        </svg>
-
-        <div
-          class="board-item text-note"
-          style="
-            position: absolute;
-            right: 50px;
-            bottom: 50px;
-            text-align: left;
-          "
-          data-vkey="v_o2yhzuvm51b"
-        >
-          <div class="note-content">
-            <div class="verse-text note-label">NOTE</div>
-            <div
-              class="text-content"
-              type="text"
-              value="Landing Page"
-              readonly
-              placeholder="Untitled Bible Board"
-              spellcheck="false"
-              readonly
-              style="text-align: left"
-            >While the world around us withers and fades like grass, God's Word is our one true constant. Let's build our lives on His eternal promises, which stand forever.</div>
-          </div>
-        </div>
-
-        <div
-          class="board-item bible-verse"
-          style="
-            position: absolute;
-            left: 0px;
-            top: 250px;
-            z-index: 2;
-            cursor: grab;
-            text-align: left;
-          "
-          data-vkey="v_9626zahqvhh"
-        >
-          <div id="bible-text-content">
-            <div class="verse-text">VERSE</div>
-            <div class="verse-text-content">
-              The grass withereth, the flower fadeth: but the word of our God
-              shall stand for ever.
+    <!-- Material Symbols (Google Icons) -->
+    <link rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,100..700,0..1,-50..200" />
+    <script defer src="script.js"></script>
+    <title>BibleBoard</title>
+</head>
+<body onload="loadPage()">
+    <section id="loader-section">
+        <img id="loader-logo-image" src="assets/logo_no_bg.png">
+    </section>
+    <main id="page-container">
+        <section class="section main">
+            <div id="main-section-img-container">
+                <img id="main-section-img" src="assets/Golden Hour Reverence.jpg">
+                <div id="main-section-img-fader-top"></div>
+                <div id="main-section-img-fader-bottom"></div>
+                <div id="main-section-img-fader-right"></div>
+                <div id="main-section-img-fader-left"></div>
             </div>
-            <div class="verse-text-reference">- Isaiah 40:8 KJV</div>
-          </div>
-        </div>
+        </section>
 
-        <div
-          class="board-item song-item"
-          data-type="song"
-          data-title="Your Word (Live)"
-          data-artist="Hillsong Worship &amp; Jad Gillies"
-          data-cover="https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/f3/c1/c5/f3c1c5d9-e59d-ffab-be0a-240ffd38068c/9320428324436.png/200x200bb.jpg"
-          style="
-            position: absolute;
-            text-align: left;
-            right: 100px;
-            top: 100px;
-            z-index: 3;
-            cursor: grab;
-          "
-          data-vkey="v_8q9f2lzfst8"
-        >
-          <div class="song-left">
-            <img
-              class="song-cover"
-              src="https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/f3/c1/c5/f3c1c5d9-e59d-ffab-be0a-240ffd38068c/9320428324436.png/200x200bb.jpg"
-              alt=""
-            />
-            <div class="song-texts">
-              <div class="song-name">Your Word (Live)</div>
-              <div class="song-artist">Hillsong Worship &amp; Jad Gillies</div>
+        <section class="section sub-main">
+            <div id="text-container">
+                <h1 id="main-section-header-text">Turn scattered study into living boards.</h1>
+                <h4 id="main-section-sub-text">
+                    Drag in verses, attach notes, connect themes, and return to the same visual board
+                    every time you open your Bible.
+                </h4>
             </div>
-          </div>
-        </div>
-      </div>
-      <div id="sign-in-form-container" class="hidden">
-        <div id="sign-in-form">
-          <h1 id="bible-board-text">Bible Boards</h1>
-          <p style="margin-top:10px;margin-bottom: 70px;">Please sign in to view your boards.</p>
+        </section>
 
-          <button class="google-signin-button" id="signin-btn">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="800px"
-              height="800px"
-              viewBox="-3 0 262 262"
-              preserveAspectRatio="xMidYMid"
-            >
-              <path
-                d="M255.878 133.451c0-10.734-.871-18.567-2.756-26.69H130.55v48.448h71.947c-1.45 12.04-9.283 30.172-26.69 42.356l-.244 1.622 38.755 30.023 2.685.268c24.659-22.774 38.875-56.282 38.875-96.027"
-                fill="#4285F4"
-              />
-              <path
-                d="M130.55 261.1c35.248 0 64.839-11.605 86.453-31.622l-41.196-31.913c-11.024 7.688-25.82 13.055-45.257 13.055-34.523 0-63.824-22.773-74.269-54.25l-1.531.13-40.298 31.187-.527 1.465C35.393 231.798 79.49 261.1 130.55 261.1"
-                fill="#34A853"
-              />
-              <path
-                d="M56.281 156.37c-2.756-8.123-4.351-16.827-4.351-25.82 0-8.994 1.595-17.697 4.206-25.82l-.073-1.73L15.26 71.312l-1.335.635C5.077 89.644 0 109.517 0 130.55s5.077 40.905 13.925 58.602l42.356-32.782"
-                fill="#FBBC05"
-              />
-              <path
-                d="M130.55 50.479c24.514 0 41.05 10.589 50.479 19.438l36.844-35.974C195.245 12.91 165.798 0 130.55 0 79.49 0 35.393 29.301 13.925 71.947l42.211 32.783c10.59-31.477 39.891-54.251 74.414-54.251"
-                fill="#EB4335"
-              />
-            </svg>
-            <span>Sign in with Google</span>
-          </button>
-          <p class="legal-links">
-            <a href="../legal/?doc=terms" rel="noopener">Terms</a> ·
-            <a href="../legal/?doc=privacy" rel="noopener">Privacy</a>
-          </p>
-        </div>
-      </div>
-      <div id="bible-whiteboard-title" style="left: 15px;">
-        <div id="bible-whiteboard-text">
-          <img id="bible-board-logo" src="../assets/logo_no_bg.png">
-          <input
-            id="title-textbox"
-            type="text"
-            value="Landing Page"
-            readonly
-            placeholder="Untitled Bible Board"
-          />
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            height="24px"
-            viewBox="0 -960 960 960"
-            width="24px"
-            id="edit-Icon"
-            fill="var(--fg)"
-          >
-            <path
-              d="M200-200h57l391-391-57-57-391 391v57Zm-80 80v-170l528-527q12-11 26.5-17t30.5-6q16 0 31 6t26 18l55 56q12 11 17.5 26t5.5 30q0 16-5.5 30.5T817-647L290-120H120Zm640-584-56-56 56 56Zm-141 85-28-29 57 57-29-28Z"
-            />
-          </svg>
-        </div>
-      </div>
-      <div id="search-container" onclick="openLoginSection()" style="z-index:100;">
-        <input
-          id="search-bar"
-          type="text"
-          placeholder="Search"
-          autocomplete="off"
-        />
-        <button id="search-button" type="submit">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            height="24px"
-            viewBox="0 -960 960 960"
-            width="24px"
-            fill="var(--bg-alt)"
-          >
-            <path
-              d="M784-120 532-372q-30 24-69 38t-83 14q-109 0-184.5-75.5T120-580q0-109 75.5-184.5T380-840q109 0 184.5 75.5T640-580q0 44-14 83t-38 69l252 252-56 56ZM380-400q75 0 127.5-52.5T560-580q0-75-52.5-127.5T380-760q-75 0-127.5 52.5T200-580q0 75 52.5 127.5T380-400Z"
-            />
-          </svg>
-        </button>
-      </div>
-      <button id="get-started-button" type="button">Get Started</button>
-    </div>
+        <!-- ========== DEMO VIDEO SECTION ========== -->
+        <section class="section demo-video">
+            <div class="demo-video-container">
+                <video
+                    class="demo-video-mp4"
+                    id="demo-video"
+                    muted
+                    playsinline
+                    src="assets/demo_video.mp4">
+                </video>
 
-    <div id="dashboard-container">
-      <header id="dashboard-header">
-        <div class="header-actions">
-          <select id="board-sort" class="dash-select">
-            <option value="updatedDesc">Recently updated</option>
-            <option value="updatedAsc">Oldest updated</option>
-            <option value="titleAsc">Title A–Z</option>
-            <option value="titleDesc">Title Z–A</option>
-          </select>
-        </div>
-      </header>
+                <!-- Custom controls -->
+                <div class="demo-video-controls">
+                    <div class="demo-video-controls-left">
+                        <button class="video-control-btn primary" data-action="toggle" type="button">
+                            <span class="material-symbols-rounded" style="scale: .8;" id="demo-play-icon">play_arrow</span>
+                        </button>
+                    </div>
 
-      <main id="board-grid" aria-live="polite"></main>
-      <!-- Sign out stays -->
-      <button id="signout-btn" class="dash-btn">Sign Out</button>
+                    <div class="demo-video-progress-container">
+                        <div class="demo-video-progress-track">
+                            <div class="demo-video-progress-fill"></div>
+                        </div>
+                    </div>
 
-      <h1 id="dashboard-title">
-        <img id="bible-board-logo" style="margin-left: -5px;" src="../assets/logo_no_bg.png">
-        <span>Bible Boards</span>
-      </h1>
+                    <span class="demo-video-time" id="demo-video-time">0:00 / 0:00</span>
+                </div>
+                
+                <div id="play-video-overlay">
+                    <span class="material-symbols-rounded" style="scale: .8;" id="play-icon-mobile">play_arrow</span>
+                    <span id="play-now-text">Play Demo</span>
+                </div>
+            </div>
+        </section>
 
-      <!-- Theme Toggle Button -->
-      <button
-        id="theme-toggle"
-        class="toggle-btn dash-btn"
-        aria-label="Toggle Theme"
-      >
-        <svg
-          id="moon-icon"
-          xmlns="http://www.w3.org/2000/svg"
-          width="22"
-          height="22"
-          viewBox="0 0 24 24"
-          fill="var(--fg)"
-        >
-          <path d="M21 12.79A9 9 0 0 1 11.21 3 7 7 0 1 0 21 12.79Z" />
-        </svg>
-        <svg
-          id="sun-icon"
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 -960 960 960"
-          fill="var(--fg)"
-        >
-          <path
-            d="M440-760v-160h80v160h-80Zm266 110-55-55 112-115 56 57-113 113Zm54 210v-80h160v80H760ZM440-40v-160h80v160h-80ZM254-652 140-763l57-56 113 113-56 54Zm508 512L651-255l54-54 114 110-57 59ZM40-440v-80h160v80H40Zm157 300-56-57 112-112 29 27 29 28-114 114Zm283-100q-100 0-170-70t-70-170q0-100 70-170t170-70q100 0 170 70t70 170q0 100-70 170t-170 70Zm0-80q66 0 113-47t47-113q0-66-47-113t-113-47q-66 0-113 47t-47 113q0 66 47 113t113 47Zm0-160Z"
-          />
-        </svg>
-      </button>
+        <!-- ========== USED BY SECTION ========== -->
+        <section class="section used-by" style="display:none;">
+            <div id="used-by-content-container">
+                <div id="used-by-text-container">
+                    <div id="line"></div>
+                    <span id="used-by-text">Used By Christians at</span>
+                </div>
+            </div>
+            <div id="used-by-logo-container-container">
+                <div id="used-by-logo-container">
+                    <div class="used-by-logo-img-container">
+                        <img class="used-by-logo-img" src="assets/tyndale.png">
+                    </div>
 
-      <form id="search-container" onsubmit="return searchForQuery(event)">
-        <input
-          id="board-filter"
-          class="dash-input"
-          type="text"
-          placeholder="Search Bible Boards"
-          autocomplete="off"
-        />
-        <button id="search-button" type="submit">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            height="24px"
-            viewBox="0 -960 960 960"
-            width="24px"
-            fill="var(--bg-alt)"
-          >
-            <path
-              d="M784-120 532-372q-30 24-69 38t-83 14q-109 0-184.5-75.5T120-580q0-109 75.5-184.5T380-840q109 0 184.5 75.5T640-580q0 44-14 83t-38 69l252 252-56 56ZM380-400q75 0 127.5-52.5T560-580q0-75-52.5-127.5T380-760q-75 0-127.5 52.5T200-580q0 75 52.5 127.5T380-400Z"
-            />
-          </svg>
-        </button>
-      </form>
-    </div>
+                    <div class="used-by-logo-img-container">
+                        <img class="used-by-logo-img" src="assets/heritage.png">
+                    </div>
 
-    <div id="modal-backdrop" class="hidden">
-      <div id="modal">
-        <h2 id="modal-title">Rename Board</h2>
-        <input
-          id="modal-title-input"
-          type="text"
-          placeholder="Enter new board title"
-        />
-        <div class="modal-actions">
-          <button id="modal-delete-btn" class="dash-btn danger">Delete</button>
-          <div class="modal-actions-right">
-            <button id="modal-cancel-btn" class="dash-btn">Cancel</button>
-            <button id="modal-save-btn" class="dash-btn primary">Save</button>
-          </div>
-        </div>
-      </div>
-    </div>
+                    <div class="used-by-logo-img-container">
+                        <img class="used-by-logo-img" src="assets/redeemer.png">
+                    </div>
 
-    <div id="best-on-table-laptop">
-      <span id="best-on-table-laptop-text">
-        Bible Board is best experienced on Desktop
-      </span>
+                    <div id="fade-section-left"></div>
+                    <div id="fade-section-right"></div>
+                </div>
+            </div>
+        </section>
 
-      <div id="best-on-table-laptop-final-text-section">
-        <span class="section-text-container">
-          Most Bible apps feel crowded.
-        </span>
-        <span class="section-text-container">
-          Great features stay siloed and hard to connect.
-        </span>
-        <span class="section-text-container">
-          Bible Board is an open canvas to drag verses, link ideas, and build living studies.
-        </span>
-      </div>
-    </div>
+        <section class="section features-section">
+            <div id="features-section-content-container">
+                <div id="features-section-main-text-container">
+                    <div id="features-section-text-header">Features that turn your Bible into a board.</div>
+                    <div id="features-section-subheader">BibleBoard gives you a visual place to lay out Scripture, insights, and worship ideas so you can see how everything connects at a glance.</div>
+                </div>
+                <div id="features-section-images-videos">
+                    <div id="image-video-container">
+                        <div class="features-section-image-container">
+                            <div class="features-section-example-content-container">
+                                <video class="features-section-example-video" autoplay playsinline loop src="assets/movable_items.mp4" style="aspect-ratio: 15 / 6.7;" muted type="video/mp4"></video>
 
+                                <div class="features-section-example-content-fade">
+                                    <div class="features-text-content-container">
+                                        <div class="feature-title">1. Visual Bible boards</div>
+                                        <div class="feature-subtext">
+                                            Lay out verses like sticky notes on a canvas. Drag them around, group ideas, and draw connections you can actually see.
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="features-section-image-container">
+                            <div class="features-section-example-content-container">
+                                <video class="features-section-example-video" autoplay playsinline loop src="assets\note_items.mp4" style="aspect-ratio: 15 / 9;" muted type="video/mp4"></video>
+                                <div class="features-section-example-content-fade">
+                                    <div class="features-text-content-container">
+                                        <div class="feature-title">2. Notes anchored to Scripture</div>
+                                        <div class="feature-subtext">
+                                            Type your thoughts, questions, and sermon points right beside the verses they’re about—no more detached notes app.
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="features-section-image-container">
+                            <div class="features-section-example-content-container">
+                                <video class="features-section-example-video" autoplay playsinline loop src="assets\music_items.mp4" style="aspect-ratio: 15 / 6.7;" muted type="video/mp4"></video>
+                                <div class="features-section-example-content-fade">
+                                    <div class="features-text-content-container">
+                                        <div class="feature-title">3. Worship & music planning</div>
+                                        <div class="feature-subtext">
+                                            Pin songs next to your passage so your worship set, sermon, and small group all flow from the same text.
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="features-section-image-container">
+                            <div class="features-section-example-content-container" style="background:var(--fg);padding:100px 20px;">
+                                <div class="features-section-example-content-fade">
+                                    <div class="features-text-content-container" style="display:flex;justify-content:center;align-items:center;flex-direction: column;">
+                                        <div class="feature-title" style="color:var(--bg);text-align: center;">Get Started Now!</div>
+                                        <div class="feature-subtext" style="color:var(--bg);text-align: center;">
+                                            Get started with google just sign in below and start you bible board.
+                                        </div>
+                                        <button class="google-signin-button" id="signin-btn">
+                                            <svg
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            width="800px"
+                                            height="800px"
+                                            viewBox="-3 0 262 262"
+                                            preserveAspectRatio="xMidYMid"
+                                            >
+                                                <path
+                                                    d="M255.878 133.451c0-10.734-.871-18.567-2.756-26.69H130.55v48.448h71.947c-1.45 12.04-9.283 30.172-26.69 42.356l-.244 1.622 38.755 30.023 2.685.268c24.659-22.774 38.875-56.282 38.875-96.027"
+                                                    fill="#4285F4"
+                                                />
+                                                <path
+                                                    d="M130.55 261.1c35.248 0 64.839-11.605 86.453-31.622l-41.196-31.913c-11.024 7.688-25.82 13.055-45.257 13.055-34.523 0-63.824-22.773-74.269-54.25l-1.531.13-40.298 31.187-.527 1.465C35.393 231.798 79.49 261.1 130.55 261.1"
+                                                    fill="#34A853"
+                                                />
+                                                <path
+                                                    d="M56.281 156.37c-2.756-8.123-4.351-16.827-4.351-25.82 0-8.994 1.595-17.697 4.206-25.82l-.073-1.73L15.26 71.312l-1.335.635C5.077 89.644 0 109.517 0 130.55s5.077 40.905 13.925 58.602l42.356-32.782"
+                                                    fill="#FBBC05"
+                                                />
+                                                <path
+                                                    d="M130.55 50.479c24.514 0 41.05 10.589 50.479 19.438l36.844-35.974C195.245 12.91 165.798 0 130.55 0 79.49 0 35.393 29.301 13.925 71.947l42.211 32.783c10.59-31.477 39.891-54.251 74.414-54.251"
+                                                    fill="#EB4335"
+                                                />
+                                            </svg>
+                                            <span>Sign in with Google</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="features-section-image-container">
+                            <div class="features-section-example-content-container">
+                                <video class="features-section-example-video" autoplay playsinline loop src="assets\music_items.mp4" style="aspect-ratio: 15 / 6.7;" muted type="video/mp4"></video>
+                                <div class="features-section-example-content-fade">
+                                    <div class="features-text-content-container">
+                                        <div class="feature-title">4. Smart search & translations</div>
+                                        <div class="feature-subtext">
+                                            Find verses by reference or keywords and quickly switch between translations while you’re building a board.
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="features-section-image-container">
+                            <div class="features-section-example-content-container">
+                                <video class="features-section-example-video" autoplay playsinline loop src="assets\music_items.mp4" style="aspect-ratio: 15 / 6.7;" muted type="video/mp4"></video>
+                                <div class="features-section-example-content-fade">
+                                    <div class="features-text-content-container">
+                                        <div class="feature-title">5. Autosave, & share</div>
+                                        <div class="feature-subtext">
+                                            Your boards save automatically in the background so you can pick up right where you left off on any device.
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="features-section-right-fade"></div>
+                        <div id="features-section-left-fade"></div>
+                        <div id="features-section-bottom-fade"></div>
+                        <div id="features-section-top-fade"></div>
+                        <button id="features-section-left-arrow" onclick="changeSelectedImage('l', true)">
+                            <svg class="arrow-icon" xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="var(--fg)">
+                                <path d="m313-440 224 224-57 56-320-320 320-320 57 56-224 224h487v80H313Z"/>
+                            </svg>
+                        </button>
+                        <button id="features-section-right-arrow" onclick="changeSelectedImage('r', true)">
+                            <svg class="arrow-Icon" xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="var(--fg)">
+                                <path d="M647-440H160v-80h487L423-744l57-56 320 320-320 320-57-56 224-224Z"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="section testimonials" style="display: none;">
+            <div id="testimonials-section-content-container">
+                <div id="testimonials-section-main-text-container">
+                    <div id="testimonials-section-text-header">What people are saying about BibleBoard.</div>
+                    <div id="testimonials-section-subheader">Real stories from students, pastors, and everyday believers using BibleBoard to see Scripture in a new way.</div>
+                </div>
+                <div id="testimonials-posts-container" class="testimonials-parallax">
+                    <div class="testimonial-container"
+                        style="--depth: -3; --x-offset:25px;">
+                        <div class="testimonial-quotation-mark">“</div>
+                        <div class="testimonial-text">BibleBoard helped me actually see how verses connect.</div>
+                        <div class="testimonial-user-container">
+                            <div class="testimonial-user-img-container">
+                                <img class="testimonial-user-img" src="assets/logo_with_bg.png">
+                            </div>
+                            <div class="testimonial-user">Student, Ontario</div>
+                        </div>
+                    </div>
+
+                    <div class="testimonial-container"
+                        style="--depth: -7;--x-offset:-150px;position:absolute;right:0px;">
+                        <div class="testimonial-quotation-mark">“</div>
+                        <div class="testimonial-text">Perfect for visual learners in our small group.</div>
+                        <div class="testimonial-user-container">
+                            <div class="testimonial-user-img-container">
+                                <img class="testimonial-user-img" src="assets/logo_with_bg.png">
+                            </div>
+                            <div class="testimonial-user">Small Group Leader</div>
+                        </div>
+                    </div>
+
+                    <div class="testimonial-container"
+                        style="--depth: -12; --x-offset: 50%;">
+                        <div class="testimonial-quotation-mark">“</div>
+                        <div class="testimonial-text">Makes prepping Bible studies so much easier.</div>
+                        <div class="testimonial-user-container">
+                            <div class="testimonial-user-img-container">
+                                <img class="testimonial-user-img" src="assets/logo_with_bg.png">
+                            </div>
+                            <div class="testimonial-user">Youth Pastor</div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <section class="section footer">
+            <div id="footer-section-img-container">
+                <img id="footer-section-img" src="assets/Mountains & Cross.png">
+                <div id="footer-section-img-fader-top"></div>
+                <div id="main-section-img-fader-bottom"></div>
+                <div id="footer-section-img-fader-right"></div>
+                <div id="footer-section-img-fader-left"></div>
+            </div>
+
+            <div id="footer-section-text-container">
+                <div id="footer-section-header-text">Ready to start your first BibleBoard?</div>
+                <div id="footer-section-sub-text">Open a blank canvas, add your favorite verses and notes, and begin mapping out what God is teaching you—one board at a time.</div>
+                <button class="action-button" style="position:relative;top:none;left:none;right:none;bottom:none;margin-top: 15px;">Get Started</button>
+            </div>
+
+            <div id="footer-bottom-container">            
+                <div id="copywright-footer-section">© 2025 BibleBoard. All rights reserved.</div>
+            </div>
+        </section>
+    </main>
+
+    <nav id="nav-bar">
+        <section id="nav-bar-container">
+            <div id="logo-container" onclick="scrollToElement('.section.main')">
+                <img id="logo-image" src="assets/logo_no_bg.png">
+                <span>BibleBoard</span>
+            </div>
+            <div id="nav-pills-container">
+                <button class="nav-pill" onclick="scrollToElement('.section.demo-video')">Demo</button>
+                <button class="nav-pill" onclick="scrollToElement('.section.features-section')">Features</button>
+                <button class="nav-pill" onclick="scrollToElement('.section.testimonials')" style="display: none;">Testimonials</button>
+                <button class="nav-pill" style="display: none;">Support Us</button>
+            </div>
+            <div id="action-buttons-container">
+                <button class="action-button">Get Started</button>
+            </div>
+        </section>
+    </nav>
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-    <script type="module" src="supabaseClient.js"></script>
-    <script type="module" src="boards.js"></script>
-    <script>
-      // Wait for the page to load
-      document.addEventListener("DOMContentLoaded", () => {
-        console.log("Loaded...")
-        // 1. Select the elements
-        const verseBox = document.querySelectorAll(".bible-verse")[0];
-        const noteBox = document.querySelectorAll(".text-note")[0];
-        const songBox = document.querySelectorAll(".song-item")[0];
-
-        // Select the two paths
-        const pathVerseNote = document.getElementById(
-          "connection-path-verse-note"
-        );
-        const pathVerseSong = document.getElementById(
-          "connection-path-verse-song"
-        );
-
-        const svg = document.querySelector(".connection-svg-overlay");
-
-        // 2. Create a function to update the lines
-        function updateConnectionLines() {
-          // Safety check in case elements aren't found
-          if (
-            !verseBox ||
-            !noteBox ||
-            !songBox ||
-            !pathVerseNote ||
-            !pathVerseSong ||
-            !svg
-          ) {
-            console.warn("Missing elements for connection lines.");
-            return;
-          }
-
-          // Get the coordinates relative to the viewport
-          const svgRect = svg.getBoundingClientRect();
-          const verseRect = verseBox.getBoundingClientRect();
-          const noteRect = noteBox.getBoundingClientRect();
-          const songRect = songBox.getBoundingClientRect();
-
-          // === Path 1: Verse to Note ===
-
-          // Calculate start point (right-middle of verse box)
-          const startX = verseRect.right - svgRect.left;
-          const startY = verseRect.top + verseRect.height / 2 - svgRect.top;
-
-          // Calculate end point (left-middle of note box)
-          const endX_Note = noteRect.left - svgRect.left;
-          const endY_Note = noteRect.top + noteRect.height / 2 - svgRect.top;
-
-          // Calculate control points for a smooth curve
-          const c1x_Note = startX + (endX_Note - startX) * 0.5;
-          const c1y_Note = startY;
-          const c2x_Note = endX_Note - (endX_Note - startX) * 0.5;
-          const c2y_Note = endY_Note;
-
-          // Build the SVG path string for the note
-          const d_Note = `M ${startX},${startY} C ${c1x_Note},${c1y_Note} ${c2x_Note},${c2y_Note} ${endX_Note},${endY_Note}`;
-
-          // Set the path attribute
-          pathVerseNote.setAttribute("d", d_Note);
-
-          // === Path 2: Verse to Song ===
-
-          // Start point is the same (verse box)
-
-          // Calculate end point (left-middle of song box)
-          const endX_Song = songRect.left - svgRect.left;
-          const endY_Song = songRect.top + songRect.height / 2 - svgRect.top;
-
-          // Calculate control points for a smooth curve
-          const c1x_Song = startX + (endX_Song - startX) * 0.5;
-          const c1y_Song = startY;
-          const c2x_Song = endX_Song - (endX_Song - startX) * 0.5;
-          const c2y_Song = endY_Song;
-
-          // Build the SVG path string for the song
-          const d_Song = `M ${startX},${startY} C ${c1x_Song},${c1y_Song} ${c2x_Song},${c2y_Song} ${endX_Song},${endY_Song}`;
-
-          // Set the path attribute
-          pathVerseSong.setAttribute("d", d_Song);
-        }
-
-        // 5. Call the function once on load
-        updateConnectionLines();
-
-        // 6. Call the function again every time the window is resized
-        window.addEventListener("resize", updateConnectionLines);
-      });
-
-      window.addEventListener("click", (e) => {
-        if(window.innerWidth >= 750) {
-          openLoginSection()
-        }
-      });
-
-      function openLoginSection() {
-        const signInFormContainer = document.getElementById(
-          "sign-in-form-container"
-        );
-        const signInForm = document.getElementById("sign-in-form");
-        signInFormContainer.classList.remove("hidden");
-        signInFormContainer.style.transition = ".25s";
-        setTimeout(() => {
-          signInFormContainer.style.opacity = "1";
-        }, 250);
-      }
-    </script>
-  </body>
+    <script type="module" src="../supabaseClient.js"></script>
+</body>
 </html>

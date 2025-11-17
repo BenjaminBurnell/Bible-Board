@@ -77,8 +77,8 @@ We may update these Terms from time to time. If we make material changes, we wil
 **Email:** **benburnell.git@gmail.com**  
 **Mailing location:** Toronto, Ontario, Canada
 
----
+<!-- ---
 
 ### Implementation Notes (non-contractual)
 - Record consent at sign-up: `tos_version: "v1.0"`, timestamp, and (if collected) IP/user agent.
-- Keep this file pinned via a tag or commit in GitHub for auditability.
+- Keep this file pinned via a tag or commit in GitHub for auditability. -->

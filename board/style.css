@@ -1,8 +1,10 @@
 /* ==================== Setup for site ==================== */
-@import url("https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400;1,700&display=swap");
+/* @import url("https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400;1,700&display=swap"); */
+@import url('https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400;1,700&family=Stack+Sans+Notch:wght@200..700&display=swap');
 
 * {
-  font-family: "Atkinson Hyperlegible", sans-serif;
+  /* font-family: "Atkinson Hyperlegible", sans-serif; */
+  font-family: "Stack Sans Notch", sans-serif;
   user-select: none;
   -webkit-user-select: none;
 }
@@ -17,8 +19,9 @@
   --accent: #67e495;
   --border: #2f2f2f;
   --muted: #8b949e;
-  --brightness:1000%;
+  --brightness: 1000%;
 }
+
 body.light {
   --bg: #ffffff;
   --bg-seethroug: #f2f2f2ab;
@@ -29,7 +32,7 @@ body.light {
   --border: #dfdfdf;
   --accent: #2ea043;
   --muted: #57606a;
-  --brightness:30%;
+  --brightness: 30%;
 }
 
 html,
@@ -53,24 +56,25 @@ body {
   bottom: 0;
   left: 0;
 }
+
 .workspace {
   position: relative;
   width: 16000px;
   height: 12000px;
   overflow: hidden;
   background-color: var(--bg);
-  background-image: radial-gradient(
-    circle at center,
-    var(--bg-dots) 3px,
-    transparent 3px
-  );
+  background-image: radial-gradient(circle at center,
+      var(--bg-dots) 3px,
+      transparent 3px);
   background-size: 40px 40px;
 }
+
 #main-content-container {
   width: 100vw;
   height: 100%;
   position: relative;
-  transition: width 0.25s ease; /* smooth shrink/expand */
+  transition: width 0.25s ease;
+  /* smooth shrink/expand */
 }
 
 /* ==================== Elements (board items) ==================== */
@@ -78,6 +82,7 @@ body {
 .board-item * {
   -webkit-touch-callout: none;
 }
+
 .board-item {
   position: absolute;
   width: fit-content;
@@ -90,21 +95,25 @@ body {
   color: var(--fg);
   font-weight: 800;
   cursor: grab;
-  z-index: 10; /* UPDATED: Was 5, now 10 to render above connections */
+  z-index: 10;
+  /* UPDATED: Was 5, now 10 to render above connections */
   background: var(--bg-dots);
   backdrop-filter: blur(1rem);
   border-radius: 10px;
   border: 1px solid var(--fg-seethrough);
   box-shadow: 0 0 15px 1px rgba(0, 0, 0, 0.1);
 }
+
 .board-item:hover {
   background: var(--bg-dots);
 }
+
 .board-item:active {
   cursor: grabbing;
 }
+
 .board-item.selected-connection {
-  box-shadow: 0 0 0 3px var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
   border-color: var(--accent);
 }
 
@@ -116,12 +125,14 @@ body {
   font-weight: 700;
   text-transform: uppercase;
 }
+
 .verse-text-content {
   font-size: 22.5px;
   color: var(--fg);
   font-weight: 900;
   margin: 5px 0;
 }
+
 .verse-text-reference {
   width: 100%;
   font-size: 15px;
@@ -145,6 +156,7 @@ body {
   padding: 0;
   margin: 0;
 }
+
 .text-note .text-content:focus {
   outline: none;
   box-shadow: none;
@@ -156,7 +168,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  width:35px;
+  width: 35px;
   position: fixed;
   left: 15px;
   /* top:15px; */
@@ -173,6 +185,7 @@ body {
   border-radius: 15px;
   z-index: 10001;
 }
+
 .action-button {
   width: 30px;
   height: 30px;
@@ -181,23 +194,26 @@ body {
   align-items: center;
   padding: 8px;
   /* background: var(--bg-seethroug); */
-  background:none;
+  background: none;
   border-radius: 10px;
   border: 1px solid var(--fg-seethrough);
   backdrop-filter: blur(1rem);
   cursor: pointer;
   transition: opacity 0.15s ease;
 }
+
 .action-button:hover {
   background: var(--bg-dots);
   backdrop-filter: blur(1rem);
 }
+
 .action-icon {
   fill: var(--fg);
-  color:var(--fg);
+  color: var(--fg);
 }
+
 .action-button:disabled {
-  opacity:0.4;
+  opacity: 0.4;
   cursor: not-allowed;
   background: var(--bg-seethroug);
   backdrop-filter: blur(1rem);
@@ -207,7 +223,7 @@ body {
   background: rgb(173, 28, 28);
 }
 
-#delete-action-button > .action-icon {
+#delete-action-button>.action-icon {
   fill: #e6e6e6;
 }
 
@@ -220,6 +236,7 @@ body {
   height: 25000px;
   pointer-events: none;
 }
+
 .connection-line {
   stroke: var(--border);
   stroke-width: 7;
@@ -238,7 +255,7 @@ body {
   background: var(--bg-seethroug);
   backdrop-filter: blur(1rem);
   position: absolute;
-  display:flex;
+  display: flex;
   bottom: 15px;
   left: 50%;
   transform: translateX(-50%);
@@ -246,6 +263,7 @@ body {
   border: 1px solid var(--fg-seethrough);
   z-index: 20000;
 }
+
 #search-bar {
   width: calc(100% - 185px);
   max-width: 500px;
@@ -253,7 +271,7 @@ body {
   position: absolute;
   top: 50%;
   left: 25px;
-  display:flex;
+  display: flex;
   transform: translateY(-50%);
   background: transparent;
   border: none;
@@ -268,8 +286,10 @@ body {
   position: absolute;
   top: 0;
   bottom: 0;
-  right: 50px; /* Next to the 50px search button */
-  width: 100px; /* Fixed width */
+  right: 50px;
+  /* Next to the 50px search button */
+  width: 100px;
+  /* Fixed width */
   height: 100%;
   background: transparent;
   border: none;
@@ -288,7 +308,8 @@ body {
   background-repeat: no-repeat;
   background-position: right 10px center;
   background-size: 0.65em auto;
-  padding-right: 30px; /* Space for arrow */
+  padding-right: 30px;
+  /* Space for arrow */
 }
 
 #version-select option {
@@ -303,12 +324,16 @@ body.light #version-select {
 
 @media (max-width: 500px) {
   #search-bar {
-    width: calc(100% - 150px); /* Tighter width */
+    width: calc(100% - 150px);
+    /* Tighter width */
   }
+
   #version-select {
-    width: 75px; /* Narrower select */
+    width: 75px;
+    /* Narrower select */
     padding-left: 5px;
-    padding-right: 25px; /* Tighter padding */
+    padding-right: 25px;
+    /* Tighter padding */
     background-position: right 5px center;
   }
 }
@@ -331,6 +356,7 @@ body.light #version-select {
   background: var(--fg);
   cursor: pointer;
 }
+
 input,
 button,
 select,
@@ -358,12 +384,14 @@ textarea:focus {
   top: 15px;
   right: 15px;
 }
+
 #moon-icon,
 #sun-icon {
   width: 20px;
   height: 20px;
   transition: opacity 0.3s ease;
 }
+
 #moon-icon {
   width: 25px;
   height: 25px;
@@ -372,9 +400,11 @@ textarea:focus {
   left: calc(50% - 2px);
   transform: translate(-50%, -50%);
 }
+
 body.light #moon-icon {
   display: none;
 }
+
 body:not(.light) #sun-icon {
   display: none;
 }
@@ -395,6 +425,7 @@ body:not(.light) #sun-icon {
   width: fit-content;
   height: 45px;
 }
+
 #bible-whiteboard-text {
   display: flex;
   justify-content: center;
@@ -404,15 +435,17 @@ body:not(.light) #sun-icon {
 }
 
 #bible-board-logo {
-  width:25px;
-  height:25px;
-  filter:brightness(var(--brightness));
+  width: 25px;
+  height: 25px;
+  filter: brightness(var(--brightness));
 }
+
 #edit-Icon {
   width: 17.5px;
   height: 17.5px;
   fill: var(--muted);
 }
+
 #title-textbox {
   background: transparent;
   border: none;
@@ -429,48 +462,92 @@ body:not(.light) #sun-icon {
 #title-textbox::placeholder {
   font-weight: 600;
 }
+
 #title-textbox:disabled {
   color: var(--muted);
   cursor: not-allowed;
 }
 
 #search-query-container {
-  width: 340px;
+  width: 100vw;
   position: fixed;
-  top: 0;
+  top: 20px;
   bottom: 0;
-  left: 100%;
+  left: 0px;
+  z-index: -1;
   border-left: 1px solid var(--border);
   background: var(--bg);
   transition: left 0.25s ease;
+  display: flex;
+  justify-content: center;
+  opacity: 0;
+  overflow-y: auto;
 }
+
+#esc-btn {
+  font-family: inherit;
+  font-weight: 700;
+  border-radius: 15px;
+  border: 1px solid var(--border);
+  background: var(--bg-seethroug);
+  backdrop-filter: blur(1rem);
+  -webkit-backdrop-filter: blur(1rem);
+  color: var(--fg);
+  position: fixed;
+  left: 15px;
+  top: 15px;
+  z-index: 1000;
+  padding: 8px 17px;
+  height: 26px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 100;
+  font-size: 15px;
+  gap: 5px;
+  cursor: pointer;
+}
+
+#esc-icon {
+  width: 15px;
+  height: 15px;
+}
+
 #search-query-content {
-  height: 100%;
-  width: 100%;
+  height: fit-content;
+  width: calc(100% - 50px);
+  max-width: 500px;
   padding: 15px;
   background: transparent;
-  overflow-y: auto;
-  padding-bottom: 5px;
+  padding-bottom: 75px;
   box-sizing: border-box;
 }
+
 #search-query-song-container::after {
   content: "";
   display: block;
-  height: 0px; /* tweak as you like */
+  height: 0px;
+  /* tweak as you like */
 }
+
 #search-query {
-  color: var(--muted);
-  font-size: 15px;
+  color: var(--fg);
+  font-size: 25px;
   font-weight: 600;
+  margin-top:15px;
+  margin-bottom:5px;
 }
+
 #did-you-mean-text {
   color: var(--muted);
   font-size: 15px;
   font-weight: 600;
   display: flex;
+  flex-direction: row;
   align-items: center;
   gap: 5px;
 }
+
 #did-you-mean-text div {
   text-decoration: underline;
   cursor: pointer;
@@ -498,17 +575,39 @@ body:not(.light) #sun-icon {
   flex-direction: column;
   gap: 10px;
 }
+
 .search-query-verse-container {
   border-radius: 20px;
   color: var(--fg);
-  border: 1px solid var(--border);
-  background: var(--bg-dots);
-  padding: 15px;
-  width: calc(100%);
+  /* border: 1px solid var(--border);
+  background: var(--bg-dots); */
+  padding: 5px;
+  /* width: calc(100%); */
   font-size: 17.5px;
   font-weight: 900;
-  margin-bottom: 15px;
+  display:flex;
+  justify-content:center;
+  /* align-items:center; */
+  flex-direction: column;
 }
+
+.search-query-verse-container[data-status="pending"] {
+  display:none;
+}
+
+/* This styles any element with the 'verse' class 
+   that ALSO has the 'data-status="ready"' attribute */
+.verse[data-status="ready"] {
+  /* Your styles here, e.g.: */
+  border-color: var(--accent);
+}
+
+/* You could also hide pending items this way, though 
+   my fix below makes this unnecessary */
+.verse[data-status="pending"] {
+  display: none;
+}
+
 .search-query-no-verse-found-container {
   border-radius: 20px;
   color: var(--fg);
@@ -519,6 +618,7 @@ body:not(.light) #sun-icon {
   font-size: 17.5px;
   font-weight: 900;
 }
+
 .search-query-verse-add-button {
   border-radius: 20px;
   background: var(--fg);
@@ -526,13 +626,16 @@ body:not(.light) #sun-icon {
   border: 1px solid var(--bg);
   padding: 5px 15px;
   cursor: pointer;
+  font-weight: 700;
 }
+
 .search-query-verse-reference {
   margin-top: 5px;
   width: 100%;
-  font-size: 15px;
+  font-size: 13px;
   text-align: left;
   color: var(--muted);
+  opacity:0.6;
   font-weight: 700;
   text-transform: uppercase;
   margin-bottom: 15px;
@@ -540,9 +643,10 @@ body:not(.light) #sun-icon {
 
 /* NEW: Style for the "Load More" button */
 .search-load-more {
-  width: calc(340px - 30px);
+  width: calc(100%);
   margin-top: 5px;
-  margin-bottom: 20px; /* Space at the end of the list */
+  margin-bottom: 20px;
+  /* Space at the end of the list */
   border-radius: 20px;
   background: var(--bg-dots);
   color: var(--fg);
@@ -552,6 +656,7 @@ body:not(.light) #sun-icon {
   font-weight: 800;
   font-size: 15px;
 }
+
 @media (pointer: fine) {
   .search-load-more:hover {
     border-color: var(--muted);
@@ -566,6 +671,7 @@ body:not(.light) #sun-icon {
   margin: 5px 0 2px;
   margin-top: 0px;
 }
+
 #search-query-song-container {
   position: relative;
   width: calc(100% - 15px);
@@ -573,6 +679,7 @@ body:not(.light) #sun-icon {
   flex-direction: column;
   gap: 10px;
 }
+
 .search-query-song {
   border-radius: 16px;
   color: var(--fg);
@@ -597,10 +704,12 @@ body:not(.light) #sun-icon {
   align-content: center;
   transition: opacity 0.8s ease, visibility 0.8s ease;
 }
+
 #loader.fade-out {
   opacity: 0;
   visibility: hidden;
 }
+
 .loader-spinner {
   width: 35px;
   height: 35px;
@@ -609,10 +718,12 @@ body:not(.light) #sun-icon {
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }
+
 @keyframes spin {
   from {
     transform: rotate(0deg);
   }
+
   to {
     transform: rotate(360deg);
   }
@@ -636,6 +747,7 @@ body:not(.light) #sun-icon {
   overflow-x: hidden;
   gap: 10px;
 }
+
 #interlinear-panel.open {
   left: calc(100% - 340px);
 }
@@ -649,12 +761,14 @@ body:not(.light) #sun-icon {
   border-radius: 14px;
   padding: 10px 12px;
 }
+
 #interlinear-title {
   font-size: 16px;
   font-weight: 800;
   color: var(--fg);
   text-transform: uppercase;
 }
+
 #interlinear-close {
   background: var(--bg-dots);
   color: var(--fg);
@@ -664,12 +778,14 @@ body:not(.light) #sun-icon {
   height: 32px;
   cursor: pointer;
 }
+
 #interlinear-subtitle {
   color: var(--muted);
   font-size: 14px;
   font-weight: 700;
   padding: 0 2px;
 }
+
 #interlinear-list {
   flex: 1;
   display: flex;
@@ -677,6 +793,7 @@ body:not(.light) #sun-icon {
   overflow: visible;
   gap: 10px;
 }
+
 .interlinear-row {
   border-radius: 16px;
   color: var(--fg);
@@ -687,23 +804,27 @@ body:not(.light) #sun-icon {
   flex-direction: column;
   gap: 6px;
 }
+
 .interlinear-surface {
   font-size: 20px;
   font-weight: 900;
   line-height: 1.1;
   word-break: break-word;
 }
+
 .interlinear-english {
   font-size: 16px;
   font-weight: 800;
   color: var(--fg);
   opacity: 0.95;
 }
+
 .interlinear-meta {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
 }
+
 .meta-chip {
   background: var(--bg-seethroug);
   border: 1px solid var(--fg-seethrough);
@@ -713,6 +834,7 @@ body:not(.light) #sun-icon {
   font-weight: 700;
   color: var(--muted);
 }
+
 .interlinear-add {
   align-self: flex-start;
   margin-top: 4px;
@@ -722,8 +844,9 @@ body:not(.light) #sun-icon {
   border: 1px solid var(--bg);
   padding: 6px 12px;
   cursor: pointer;
-  font-weight: 800;
+  font-weight: 700;
 }
+
 @media (pointer: fine) {
   .interlinear-add:hover {
     opacity: 0.8;
@@ -737,12 +860,14 @@ body:not(.light) #sun-icon {
   justify-content: center;
   margin-top: 20px;
 }
+
 .panel-empty {
   display: none;
   color: var(--muted);
   font-size: 14px;
   padding: 10px;
 }
+
 .panel-error {
   display: none;
   color: #ff8c8c;
@@ -770,12 +895,14 @@ body:not(.light) #sun-icon {
   gap: 10px;
   margin-bottom: 6px;
 }
+
 .interlinear-card-badge {
   font-size: 12px;
   font-weight: 800;
   color: var(--muted);
   text-transform: uppercase;
 }
+
 .interlinear-card-ref {
   font-size: 12px;
   font-weight: 800;
@@ -790,18 +917,21 @@ body:not(.light) #sun-icon {
   line-height: 1.1;
   word-break: break-word;
 }
+
 .interlinear-card-english {
   margin-top: 4px;
   font-size: 16px;
   font-weight: 800;
   color: var(--muted);
 }
+
 .interlinear-card-meta {
   margin-top: 6px;
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
 }
+
 .interlinear-chip {
   background: var(--bg-seethroug);
   border: 1px solid var(--fg-seethrough);
@@ -819,6 +949,7 @@ body:not(.light) #sun-icon {
   gap: 15px;
   width: calc(100%);
 }
+
 .song-card {
   display: flex;
   align-items: center;
@@ -828,6 +959,7 @@ body:not(.light) #sun-icon {
   border: 1px solid var(--border);
   background: var(--bg-dots);
 }
+
 .song-cover {
   width: 52px;
   height: 52px;
@@ -836,21 +968,26 @@ body:not(.light) #sun-icon {
   background: var(--bg-alt);
   border: 1px solid var(--fg-seethrough);
 }
+
 .song-meta {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  margin-right: auto;
 }
+
 .song-title {
   font-size: 16px;
   font-weight: 800;
   color: var(--fg);
 }
+
 .song-artist {
   font-size: 13px;
   font-weight: 700;
   color: var(--muted);
 }
+
 .song-add-btn {
   margin-left: auto;
   border-radius: 16px;
@@ -859,7 +996,9 @@ body:not(.light) #sun-icon {
   border: 1px solid var(--bg);
   padding: 5px 12px;
   cursor: pointer;
+  font-weight: 700;
 }
+
 @media (pointer: fine) {
   .song-add-btn:hover {
     opacity: 0.75;
@@ -872,20 +1011,24 @@ body:not(.light) #sun-icon {
   align-items: center;
   gap: 10px;
 }
+
 .song-item .song-cover {
   width: 56px;
   height: 56px;
   border-radius: 8px;
 }
+
 .song-item .song-texts {
   display: flex;
   flex-direction: column;
 }
+
 .song-item .song-name {
   font-size: 18px;
   font-weight: 900;
   color: var(--fg);
 }
+
 .song-item .song-artist {
   font-size: 13px;
   font-weight: 700;
@@ -955,6 +1098,7 @@ body {
   color: var(--fg);
   cursor: pointer;
 }
+
 #board-meta-controls .meta-btn:hover {
   border-color: var(--muted);
 }
@@ -995,8 +1139,10 @@ body {
 
 .share-popover {
   position: absolute;
-  top: 420px; /* Positioned below the top bar items */
-  right: 70px; /* Aligned with auth controls */
+  top: 420px;
+  /* Positioned below the top bar items */
+  right: 70px;
+  /* Aligned with auth controls */
   background: var(--bg-seethroug);
   backdrop-filter: blur(1rem);
   -webkit-backdrop-filter: blur(1rem);
@@ -1016,7 +1162,8 @@ body {
   border-radius: 8px;
   background: var(--bg-alt);
   color: var(--muted);
-  box-sizing: border-box; /* Ensure padding doesn't break layout */
+  box-sizing: border-box;
+  /* Ensure padding doesn't break layout */
 }
 
 .share-actions {
@@ -1038,9 +1185,11 @@ body {
   color: var(--fg);
   cursor: pointer;
 }
+
 .share-actions .btn:hover {
   border-color: var(--muted);
 }
+
 .share-actions .btn#copy-link-btn {
   background: var(--fg);
   color: var(--bg);
@@ -1049,7 +1198,8 @@ body {
 
 .toast {
   position: fixed;
-  bottom: 25px; /* Raised to avoid search bar */
+  bottom: 25px;
+  /* Raised to avoid search bar */
   left: 50%;
   transform: translateX(-50%);
   background: var(--bg);
@@ -1070,14 +1220,17 @@ body {
     opacity: 0;
     transform: translate(-50%, 10px);
   }
+
   20% {
     opacity: 1;
     transform: translate(-50%, 0);
   }
+
   80% {
     opacity: 1;
     transform: translate(-50%, 0);
   }
+
   100% {
     opacity: 0;
     transform: translate(-50%, -5px);
@@ -1120,27 +1273,34 @@ textarea:disabled {
   /* border: 1px solid var(--border); */
   border-radius: 999px;
   pointer-events: none;
-  z-index: 10000; /* below top buttons but above canvas */
+  z-index: 10000;
+  /* below top buttons but above canvas */
   opacity: 0.5;
   transition: width 0.06s linear, height 0.06s linear, left 0.06s linear,
     top 0.06s linear;
 }
+
 /* Horizontal bar (bottom) */
 #viewbar-x {
   left: 12px;
-  right: 12px; /* track width; the thumb is inside via left/width inline styles */
+  right: 12px;
+  /* track width; the thumb is inside via left/width inline styles */
   height: 5px;
   bottom: 5px;
-  background: transparent; /* track is transparent; we render the thumb as an inner div */
+  background: transparent;
+  /* track is transparent; we render the thumb as an inner div */
 }
+
 /* Vertical bar (right) */
 #viewbar-y {
   top: 12px;
-  bottom: 12px; /* track height; the thumb is inside via top/height inline styles */
+  bottom: 12px;
+  /* track height; the thumb is inside via top/height inline styles */
   width: 5px;
   right: 5px;
   background: transparent;
 }
+
 /* Thumbs inside tracks */
 #viewbar-x .vb-thumb,
 #viewbar-y .vb-thumb {
@@ -1150,10 +1310,12 @@ textarea:disabled {
   /* border: 1px solid var(--fg-seethrough); */
   /* opacity: .8; */
 }
+
 #viewbar-x .vb-thumb {
   top: 0;
   bottom: 0;
 }
+
 #viewbar-y .vb-thumb {
   left: 0;
   right: 0;
@@ -1161,7 +1323,8 @@ textarea:disabled {
 
 /* ADDED: Export Modal Styles */
 .export-modal-overlay {
-  display: none; /* Hidden by default */
+  display: none;
+  /* Hidden by default */
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.6);
@@ -1205,6 +1368,7 @@ textarea:disabled {
   cursor: pointer;
   padding: 0;
 }
+
 .export-modal-close:hover {
   color: var(--fg);
 }
@@ -1252,11 +1416,13 @@ textarea:disabled {
   cursor: pointer;
   width: 100%;
 }
+
 .export-modal-content .btn.btn-primary {
   background: var(--accent);
   color: var(--bg);
   border-color: var(--accent);
 }
+
 .export-modal-content .btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
@@ -1271,8 +1437,8 @@ textarea:disabled {
 }
 
 
-.action-button.active > svg > path {
-  fill:var(--bg);
+.action-button.active>svg>path {
+  fill: var(--bg);
 }
 
 .action-button.active {
@@ -1282,7 +1448,8 @@ textarea:disabled {
 
 .disconnect-mode .connection-line {
   cursor: pointer;
-  stroke-dasharray: 5 3; /* Optional: show "edit mode" */
+  stroke-dasharray: 5 3;
+  /* Optional: show "edit mode" */
 }
 
 
@@ -1334,4 +1501,256 @@ textarea:disabled {
 /* Hide handles in read-only mode */
 body.read-only .connection-handle {
   display: none;
+}
+
+
+/* ==================== NEW: Search Pills & Verse List ==================== */
+
+/* --- Pill Toggle Container --- */
+.search-mode-toggle {
+  display: flex;
+  gap: 8px;
+  padding: 8px;
+  justify-content: left;
+}
+
+.search-mode-pill {
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  padding: 6px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--fg-seethrough);
+  background: var(--bg-seethroug);
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.search-mode-pill:hover {
+  border-color: var(--muted);
+  color: var(--fg);
+}
+
+/* --- Active Pill State --- */
+.search-mode-pill.active {
+  background: var(--fg);
+  color: var(--bg);
+  border-color: var(--fg);
+}
+
+/* --- Verse List (Full Chapter) --- */
+.verse-list-container {
+  padding: 0 15px;
+  font-size: 17.5px;
+  font-weight: 200;
+  color: var(--fg);
+  line-height: 1.6;
+}
+
+.verse-list-container .verse {
+  margin-bottom: 12px;
+  /* For scroll-to alignment */
+  scroll-margin-top: 150px;
+}
+
+.verse-list-container .verse-number {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--muted);
+  vertical-align: super;
+  margin-right: 6px;
+}
+
+.verse-list-container .verse-text {
+  /* This class already exists, but we'll ensure it works here */
+  display: inline;
+  font-size: 17px;
+  font-weight: 900;
+  color: var(--fg);
+  opacity: 0.8;
+  text-transform: none;
+}
+
+/* --- Highlighting the target verse --- */
+.verse-list-container .verse.highlighted .verse-text {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+
+/* ==================== NEW: Sticky Panel Header ==================== */
+
+#search-panel-header {
+  position: sticky;
+  top: 0;
+  /* Use the panel's background color to hide content scrolling under it */
+  background: var(--bg);
+  z-index: 10;
+  /* Add a little space below the header before content starts */
+  padding-top: 2px;
+  padding-bottom: 8px;
+}
+
+/* Ensure the results scroll *under* the sticky header */
+#search-query-full-container {
+  position: relative;
+  z-index: 1;
+}
+
+/* Ensure the ESC button stays on top of the sticky header */
+#esc-btn {
+  z-index: 11;
+}
+
+/* ==================== NEW: Verse Multi-Select Queue ==================== */
+
+/* --- 1. Floating "Add to Board" Button (Top Right) --- */
+.floating-add-btn {
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  padding: 12px 18px;
+  border-radius: 15px;
+  border: 1px solid var(--fg-seethrough);
+  background: var(--fg);
+  color: var(--bg);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display:flex;
+  gap:5px;
+  position: fixed;
+  top: 15px;
+  right: 15px; 
+  z-index: 10003;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.floating-add-btn:hover {
+  opacity: 0.85;
+}
+
+/* The SVG icon */
+.add-to-board-icon-open {
+  width: 18px;
+  height: 18px;
+  fill: var(--bg);            /* or whatever color you want */
+}
+
+@keyframes loadItemToBoard {
+  0% {
+    opacity:0;
+  }
+
+  100% {
+    opacity:1;
+  }
+}
+
+/* --- 2. Make Verse Cards "position: relative" --- */
+/* This allows us to absolute-position the new add button */
+.search-query-verse-container,
+.verse-list-container .verse {
+  position: relative;
+  /* Add padding to the right to make space for the button */
+  padding-right: 45px; 
+}
+.search-query-verse-text {
+  width: 100%;
+  font-size: 17px;
+  text-align: left;
+  color: var(--fg);
+  font-weight: 700;
+}
+
+/* --- 3. New "+" Add Button Style --- */
+/* This will override the old button style */
+.search-query-verse-add-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  
+  border-radius: 50%;
+  background: var(--bg-alt);
+  color: var(--fg);
+  border: 1px solid var(--fg-seethrough);
+  cursor: pointer;
+  
+  /* Positioning magic */
+  position: absolute;
+  right: 0px;
+  top: 50%;
+  transform: translateY(-50%);
+  transition: all 0.2s ease;
+
+  opacity: 0.5;
+}
+
+.search-query-verse-add-button:hover {
+  border-color: var(--muted);
+  background: var(--bg-dots);
+}
+
+/* --- 4. "Selected" State for Card and Button --- */
+
+/* Card highlight */
+/* .search-query-verse-container.selected-for-add,
+.verse-list-container .verse.selected-for-add {
+  border-color: var(--accent);
+  background: var(--bg-alt);
+} */
+
+/* Button changes to a checkmark */
+.search-query-verse-add-button.selected {
+  background: var(--accent);
+  border-color: var(--accent);
+  opacity: 1;
+  color: var(--bg);
+}
+
+/* --- 5. Google Icon Content for Button --- */
+.search-query-verse-add-button::before {
+  font-family: 'Material Symbols Outlined';
+  font-weight: 600;
+  font-size: 20px;
+  line-height: 1;
+  user-select: none; 
+}
+
+.search-query-verse-add-button.selected::before {
+  content: 'check'; /* Google Icon name for ✓ */
+}
+
+.search-query-verse-add-button:not(.selected)::before {
+  content: 'add'; /* Google Icon name for + */
+}
+
+#bottom-Fade-element {
+  width:100vw;
+  height: 75px;
+  position:fixed;
+  bottom:0px;
+  left:0px;
+  background:linear-gradient(to top, var(--bg), transparent);
+  z-index:1;
+  /* background: linear-gradient(to top, var(--bg), transparent); */
+  /* background:red; */
+}
+
+/* Songs styled like verse rows */
+.search-query-verse-container.song-row {
+  display:flex;
+  flex-direction: row;
+  align-items:center;
+  gap: 8px;
+}
+
+.search-query-verse-container.song-row .song-line {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }

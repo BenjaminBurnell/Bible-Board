@@ -66,8 +66,8 @@ We may update this Privacy Policy from time to time. Material changes will be no
 **Privacy contact:** **benburnell.git@gmail.com**  
 **Mailing location:** Toronto, Ontario, Canada
 
----
+<!-- ---
 
 ### Implementation Notes (non-contractual)
 - Provide a simple **Export my data** (e.g., JSON download of boards) and **Delete my account** path, or accept requests via the email above.
-- Keep this file pinned via a tag or commit in GitHub for auditability.
+- Keep this file pinned via a tag or commit in GitHub for auditability. -->
