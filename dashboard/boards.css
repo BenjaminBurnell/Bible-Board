@@ -292,6 +292,10 @@ body {
   border-radius: 12px;
   text-align: center;
   color: var(--muted);
+  height:200px;
+  display:flex;
+  justify-content:center;
+  align-items:center;
 }
 
 #status-message.hidden {

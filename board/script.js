@@ -4342,7 +4342,8 @@ function applyReadOnlyGuards(isReadOnly) {
     if (tourBtn) tourBtn.style.display = "none";
 
     // 6. Show Export button (viewers can export)
-    if (exportBtn) exportBtn.style.display = "inline-block"; // Make sure it's visible
+    // if (exportBtn) exportBtn.style.display = "inline-block"; // Make sure it's visible
+    if (exportBtn) exportBtn.style.display = "none"; // Make sure it's visible
   } else {
     // Restore UI for owner
     if (actionButtons) actionButtons.style.display = "flex";
@@ -4363,7 +4364,9 @@ function applyReadOnlyGuards(isReadOnly) {
     if (tourBtn) tourBtn.style.display = "inline-block"; // Match supabase-sync.js logic
 
     // 6. Show Export button
-    if (exportBtn) exportBtn.style.display = "inline-block";
+    // if (exportBtn) exportBtn.style.display = "inline-block";
+    if (exportBtn) exportBtn.style.display = "none"; // Make sure it's visible
+
   }
 }
 
