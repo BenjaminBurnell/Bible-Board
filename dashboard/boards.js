@@ -159,24 +159,32 @@ function buildCardHTML(board) {
   return `
     <div class="board-card" data-id="${board.id}" data-path="${board.path}" data-title="${board.title}">
       <button class="card-main" type="button">
-        <div class="card-footer">
-          <span class="card-date">
-            <svg xmlns="http://www.w3.org/2000/svg" height="14" width="14" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-              <path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V17h6.828l7.586-7.586a2 2 0 000-2.828zM3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" />
-            </svg>
-            ${formattedDate}
-          </span>
+        <div class="card-text-block">
+          <h3 class="card-title">${board.title || "Untitled Board"}</h3>
+          <p class="card-desc">${description}</p>
         </div>
-        <h3 class="card-title">${board.title || "Untitled Board"}</h3>
-        <p class="card-desc">${description}</p>
+
+        <div class="card-footer">
+          <div class="card-tags">
+            <!-- tags / stats can go here later -->
+          </div>
+        </div>
       </button>
 
       <div class="card-more">
+        <span class="card-date">
+          <svg xmlns="http://www.w3.org/2000/svg" height="14" width="14" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+            <path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V17h6.828l7.586-7.586a2 2 0 000-2.828zM3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" />
+          </svg>
+          ${formattedDate}
+        </span>
+
         <button class="more-btn" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="${menuId}">
           <svg xmlns="http://www.w3.org/2000/svg" height="20" width="20" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
             <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
           </svg>
         </button>
+
         <ul id="${menuId}" class="more-menu hidden" role="menu">
           <li><button class="menu-item menu-share" role="menuitem" type="button">Share link</button></li>
           <li><button class="menu-item menu-delete" role="menuitem" type="button">Delete</button></li>
@@ -184,8 +192,8 @@ function buildCardHTML(board) {
       </div>
     </div>
   `;
-  // <li><button class="menu-item menu-rename" role="menuitem" type="button">Rename</button></li>
 }
+
 
 // Keep loaded boards in memory for filtering/sorting
 let loadedBoards = [];
@@ -372,10 +380,34 @@ async function fetchBoardDetails(user, file) {
     const text = await blob.text();
     const json = JSON.parse(text);
 
+    // Try to build a preview snippet from the FIRST element on the board
+    let previewSnippet = "";
+    let items = [];
+
+    if (Array.isArray(json.elements)) {
+      items = json.elements;
+    }
+
+    if (items.length > 0) {
+      const first = items[0];
+
+      if (first.type === "note" && first.html) {
+        previewSnippet = first.html.toString().trim();
+      } else if (first.type === "verse") {
+        const body = first.text?.toString().trim() || "";
+        const ref = first.reference?.toString().trim() || "";
+        previewSnippet = ref && body ? `${ref} — ${body}` : body || ref;
+      } else if (first.type === "song") {
+        previewSnippet = first.title?.toString().trim() || "";
+      }
+    }
+
+    const description = json.description || previewSnippet || "";
+    
     return {
       id: json.id || file.name.replace(".json", ""),
       title: json.title || "Untitled Board",
-      description: json.description || "",
+      description,
       createdAt: json.createdAt || file.created_at || null,
       updatedAt: json.updatedAt || file.updated_at || file.created_at || null,
       path,
@@ -385,6 +417,7 @@ async function fetchBoardDetails(user, file) {
     return null;
   }
 }
+
 
 async function loadBoards(user) {
   if (!user) return;
@@ -523,8 +556,8 @@ async function init() {
       return;
     }
 
-    // 2) Clicking inside the main card area → open the board
-    if (e.target.closest(".card-main")) {
+    console.log(e.target.className)
+    if(e.target.className == "card-footer" || e.target.className == "card-date" || e.target.className == "card-title" || e.target.className == "card-main" || e.target.className == "card-desc") {
       closeActiveMenu();
       const boardId = card.dataset.id;
       if (boardId && currentUser) {

@@ -266,8 +266,8 @@ body {
 
 /* New board button and status tile */
 #board-grid{
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  display:flex;
+  flex-direction: column;
   gap: 16px;
   align-items: stretch;
 }
@@ -324,18 +324,27 @@ body {
   position:relative;
   display:flex;
   flex-direction:column;
-  gap:0px;
+  gap:8px;
   align-items:flex-start;
   justify-content:space-between;
-  padding:17px 17px 17px 17px;
+  padding:17px;
   background:var(--bg-alt);
   border: 1px solid var(--border);
   border-radius:12px;
   cursor:pointer;
-  min-height:145px;
   outline:none;
   width:100%;
   transition: box-shadow 0.12s ease, border-color 0.12s ease, transform 0.12s ease;
+  flex: 1;
+}
+
+.card-text-block{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:left;
+  gap:4px;
+  width:calc(100% - 150px);
 }
 
 /* Card container that wraps card-main + menu */
@@ -358,9 +367,12 @@ body {
   justify-content:space-between;
   gap:8px;
   margin-top:auto;
+  display:none;
 }
 
 .card-title{
+  width:100%;
+  text-align: left;
   margin:0px;
   font-size:16.5px;
   font-weight:650;
@@ -369,6 +381,8 @@ body {
 }
 
 .card-desc {
+  width:100%;
+  text-align: left;
   margin: 0;
   color: var(--muted);
   font-size: 0.9rem;
@@ -428,7 +442,11 @@ body {
   position:absolute;
   top:9px;
   right:9px;
+  display:flex;
+  align-items:center;
+  gap:8px;
 }
+
 
 /* ellipsis btn */
 .more-btn{
@@ -485,11 +503,6 @@ body {
   cursor:pointer;
   transition:background 0.12s ease;
 }
-
-.menu-item:hover{
-  background:rgba(148,163,184,0.12);
-}
-
 /* tweak board hover border */
 .card-main:hover{
   border-color:var(--accent);
@@ -510,7 +523,7 @@ body {
 .dash-input,
 .dash-select,
 .dash-btn {
-  border-radius: 999px;
+  border-radius: 15px;
   border: 1px solid var(--border);
   background: var(--bg-alt);
   color: var(--fg);
@@ -544,18 +557,9 @@ body {
   font-weight: 600;
 }
 
-.dash-btn.primary:hover {
-  box-shadow: 0 10px 30px rgba(59, 130, 246, 0.5);
-  transform: translateY(-0.5px);
-}
-
 .dash-btn.secondary {
   background: var(--bg-alt);
   color: var(--fg);
-}
-
-.dash-btn.secondary:hover {
-  border-color: var(--accent);
 }
 
 /* === Modal === */
@@ -629,10 +633,6 @@ body {
   color: rgb(248, 113, 113);
   padding: 7px 14px;
   cursor: pointer;
-}
-
-#modal-delete-btn.danger:hover {
-  border-color: rgb(239, 68, 68);
 }
 
 #modal-save-btn.primary {
