@@ -31,9 +31,9 @@
 const CACHE_SIZE = 200; // Max items for LRU caches
 const CHAPTER_CACHE_SIZE = 50; // Chapters are larger, use a smaller cache
 const DEBOUNCE_MS = 300; // Wait time for type-ahead search
-const BATCH_SIZE = 3; // Verse texts to fetch in parallel
-const INITIAL_VISIBLE_COUNT = 3; // show up to 3 fully-loaded verses/songs
-const SEARCH_RESULT_LIMIT = 35; // Items to fetch for virt... (was 5)
+const BATCH_SIZE = 5; // Verse texts to fetch in parallel
+const INITIAL_VISIBLE_COUNT = 5; // show up to 3 fully-loaded verses/songs
+const SEARCH_RESULT_LIMIT = 100; // Items to fetch for virt... (was 5)
 const LOAD_MORE_CHUNK = 5; // How many verses/songs per "load more" click
 
 // Disable all type-ahead behavior
@@ -2818,6 +2818,22 @@ async function runSongsFallback(query, signal, version) {
 }
 
 /**
+ * NEW: Sanitizes a string to be safe for insertion into HTML.
+ * Prevents XSS by converting special characters to HTML entities.
+ * @param {string} str
+ * @returns {string}
+ */
+function escapeHtml(str) {
+  if (!str) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+/**
  * NEW HELPER: Runs the song search and renders the results.
  * Can be run in "background" mode to pre-load the tab.
  */
@@ -2849,7 +2865,10 @@ async function runSongsSearch(query, signal, version, options = {}) {
     // Only show errors if we're not in the background
     if (!isBackground) {
       console.error("Error in song search:", err);
-      songsContainer.innerHTML = `<div class="search-query-no-verse-found-container" style="text-align:center; color:var(--muted); padding: 15px;">${err.message || `No songs found for "${query}".`}</div>`;
+      // ESCAPE USER INPUT HERE
+      const safeQuery = escapeHtml(query);
+      const safeMessage = err.message ? escapeHtml(err.message) : `No songs found for "${safeQuery}".`;
+      songsContainer.innerHTML = `<div class="search-query-no-verse-found-container" style="text-align:center; color:var(--muted); padding: 15px;">${safeMessage}</div>`;
     }
   }
 }
@@ -2921,11 +2940,12 @@ async function runBibleTextSearch(query, signal, version, options = {}) { // Add
   // --- MODIFICATION ---
   if (!isBackground) {
     // Set header back to "Search for..." since it's not a chapter view
+    // .textContent is SAFE, so we don't need to escape here
     if (searchQuery) searchQuery.textContent = `Search for "${query}"`;
     if (didYouMeanText) didYouMeanText.style.display = "none"; // Hide suggestion
   }
   // --- END MODIFICATION ---
-
+  
   try {
     // 1. Fetch search results (list of references)
     // MODIFIED: Passed 'version'
@@ -2938,33 +2958,30 @@ async function runBibleTextSearch(query, signal, version, options = {}) { // Add
 
     // 2. Check for "no match"
     if (!refs || refs.length === 0) {
+      // --- MODIFICATION (Restored) ---
       if (!isBackground) {
-        // Primary Bible text search: stay on Bible tab and show "no verses" message
-        verseContainer.innerHTML = `<div class="search-query-no-verse-found-container" 
-                 style="text-align:center; color:var(--muted); padding: 15px;">
-          No matching verses found for "${query}".
-        </div>`;
+        // Only run song fallback if this was the *primary* task
+        console.warn(`Bible text search for "${query}" found 0 results. Falling back to songs.`);
+        await runSongsFallback(query, signal, version); // <-- This is the restored fallback
       } else {
-        // Background Bible text search: quietly show a generic "no results" if needed
-        verseContainer.innerHTML = `<div class="search-query-no-verse-found-container" 
-                 style="text-align:center; color:var(--muted); padding: 15px;">
-          No matching verses found.
-        </div>`;
+        // If background, just show "No results" in the hidden tab
+        verseContainer.innerHTML = `<div class="search-query-no-verse-found-container" style="text-align:center; color:var(--muted); padding: 15px;">No matching verses found.</div>`;
       }
-      return; // Done, but we DO NOT fall back to songs or change modes.
+      return; // Done.
+      // --- END MODIFICATION ---
     }
 
     // 3. We have results! Render them as verse cards. (Unchanged)
     verseContainer.innerHTML = ""; // Clear loader/previous
-
+    
     // Create placeholders for fillVerseBatch
     const verseElements = [];
     for (const ref of refs) {
       const item = document.createElement("div");
-      item.classList.add("search-query-verse-container");
+      item.classList.add("search-query-verse-container"); 
       item.classList.add("loading"); // <-- ADD THIS
       item.dataset.status = "pending"; // Mark for fillVerseBatch
-
+      
       item.dataset.version = version;
 
       // Basic skeleton
@@ -2979,7 +2996,7 @@ async function runBibleTextSearch(query, signal, version, options = {}) { // Add
       verseElements.push({ ref, el: item });
     }
 
-// 4. Progressively load text and wire up buttons (Unchanged)
+    // 4. Progressively load text and wire up buttons (Unchanged)
     const initialBatch = verseElements.slice(0, INITIAL_VISIBLE_COUNT);
     const remainingBatch = verseElements.slice(INITIAL_VISIBLE_COUNT);
 
@@ -2996,22 +3013,27 @@ async function runBibleTextSearch(query, signal, version, options = {}) { // Add
         if (signal?.aborted) return;
         const next = remainingBatch.splice(0, LOAD_MORE_CHUNK);
         await fillVerseBatch(next, signal, version);
-
+        
         if (remainingBatch.length === 0) {
           verseContainer.querySelector("#load-more-verses-btn")?.remove();
         }
       };
-
+      
       ensureLoadMoreButton(verseContainer, loadMore);
     }
-
+    
   } catch (err) {
     if (signal.aborted) return;
-    // --- MODIFICATION ---
+    // --- MODIFICATION: SECURITY FIX ---
     if (!isBackground) {
       // Only show errors in the UI if this was the primary task
       console.error("Error in Bible text search:", err);
-      verseContainer.innerHTML = `<div class="search-query-no-verse-found-container" style="text-align:center; color:var(--muted); padding: 15px;">${err.message || `No results found for "${query}".`}</div>`;
+      
+      // ESCAPE USER INPUT HERE
+      const safeQuery = escapeHtml(query);
+      const safeMessage = err.message ? escapeHtml(err.message) : `No results found for "${safeQuery}".`;
+
+      verseContainer.innerHTML = `<div class="search-query-no-verse-found-container" style="text-align:center; color:var(--muted); padding: 15px;">${safeMessage}</div>`;
     }
     // --- END MODIFICATION ---
   }
@@ -3056,6 +3078,7 @@ async function fetchBibleSearchResults(query, limit = 5, signal, version = "KJV"
  * - Implements "Did you mean..." suggestion.
  * - Implements background Bible search when in Songs mode.
  * - MODIFIED: Uses isReferenceShaped to separate text vs. ref searches.
+ * - SECURITY: Escapes HTML in error messages.
  */
 async function searchForQuery(event) {
   // --- 1. Setup & Abort ---
@@ -3098,6 +3121,7 @@ async function searchForQuery(event) {
   applyLayout(true); // This triggers the slide-up animation
 
   if (typeof searchQuery !== "undefined")
+    // .textContent is SAFE
     searchQuery.textContent = `Search for "${rawQuery}"`;
 
   // Get containers and clear them for the new results
@@ -3126,29 +3150,8 @@ async function searchForQuery(event) {
     // --- END NEW LOGIC ---
 
     let primarySearchPromise;
-    let effectiveMode = currentSearchMode;
-    // Ensure Bible mode for single-verse queries (no auto-Interlinear)
-    if (isClearBibleRef && bibleRefInfo && bibleRefInfo.verse) {
-      effectiveMode = "bible";
-      if (typeof setSearchMode === "function") {
-        setSearchMode("bible", { openDrawer: true });
-      }
-    } else {
-      // For non-reference-shaped queries (e.g., "love of god"), always prefer Bible mode first
-      if (!refShaped) {
-        effectiveMode = "bible";
-        if (typeof setSearchMode === "function") {
-          setSearchMode("bible", { openDrawer: true });
-        }
-      } else if (!searchDrawerOpen) {
-        // Just open the drawer without forcing a mode switch
-        searchDrawerOpen = true;
-        if (typeof applyLayout === "function") applyLayout(true);
-      }
-    }
 
-
-    if (effectiveMode === "bible") {
+    if (currentSearchMode === "bible") {
       // User is on the Bible tab
       if (isClearBibleRef) {
         // --- A. Bible reference mode ---
@@ -3171,10 +3174,12 @@ async function searchForQuery(event) {
         // --- C. Ref-shaped but no match (e.g., "Asdf 1:1") ---
         // Show "No verses found" and DO NOT fall back to songs
         if (verseContainer) {
+          // ESCAPE USER INPUT HERE
+          const safeQuery = escapeHtml(rawQuery);
           verseContainer.innerHTML = `
             <div class="search-query-no-verse-found-container" 
                  style="text-align:center; color:var(--muted); padding: 15px;">
-              No verses found for "${rawQuery}".
+              No verses found for "${safeQuery}".
             </div>`;
         }
         primarySearchPromise = Promise.resolve(); // Task is complete (showing error)
@@ -3209,8 +3214,6 @@ async function searchForQuery(event) {
             if (!signal.aborted) console.warn("Background Bible text load failed:", err);
         });
       }
-      // If refShaped and not a clear ref or did-you-mean (e.g., "Asdf 1:1"), 
-      // we correctly do nothing in the background.
     }
     
     // --- 5. Wait for the Primary task to complete ---
@@ -3222,7 +3225,10 @@ async function searchForQuery(event) {
       console.error("Error in searchForQuery:", err);
       const container = currentSearchMode === 'bible' ? verseContainer : songsContainer;
       if (container) {
-        container.innerHTML = `<div class="search-query-no-verse-found-container" style="text-align:center; color:var(--muted); padding: 15px;">${err.message || `No results found for "${rawQuery}".`}</div>`;
+        // ESCAPE USER INPUT HERE
+        const safeQuery = escapeHtml(rawQuery);
+        const safeMessage = err.message ? escapeHtml(err.message) : `No results found for "${safeQuery}".`;
+        container.innerHTML = `<div class="search-query-no-verse-found-container" style="text-align:center; color:var(--muted); padding: 15px;">${safeMessage}</div>`;
       }
     }
   } finally {

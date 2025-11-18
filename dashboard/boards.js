@@ -15,17 +15,20 @@ const boardGrid = document.getElementById("board-grid");
 const filterInput = document.getElementById("board-filter");
 const sortSelect = document.getElementById("board-sort");
 
+// Fix: Ensure button exists before using
+const newBoardBtn = document.getElementById("new-board-btn");
+
 // Modal elements
 const modalBackdrop = document.getElementById("modal-backdrop");
 const modalTitleInput = document.getElementById("modal-title-input");
 const modalSaveBtn = document.getElementById("modal-save-btn");
 const modalDeleteBtn = document.getElementById("modal-delete-btn");
 
-// Status tile + "New Board" button are created dynamically
+// Status tile (Created dynamically)
 const statusTile = document.createElement("div");
 statusTile.id = "status-message";
-statusTile.className = "status-tile hidden"; // hidden by default
-boardGrid.appendChild(statusTile); // attach once
+statusTile.className = "status-tile hidden"; 
+// We don't append it here immediately, renderStatus handles it
 
 // ==================== Theme Toggle ====================
 const toggle = document.getElementById("theme-toggle");
@@ -44,29 +47,13 @@ toggle?.addEventListener("click", () =>
   setTheme(!body.classList.contains("light"))
 );
 
-// New board button (injected at top of grid)
-const newBoardBtn = document.createElement("button");
-newBoardBtn.id = "new-board-btn";
-newBoardBtn.className = "dash-btn primary";
-newBoardBtn.textContent = "+ New Board";
-
-/** Positions status tile immediately after "New Board" */
-function placeStatusTile() {
-  if (!statusTile.isConnected) boardGrid.appendChild(statusTile);
-  if (boardGrid.firstElementChild === newBoardBtn) {
-    boardGrid.insertBefore(statusTile, newBoardBtn.nextSibling);
-  } else {
-    boardGrid.prepend(newBoardBtn);
-    boardGrid.insertBefore(statusTile, newBoardBtn.nextSibling);
-  }
-}
-
 /** Renders loading/empty/error states */
 function renderStatus(state, message = "") {
-  // Clear grid, add New Board, then position status tile
+  // 1. Clear the grid of all cards
   boardGrid.innerHTML = "";
-  boardGrid.prepend(newBoardBtn);
-  placeStatusTile();
+  
+  // 2. Re-attach the status tile (since innerHTML="" removed it)
+  boardGrid.appendChild(statusTile);
 
   // default visibility
   statusTile.classList.remove("hidden");
@@ -165,17 +152,11 @@ function buildCardHTML(board) {
         </div>
 
         <div class="card-footer">
-          <div class="card-tags">
-            <!-- tags / stats can go here later -->
           </div>
-        </div>
       </button>
 
       <div class="card-more">
         <span class="card-date">
-          <svg xmlns="http://www.w3.org/2000/svg" height="14" width="14" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-            <path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V17h6.828l7.586-7.586a2 2 0 000-2.828zM3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" />
-          </svg>
           ${formattedDate}
         </span>
 
@@ -187,6 +168,7 @@ function buildCardHTML(board) {
 
         <ul id="${menuId}" class="more-menu hidden" role="menu">
           <li><button class="menu-item menu-share" role="menuitem" type="button">Share link</button></li>
+          <li><button class="menu-item menu-rename" role="menuitem" type="button">Rename</button></li>
           <li><button class="menu-item menu-delete" role="menuitem" type="button">Delete</button></li>
         </ul>
       </div>
@@ -197,6 +179,42 @@ function buildCardHTML(board) {
 
 // Keep loaded boards in memory for filtering/sorting
 let loadedBoards = [];
+
+const navbar = document.getElementById("nav-bar");
+
+window.addEventListener("scroll", () => {
+  // Safety check
+  if (!navbar) return;
+
+  const scrollTop =
+    window.scrollY ||
+    document.documentElement.scrollTop ||
+    document.body.scrollTop ||
+    0;
+
+  // --- Configuration ---
+  const START_FADE = 25;
+  const END_FADE   = 125;
+
+  // --- Calculate Strength (0 to 1) ---
+  let strength = (scrollTop - START_FADE) / (END_FADE - START_FADE);
+  strength = Math.min(Math.max(strength, 0), 1);
+
+  // --- Apply Styles ---
+  if (strength <= 0) {
+    navbar.style.background     = "transparent";
+    navbar.style.backdropFilter = "none";
+    navbar.style.borderBottom   = "none"; 
+  } else {
+    const bgOpacity     = 0.5 * strength;
+    const blurAmountRem = 1.5 * strength;
+    const borderOpacity = 0.8 * strength;
+
+    navbar.style.background     = `rgba(23, 23, 23, ${bgOpacity})`;
+    navbar.style.backdropFilter = `blur(${blurAmountRem}rem)`;
+    navbar.style.borderBottom   = `1px solid rgba(47, 47, 47, ${borderOpacity})`;
+  }
+});
 
 /** Applies current UI filter+sort and renders */
 function refreshGridFromUI() {
@@ -320,12 +338,16 @@ async function handleRename() {
         month: "short",
         day: "numeric",
       });
-      card.querySelector(".card-date").innerHTML = `
-        <svg xmlns="http://www.w3.org/2000/svg" height="14" width="14" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-          <path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V17h6.828l7.586-7.586a2 2 0 000-2.828zM3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" />
-        </svg>
-        ${updated}
-      `;
+      // We update date but preserve SVG icon
+      const dateEl = card.querySelector(".card-date");
+      if(dateEl) {
+          dateEl.innerHTML = `
+          <svg xmlns="http://www.w3.org/2000/svg" height="14" width="14" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+            <path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V17h6.828l7.586-7.586a2 2 0 000-2.828zM3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" />
+          </svg>
+          ${updated}
+        `;
+      }
     }
 
     closeModal();
@@ -354,13 +376,13 @@ async function handleDelete() {
 
     // Success: remove from DOM and close
     boardGrid.querySelector(`[data-id="${id}"]`)?.remove();
+    
+    // Remove from local array
+    loadedBoards = loadedBoards.filter(b => b.id !== id);
+
     closeModal();
 
-    // If grid (excluding the New Board button + status tile) is empty, show empty state
-    const remainingCards = [...boardGrid.children].filter(
-      (el) => ![newBoardBtn, statusTile].includes(el)
-    );
-    if (remainingCards.length === 0) renderStatus("empty");
+    if (loadedBoards.length === 0) renderStatus("empty");
   } catch (error) {
     console.error("Failed to delete:", error);
     alert(`Error deleting board: ${error.message}`);
@@ -384,6 +406,7 @@ async function fetchBoardDetails(user, file) {
     let previewSnippet = "";
     let items = [];
 
+    // Check for 'elements' which is the standard key
     if (Array.isArray(json.elements)) {
       items = json.elements;
     }
@@ -473,6 +496,7 @@ async function handleNewBoard() {
 
     const now = new Date().toISOString();
 
+    // FIX: Changed 'items' to 'elements' to match reading logic
     const defaultBoard = {
       id: boardId,
       title: "Untitled Board",
@@ -483,7 +507,7 @@ async function handleNewBoard() {
         type: "solid",
         color: "#020617",
       },
-      items: [],
+      elements: [], 
       connections: [],
     };
 
@@ -536,9 +560,11 @@ async function init() {
     });
   }
 
-
   // --- NEW BOARD BUTTON ---
-  newBoardBtn.addEventListener("click", handleNewBoard);
+  // Fix: Check if button exists before adding listener
+  if (newBoardBtn) {
+      newBoardBtn.addEventListener("click", handleNewBoard);
+  }
 
   // --- BOARD GRID CLICKS (open board, menu actions) ---
   boardGrid.addEventListener("click", (e) => {
@@ -556,8 +582,9 @@ async function init() {
       return;
     }
 
-    console.log(e.target.className)
-    if(e.target.className == "card-footer" || e.target.className == "card-date" || e.target.className == "card-title" || e.target.className == "card-main" || e.target.className == "card-desc") {
+    // 2) Clicking the card main body (to open)
+    // We check if we clicked specific parts, or just bubbling up
+    if(e.target.closest('.card-main') || e.target.className == "card-footer" || e.target.className == "card-date") {
       closeActiveMenu();
       const boardId = card.dataset.id;
       if (boardId && currentUser) {
@@ -604,6 +631,11 @@ async function init() {
     }
   });
 
+  // --- MODAL SAVE/DELETE ---
+  modalSaveBtn.addEventListener("click", handleRename);
+  modalDeleteBtn.addEventListener("click", handleDelete);
+  document.getElementById("modal-cancel-btn")?.addEventListener("click", closeModal);
+
   // --- CLOSE 3-DOT MENU WHEN CLICKING OUTSIDE ---
   document.addEventListener("click", (e) => {
     if (!activeMenu) return;
@@ -628,30 +660,26 @@ async function init() {
 
     if (e.key === "Escape") {
       closeActiveMenu();
+      closeModal();
     }
   });
 
   // --- AUTH: PROTECT THIS PAGE ---
-
-  // Listen for auth changes (e.g. after OAuth redirect)
   sb.auth.onAuthStateChange((_event, data) => {
     const user = data?.session?.user || null;
     handleAuthChange(user);
   });
 
-  // Check initial session on page load
   try {
     const { data, error } = await sb.auth.getSession();
     if (error) throw error;
     const user = data.session?.user || null;
-    handleAuthChange(user); // will either show dashboard or redirect to landing
+    handleAuthChange(user); 
   } catch (error) {
     console.error("Error getting session:", error);
     handleAuthChange(null);
   }
 }
-
-
 
 // Start the app
 init();

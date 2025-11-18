@@ -19,43 +19,13 @@
 
     <!-- ========== DASHBOARD VIEW (SIGNED IN) ========== -->
     <main id="dashboard-container">
-      <header id="dashboard-header">
-        <div class="header-actions">
-          <!-- Theme toggle -->
+      <section id="board-grid-section" style="position:relative;min-height:calc(100vh - 160px);">
+        <div id="boards-grid-header-container">
+          <div style="font-size: 1.5rem;">All Bible Boards</div>
+          <button id="new-board-btn" class="dash-btn primary">+ New Board</button>
         </div>
-      </header>
+        <div id="bottom-line"></div>
 
-      <section class="section main" style="opacity: 1;height:400px;position:absolute;top:0px;left:50%;transform:translate(-50%);">
-          <div id="main-section-img-container" style="margin-top: 0px;padding:0px;">
-              <img id="main-section-img" style="object-position: bottom;" src="../assets/Golden Connections at Dusk.png">
-              <div id="main-section-img-fader-top" style="height:250px"></div>
-              <div id="main-section-img-fader-bottom" style="height:250px"></div>
-              <div id="main-section-img-fader-right"></div>
-              <div id="main-section-img-fader-left"></div>
-          </div>
-      </section>
-
-      <div style="margin-top: 190px;"></div>
-      <!-- Filter + Sort -->
-      <section id="dashboard-filters" style="display:none;">
-        <input
-          id="board-filter"
-          class="dash-input"
-          type="text"
-          placeholder="Search your boards…"
-          autocomplete="off"
-        />
-
-        <select id="board-sort" class="dash-select" style="display:none;">
-          <option value="updatedDesc">Last updated</option>
-          <option value="updatedAsc">Oldest first</option>
-          <option value="titleAsc">Title A–Z</option>
-          <option value="titleDesc">Title Z–A</option>
-        </select>
-      </section>
-
-      <!-- Board grid (New Board button + status + cards are injected by boards.js) -->
-      <section id="board-grid-section" style="position:relative;min-height:calc(100vh - 325px);">
         <div id="board-grid"></div>
       </section>
 
@@ -68,7 +38,7 @@
       </footer>
     </main>
     
-    <nav id="nav-bar" style="z-index: 100;position:fixed;top:0px;left:0px;opacity:1;">
+    <nav id="nav-bar" style="z-index: 10000;position:fixed;top:0px;left:0px;opacity:1;">
       <section id="nav-bar-container">
         <div id="logo-container" onclick="scrollToElement('.section.main')">
             <img id="logo-image" src="../assets/logo_no_bg.png">
