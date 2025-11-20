@@ -732,5 +732,81 @@ class Tour {
   }
 }
 
+
+
+
+// ==========================================
+// ADD THIS TO THE BOTTOM OF board/tour.js
+// ==========================================
+
+// 1. Define your Tour Steps
+const bibleBoardSteps = [
+  {
+    id: "welcome",
+    title: "Welcome to BibleBoard",
+    text: "This is your digital workspace for studying scripture. Let's take a quick look around.",
+    // No target = centers on screen
+    placement: "center", 
+  },
+  {
+    id: "new-board",
+    title: "Create Boards",
+    text: "Click here to create a new canvas for your study.",
+    target: "#new-board-btn-sidebar",
+    placement: "right",
+  },
+  {
+    id: "search-boards",
+    title: "Search & Chat",
+    text: "Search through your past notes, verses, and songs to find a specific study",
+    target: "#search-board-btn-sidebar",
+    placement: "right",
+  },
+  {
+    id: "theme",
+    title: "Dark Mode",
+    text: "Toggle between light and dark mode to suit your eyes.",
+    target: "#theme-toggle-sidebar",
+    placement: "right",
+  },
+  {
+    id: "workspace",
+    title: "The Workspace",
+    text: "This is your canvas. You can double-click anywhere to add a note, or use the search bar above to find verses.",
+    target: "#viewport",
+    placement: "center",
+    padding: 0
+  },
+  {
+    id: "finish",
+    title: "You're Ready!",
+    text: "Explore the tools and start connecting verses. Enjoy!",
+    target: null, // Center screen
+    placement: "center",
+  }
+];
+
+// 2. Initialize the Tour Instance
+const myTour = new Tour(bibleBoardSteps, {
+  onEnd: () => {
+    console.log("Tour ended");
+    // Optional: Save to localStorage so it doesn't show again automatically
+    localStorage.setItem("tour_completed", "true");
+  }
+});
+
+// 3. Expose the start function globally
+window.startTour = function() {
+  myTour.start();
+};
+
+// 4. (Optional) Auto-start if never seen
+if (!localStorage.getItem("tour_completed")) {
+  // Wait a moment for UI to load
+  setTimeout(() => {
+     // window.startTour(); // Uncomment this line if you want it to auto-start
+  }, 1000);
+}
+
 // Attach to window
 window.Tour = Tour;

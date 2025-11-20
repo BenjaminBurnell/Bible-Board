@@ -8,15 +8,22 @@ const BUCKET = "bible-boards";
 let currentUser = null;
 let currentModalBoard = null; // Stores {id, path, title} for the modal
 let activeMenu = null; // Stores the currently open three-dot menu
+let activeDropdown = null; // <--- NEW: Required for the 3-dot menu
 
 // --- DOM Refs ---
-const signoutBtn = document.getElementById("signout-btn");
+const signoutBtn = document.getElementById("signout-btn-sidebar");
+const deleteModalBackdrop = document.getElementById("delete-modal-backdrop");
+const confirmDeleteBtn = document.getElementById("confirm-delete-btn");
+let boardToDelete = null; // <--- MAKE SURE THIS IS HERE
 const boardGrid = document.getElementById("board-grid");
 const filterInput = document.getElementById("board-filter");
 const sortSelect = document.getElementById("board-sort");
+const sidebarBoardsContainer = document.getElementById("sidebar-boards-container");
+const hamburgerBtn = document.getElementById("hamburger-btn")
 
 // Fix: Ensure button exists before using
-const newBoardBtn = document.getElementById("new-board-btn");
+// FIX: Look for the sidebar button if the main one doesn't exist
+const newBoardBtn = document.getElementById("new-board-btn") || document.getElementById("new-board-btn-sidebar");
 
 // Modal elements
 const modalBackdrop = document.getElementById("modal-backdrop");
@@ -48,51 +55,21 @@ toggle?.addEventListener("click", () =>
 );
 
 /** Renders loading/empty/error states */
-function renderStatus(state, message = "") {
-  // 1. Clear the grid of all cards
-  boardGrid.innerHTML = "";
-  
-  // 2. Re-attach the status tile (since innerHTML="" removed it)
-  boardGrid.appendChild(statusTile);
+function renderStatus(msg) {
+  const statusEl = document.getElementById("sidebar-status");
 
-  // default visibility
-  statusTile.classList.remove("hidden");
-  statusTile.innerHTML = "";
+  if (!statusEl) return;
 
-  switch (state) {
-    case "loading": {
-      // hide tile; show skeletons as grid items
-      statusTile.classList.add("hidden");
-      for (let i = 0; i < 10; i++) {
-        const skeleton = document.createElement("div");
-        skeleton.className = "skeleton-card";
-        boardGrid.appendChild(skeleton);
-      }
-      break;
-    }
-    case "empty": {
-      statusTile.textContent = "No boards yet. Create one to get started!";
-      break;
-    }
-    case "error": {
-      statusTile.innerHTML = `
-        <div class="error-message">
-          <strong>Error:</strong> ${message || "Could not load boards."}
-          <button id="retry-load-btn" class="dash-btn" type="button">Retry</button>
-        </div>`;
-      document
-        .getElementById("retry-load-btn")
-        ?.addEventListener("click", () => loadBoards(currentUser));
-      break;
-    }
-    case "clear":
-    default: {
-      statusTile.classList.add("hidden");
-      statusTile.innerHTML = "";
-      break;
-    }
+  if (!msg || msg.trim() === "") {
+    statusEl.textContent = "";
+    statusEl.style.display = "none";
+    return;
   }
+
+  statusEl.textContent = msg;
+  statusEl.style.display = "block";
 }
+
 
 function normalize(str) {
   return (str || "")
@@ -128,53 +105,55 @@ function applyFilter(arr, query) {
   });
 }
 
-/** Builds the HTML for one board card */
-function buildCardHTML(board) {
-  const description =
-    board.description || "Double-click this board to start adding verses and notes.";
-  const updatedAt = board.updatedAt
-    ? new Date(board.updatedAt)
-    : new Date(board.createdAt || Date.now());
-  const formattedDate = updatedAt.toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
+function getDateGroup(dateStr) {
+  const date = new Date(dateStr);
+  const now = new Date();
+
+  const diffDays = (now - date) / (1000 * 60 * 60 * 24);
+
+  if (diffDays < 1) return "Today";
+  if (diffDays < 2) return "Yesterday";
+  if (diffDays < 7) return "Last 7 Days";
+  if (diffDays < 30) return "Last 30 Days";
+  return "Older";
+}
+
+// --- NEW: Helper to switch boards without reloading ---
+async function switchBoard(boardId, ownerId) {
+  // 1. Update URL silently
+  const newUrl = new URL(window.location);
+  newUrl.searchParams.set('board', boardId);
+  if (ownerId) newUrl.searchParams.set('owner', ownerId);
+  window.history.pushState({}, "", newUrl);
+
+  // 2. Update Sidebar Active State
+  // FIX: Target .sidebar-board-item (the wrapper) instead of .sidebar-board
+  const allItems = document.querySelectorAll('.sidebar-board-item');
+  allItems.forEach(item => {
+    if (item.dataset.id === boardId) {
+      item.classList.add('active');
+    } else {
+      item.classList.remove('active');
+    }
   });
 
-  const menuId = `menu-${board.id}`;
-
-  return `
-    <div class="board-card" data-id="${board.id}" data-path="${board.path}" data-title="${board.title}">
-      <button class="card-main" type="button">
-        <div class="card-text-block">
-          <h3 class="card-title">${board.title || "Untitled Board"}</h3>
-          <p class="card-desc">${description}</p>
-        </div>
-
-        <div class="card-footer">
-          </div>
-      </button>
-
-      <div class="card-more">
-        <span class="card-date">
-          ${formattedDate}
-        </span>
-
-        <button class="more-btn" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="${menuId}">
-          <svg xmlns="http://www.w3.org/2000/svg" height="20" width="20" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-            <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
-          </svg>
-        </button>
-
-        <ul id="${menuId}" class="more-menu hidden" role="menu">
-          <li><button class="menu-item menu-share" role="menuitem" type="button">Share link</button></li>
-          <li><button class="menu-item menu-rename" role="menuitem" type="button">Rename</button></li>
-          <li><button class="menu-item menu-delete" role="menuitem" type="button">Delete</button></li>
-        </ul>
-      </div>
-    </div>
-  `;
+  // 3. Dispatch Custom Event for the Board Loader
+  setTimeout(() => {
+    window.dispatchEvent(new CustomEvent('bibleboard:load', { 
+      detail: { boardId, ownerId } 
+    }));
+  }, 10);
+  
+  // Optional: close mobile sidebar if open
+  const sidebar = document.getElementById("sidebar");
+  const overlay = document.getElementById("overlay");
+  if (sidebar && sidebar.classList.contains("expanded") && window.innerWidth < 900) {
+     sidebar.classList.remove("expanded");
+     sidebar.classList.add("offscreen");
+     if (overlay) overlay.classList.add("hidden");
+  }
 }
+
 
 
 // Keep loaded boards in memory for filtering/sorting
@@ -216,180 +195,305 @@ window.addEventListener("scroll", () => {
   }
 });
 
-/** Applies current UI filter+sort and renders */
-function refreshGridFromUI() {
-  const q = filterInput?.value || "";
-  const sortKey = sortSelect?.value || "updatedDesc";
-  const filtered = applyFilter(loadedBoards, q);
-  const sorted = applySort(filtered, sortKey);
-  renderGrid(sorted);
-}
-// expose for HTML that calls window.refreshGridFromUI()
-window.refreshGridFromUI = refreshGridFromUI;
+// ==================== MENU & MODAL HELPERS ====================
 
-function renderGrid(boards) {
-  renderStatus("clear"); // clears grid AND keeps button/tile placement
-  if (boards.length === 0) {
-    renderStatus("empty");
-    return;
+function closeDropdown() {
+  if (activeDropdown) {
+    activeDropdown.classList.remove('show');
+    activeDropdown = null;
   }
-
-  // Build a single HTML string for efficiency
-  let gridHTML = "";
-  boards.forEach((board) => {
-    gridHTML += buildCardHTML(board);
-  });
-
-  // Insert after "New Board" and (hidden) status tile
-  boardGrid.insertAdjacentHTML("beforeend", gridHTML);
 }
 
-// --- Menu Logic ---
-function closeActiveMenu() {
-  if (!activeMenu) return;
-  activeMenu.classList.add("hidden");
-  const button = activeMenu.closest(".card-more")?.querySelector(".more-btn");
-  if (button) button.setAttribute("aria-expanded", "false");
-  activeMenu = null;
-}
-
-function openMenu(menuEl) {
-  if (activeMenu === menuEl) {
-    closeActiveMenu();
-    return;
-  }
-  closeActiveMenu();
-  activeMenu = menuEl;
-  activeMenu.classList.remove("hidden");
-  const button = activeMenu.closest(".card-more")?.querySelector(".more-btn");
-  if (button) button.setAttribute("aria-expanded", "true");
-}
-
-/** Opens modal pre-filled with board info */
 function openModal(board) {
   currentModalBoard = board;
-  modalTitleInput.value = board.title || "";
-  modalBackdrop.classList.remove("hidden");
-  modalTitleInput.focus();
+  const titleInput = document.getElementById("modal-title-input");
+  const backdrop = document.getElementById("modal-backdrop");
+  
+  if (titleInput) titleInput.value = board.title || "";
+  if (backdrop) backdrop.classList.remove("hidden");
+  if (titleInput) titleInput.focus();
+  
+  closeDropdown();
 }
 
-function closeModal() {
-  modalBackdrop.classList.add("hidden");
+// Make globally available for the HTML 'Cancel' button
+window.closeModal = function() {
+  const backdrop = document.getElementById("modal-backdrop");
+  if (backdrop) backdrop.classList.add("hidden");
   currentModalBoard = null;
-}
+};
 
-// --- Rename ---
+// --- RENAME LOGIC ---
 async function handleRename() {
   if (!currentModalBoard) return;
-  const oldTitle = currentModalBoard.title || "";
+  const modalTitleInput = document.getElementById("modal-title-input");
+  const modalSaveBtn = document.getElementById("modal-save-btn");
+
   const newTitle = modalTitleInput.value.trim();
-  if (!newTitle || newTitle === oldTitle) {
-    closeModal();
-    return;
+  if (!newTitle) return;
+
+  if (modalSaveBtn) {
+    modalSaveBtn.textContent = "Saving...";
+    modalSaveBtn.disabled = true;
   }
 
-  modalSaveBtn.disabled = true;
-  modalSaveBtn.textContent = "Saving...";
-
-  const { id, path } = currentModalBoard;
-
   try {
-    const user = currentUser;
-    if (!user) throw new Error("Not signed in");
-
-    // Download current board JSON
-    const { data: blob, error: downloadErr } = await sb.storage
-      .from(BUCKET)
-      .download(path);
-    if (downloadErr) throw downloadErr;
-
+    const { id, path } = currentModalBoard;
+    
+    // 1. Download current JSON
+    const { data: blob } = await sb.storage.from("bible-boards").download(path);
     const text = await blob.text();
-    const boardJson = JSON.parse(text);
+    const json = JSON.parse(text);
 
-    boardJson.title = newTitle;
-    boardJson.updatedAt = new Date().toISOString();
+    // 2. Update Title
+    json.title = newTitle;
+    json.updatedAt = new Date().toISOString();
 
-    const newBlob = new Blob([JSON.stringify(boardJson, null, 2)], {
-      type: "application/json",
+    // 3. Upload back
+    const newBlob = new Blob([JSON.stringify(json, null, 2)], { type: "application/json" });
+    const { error } = await sb.storage.from("bible-boards").update(path, newBlob, {
+       contentType: "application/json", cacheControl: "0", upsert: true 
     });
 
-    const { error: uploadErr } = await sb.storage
-      .from(BUCKET)
-      .upload(path, newBlob, {
-        cacheControl: "0",
-        upsert: true,
-      });
+    if (error) throw error;
 
-    if (uploadErr) throw uploadErr;
-
-    // Update local list & re-render
-    const idx = loadedBoards.findIndex((b) => b.id === id);
-    if (idx >= 0) {
-      loadedBoards[idx].title = newTitle;
-      loadedBoards[idx].updatedAt = boardJson.updatedAt;
+    // 4. Refresh UI
+    await loadBoards(); 
+    
+    // Update title box immediately if this is the active board
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('board') === id) {
+       const titleBox = document.getElementById("title-textbox");
+       if (titleBox) titleBox.value = newTitle;
     }
 
-    // Update the card in place (avoid full re-render)
-    const card = boardGrid.querySelector(`[data-id="${id}"]`);
-    if (card) {
-      card.querySelector(".card-title").textContent = newTitle;
-      const updated = new Date(boardJson.updatedAt).toLocaleDateString(undefined, {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-      });
-      // We update date but preserve SVG icon
-      const dateEl = card.querySelector(".card-date");
-      if(dateEl) {
-          dateEl.innerHTML = `
-          <svg xmlns="http://www.w3.org/2000/svg" height="14" width="14" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-            <path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V17h6.828l7.586-7.586a2 2 0 000-2.828zM3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" />
-          </svg>
-          ${updated}
-        `;
-      }
-    }
+    window.closeModal();
 
-    closeModal();
-  } catch (error) {
-    console.error("Failed to rename:", error);
-    alert(`Error renaming board: ${error.message}`);
+  } catch (err) {
+    console.error("Rename failed:", err);
+    alert("Failed to rename board.");
   } finally {
-    modalSaveBtn.disabled = false;
-    modalSaveBtn.textContent = "Save";
+    if (modalSaveBtn) {
+      modalSaveBtn.textContent = "Save";
+      modalSaveBtn.disabled = false;
+    }
   }
 }
 
-// --- Delete ---
-async function handleDelete() {
-  if (!currentModalBoard) return;
-  const { id, path } = currentModalBoard;
+// Renamed to performDelete to imply it does the work immediately
+async function performDelete(board) {
+  console.log("Starting delete for:", board); 
 
-  if (!confirm("Delete this board permanently?")) return;
-
-  modalDeleteBtn.disabled = true;
-  modalDeleteBtn.textContent = "Deleting...";
+  const btn = document.getElementById("confirm-delete-btn");
+  if (btn) {
+    btn.textContent = "Deleting...";
+    btn.disabled = true;
+  }
 
   try {
-    const { error } = await sb.storage.from(BUCKET).remove([path]);
+    const { id, path } = board;
+
+    // 1. Check if we are deleting the currently active board
+    const params = new URLSearchParams(window.location.search);
+    const isActiveBoard = (params.get('board') === id);
+    
+    // --- CRITICAL FIX: SWITCH AWAY FIRST ---
+    // We must navigate away from this board BEFORE we delete it.
+    // This ensures auto-savers save the *next* board, not the one we are killing.
+    if (isActiveBoard) {
+       console.log("Active board detected. Switching context first...");
+       
+       // Find a different board to switch to
+       const nextBoard = loadedBoards.find(b => b.id !== id);
+       
+       if (nextBoard) {
+         // Switch to the next available board immediately
+         switchBoard(nextBoard.id, currentUser.id);
+       } else {
+         // If no boards left, clear the URL manually
+         const newUrl = new URL(window.location);
+         newUrl.searchParams.delete('board');
+         newUrl.searchParams.delete('owner');
+         window.history.pushState({}, "", newUrl);
+         
+         // Dispatch empty load event to kill active listeners
+         window.dispatchEvent(new CustomEvent('bibleboard:load', { 
+           detail: { boardId: null, ownerId: null } 
+         }));
+         
+         // Clear the title box visually
+         const titleBox = document.getElementById("title-textbox");
+         if (titleBox) titleBox.value = "";
+       }
+
+       // WAIT: Give the auto-saver 500ms to realize we moved
+       // This prevents the "Save on Unload" zombie effect
+       await new Promise(resolve => setTimeout(resolve, 500));
+    }
+    // ---------------------------------------
+
+    // 2. Supabase Delete (Now safe to run)
+    const { error } = await sb.storage.from("bible-boards").remove([path]);
     if (error) throw error;
 
-    // Success: remove from DOM and close
-    boardGrid.querySelector(`[data-id="${id}"]`)?.remove();
-    
-    // Remove from local array
+    console.log("Supabase delete success.");
+
+    // 3. Update Memory & Sidebar
     loadedBoards = loadedBoards.filter(b => b.id !== id);
+    renderSidebarBoards(loadedBoards);
 
-    closeModal();
+    // 4. If we had no boards left and just deleted the last one, create a new one
+    if (isActiveBoard && loadedBoards.length === 0) {
+       await handleNewBoard();
+    }
 
-    if (loadedBoards.length === 0) renderStatus("empty");
-  } catch (error) {
-    console.error("Failed to delete:", error);
-    alert(`Error deleting board: ${error.message}`);
+    closeDeleteModal();
+    
+    // 5. Background Refresh
+    loadBoards(); 
+
+  } catch (err) {
+    console.error("Delete failed:", err);
+    alert("Failed to delete board.");
+    
+    // If delete failed, reload to sync state
+    window.location.reload();
   } finally {
-    modalDeleteBtn.disabled = false;
-    modalDeleteBtn.textContent = "Delete";
+    if (btn) {
+      btn.textContent = "Delete";
+      btn.disabled = false;
+    }
   }
+}
+
+// ==================== GLOBAL CONTEXT MENU ====================
+
+// Create the menu element once and append to body
+const contextMenuEl = document.createElement('div');
+contextMenuEl.id = 'board-context-menu';
+contextMenuEl.innerHTML = `
+  <button id="ctx-rename" class="menu-option">
+    <span class="material-symbols-outlined" style="font-size:16px">edit</span> Rename
+  </button>
+  <button id="ctx-delete" class="menu-option delete">
+    <span class="material-symbols-outlined" style="font-size:16px">delete</span> Delete
+  </button>
+`;
+document.body.appendChild(contextMenuEl);
+
+// Wire up the global buttons
+document.getElementById('ctx-rename').addEventListener('click', (e) => {
+  e.stopPropagation();
+  closeContextMenu();
+  if (currentModalBoard) openModal(currentModalBoard);
+});
+
+// In your Context Menu setup:
+document.getElementById('ctx-delete').addEventListener('click', (e) => {
+  e.stopPropagation();
+  closeContextMenu();
+  
+  // CHANGE THIS LINE:
+  // OLD: handleDelete(); 
+  // NEW:
+  if (currentModalBoard) openDeleteModal(currentModalBoard); 
+});
+
+function closeContextMenu() {
+  contextMenuEl.classList.remove('show');
+}
+
+function openContextMenu(e, board) {
+  e.preventDefault();
+  e.stopPropagation();
+  
+  currentModalBoard = board; // Set the active board for actions
+
+  // 1. Calculate Position
+  const rect = e.currentTarget.getBoundingClientRect();
+  let top = rect.bottom + 5;
+  let left = rect.right - 130; // Align right edge (approx width)
+
+  // 2. Boundary Check (Flip up if at bottom of screen)
+  if (top + 100 > window.innerHeight) {
+    top = rect.top - 90; // Move above button
+  }
+
+  // 3. Apply
+  contextMenuEl.style.top = `${top}px`;
+  contextMenuEl.style.left = `${left}px`;
+  contextMenuEl.classList.add('show');
+}
+
+// ... (Keep your existing Open/Close Modal functions below this) ...
+
+
+window.closeModal = function() {
+  const backdrop = document.getElementById("modal-backdrop");
+  if (backdrop) backdrop.classList.add("hidden");
+  currentModalBoard = null;
+};
+
+function renderSidebarBoards(boards) {
+  const container = document.getElementById("sidebar-boards-container");
+  if (!container) return;
+  container.innerHTML = "";
+
+  if (!boards || boards.length === 0) return;
+  if (!currentUser) return;
+  const ownerId = currentUser.id;
+
+  const groups = {};
+  boards.forEach(board => {
+    const group = getDateGroup(board.updatedAt || board.createdAt);
+    if (!groups[group]) groups[group] = [];
+    groups[group].push(board);
+  });
+
+  const order = ["Today", "Yesterday", "Last 7 Days", "Last 30 Days", "Older"];
+
+  order.forEach(group => {
+    if (!groups[group] || groups[group].length === 0) return;
+
+    const label = document.createElement("div");
+    label.className = "sidebar-group-label";
+    label.textContent = group;
+    container.appendChild(label);
+
+    groups[group].forEach(board => {
+      const itemDiv = document.createElement("div");
+      itemDiv.className = "sidebar-board-item";
+      itemDiv.dataset.id = board.id;
+
+      const currentParams = new URLSearchParams(window.location.search);
+      if (currentParams.get('board') === board.id) {
+        itemDiv.classList.add('active');
+      }
+
+      const mainBtn = document.createElement("button");
+      mainBtn.className = "sidebar-board-btn";
+      mainBtn.textContent = board.title || "Untitled";
+      mainBtn.title = board.title;
+      mainBtn.onclick = (e) => {
+        e.preventDefault();
+        switchBoard(board.id, ownerId);
+      };
+
+      // 3-Dot Menu Button
+      const menuBtn = document.createElement("button");
+      menuBtn.className = "sidebar-menu-btn";
+      menuBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" height="16" viewBox="0 -960 960 960" width="16" fill="currentColor"><path d="M240-400q-33 0-56.5-23.5T160-480q0-33 23.5-56.5T240-560q33 0 56.5 23.5T320-480q0 33-23.5 56.5T240-400Zm240 0q-33 0-56.5-23.5T400-480q0-33 23.5-56.5T480-560q33 0 56.5 23.5T560-480q0 33-23.5 56.5T480-400Zm240 0q-33 0-56.5-23.5T640-480q0-33 23.5-56.5T720-560q33 0 56.5 23.5T800-480q0 33-23.5 56.5T720-400Z"/></svg>`;
+      
+      // CLICK HANDLER: Opens the global menu
+      menuBtn.onclick = (e) => {
+        openContextMenu(e, board);
+      };
+
+      itemDiv.appendChild(mainBtn);
+      itemDiv.appendChild(menuBtn);
+      container.appendChild(itemDiv);
+    });
+  });
 }
 
 // --- Data Fetching ---
@@ -431,6 +535,7 @@ async function fetchBoardDetails(user, file) {
       id: json.id || file.name.replace(".json", ""),
       title: json.title || "Untitled Board",
       description,
+      elements: json.elements || [], // <--- ADD THIS LINE (Stores content for search)
       createdAt: json.createdAt || file.created_at || null,
       updatedAt: json.updatedAt || file.updated_at || file.created_at || null,
       path,
@@ -441,42 +546,75 @@ async function fetchBoardDetails(user, file) {
   }
 }
 
-
-async function loadBoards(user) {
-  if (!user) return;
-  renderStatus("loading");
-
+async function loadBoards() {
   try {
-    const { data, error } = await sb.storage.from(BUCKET).list(user.id + "/boards", {
-      limit: 1000,
-    });
-    if (error) throw error;
+    // 1. Capture the user LOCALLY. 
+    // Even if 'currentUser' changes globally later, 'user' stays safe here.
+    const user = currentUser;
 
-    if (!data || data.length === 0) {
-      loadedBoards = [];
-      renderStatus("empty");
+    renderStatus("Loading boards…");
+
+    if (!user) {
+      renderStatus("Not signed in.");
+      renderSidebarBoards([]);
       return;
     }
 
-    const boardPromises = data
-      .filter((file) => file.name.endsWith(".json"))
-      .map((file) => fetchBoardDetails(user, file));
+    // 2. Use 'user.id' instead of 'currentUser.id'
+    const { data: files, error: listErr } = await sb.storage
+      .from(BUCKET)
+      .list(`${user.id}/boards`, { limit: 200, offset: 0 });
 
-    const results = await Promise.all(boardPromises);
-    loadedBoards = results.filter(Boolean);
-
-    if (loadedBoards.length === 0) {
-      renderStatus("empty");
+    if (listErr) {
+      console.error("List error:", listErr);
+      renderStatus("Error loading boards.");
       return;
     }
 
-    const sorted = applySort(loadedBoards, sortSelect?.value || "updatedDesc");
-    renderGrid(sorted);
-  } catch (error) {
-    console.error("Error loading boards:", error);
-    renderStatus("error", error.message);
+    if (!files || files.length === 0) {
+      renderStatus("Creating your first board...");
+      await handleNewBoard();
+      return;
+    }
+
+    // 3. Pass the local 'user' variable to the fetch function
+    const promises = files
+      .filter(f => f.name.endsWith(".json"))
+      .map(file => fetchBoardDetails(user, file));
+
+    const boardResults = await Promise.all(promises);
+    const boards = boardResults.filter(Boolean);
+
+    if (boards.length === 0) {
+      renderStatus("Creating your first board...");
+      await handleNewBoard();
+      return;
+    }
+
+    // Sort descending
+    const sorted = boards.sort(
+      (a, b) =>
+        new Date(b.updatedAt || b.createdAt) -
+        new Date(a.updatedAt || a.createdAt)
+    );
+
+    loadedBoards = sorted;
+    renderSidebarBoards(sorted);
+    renderStatus("");
+
+    // Auto-open logic
+    const params = new URLSearchParams(window.location.search);
+    if (!params.get('board') && sorted.length > 0) {
+        console.log("Auto-opening most recent board:", sorted[0].id);
+        switchBoard(sorted[0].id, user.id);
+    }
+
+  } catch (err) {
+    console.error("loadBoards error:", err);
+    renderStatus("Error loading boards.");
   }
 }
+
 
 // --- New Board Creation ---
 async function handleNewBoard() {
@@ -485,28 +623,30 @@ async function handleNewBoard() {
     return;
   }
 
-  newBoardBtn.disabled = true;
-  newBoardBtn.textContent = "Creating...";
+  // 1. Save the original icon & text
+  let originalContent = "";
+  
+  if (newBoardBtn) {
+    originalContent = newBoardBtn.innerHTML; // <--- SAVES THE SVG
+    newBoardBtn.disabled = true;
+    newBoardBtn.textContent = "Creating..."; // Shows temporary text
+  }
 
   const user = currentUser;
 
   try {
+    // ... (Existing creation logic stays the same) ...
     const boardId = crypto.randomUUID();
     const path = `${user.id}/boards/${boardId}.json`;
-
     const now = new Date().toISOString();
 
-    // FIX: Changed 'items' to 'elements' to match reading logic
     const defaultBoard = {
       id: boardId,
       title: "Untitled Board",
       description: "",
       createdAt: now,
       updatedAt: now,
-      background: {
-        type: "solid",
-        color: "#020617",
-      },
+      background: { type: "solid", color: "#020617" },
       elements: [], 
       connections: [],
     };
@@ -522,14 +662,23 @@ async function handleNewBoard() {
     });
     if (error) throw error;
 
-    // IMPORTANT: from /dashboard/, go up one level to /board/index.html
-    window.location.href = `../board/index.html?board=${boardId}&owner=${currentUser.id}`;
+    await loadBoards();
+    switchBoard(boardId, currentUser.id);
+
   } catch (error) {
     console.error("Failed to create new board:", error);
     alert(`Error creating board: ${error.message}`);
   } finally {
-    newBoardBtn.disabled = false;
-    newBoardBtn.textContent = "+ New Board";
+    // 2. Restore the original icon & text
+    if (newBoardBtn) {
+      newBoardBtn.disabled = false;
+      // Check if we have original content to restore, otherwise fallback
+      if (originalContent) {
+        newBoardBtn.innerHTML = originalContent; // <--- RESTORES THE SVG
+      } else {
+        newBoardBtn.textContent = "New Board"; 
+      }
+    }
   }
 }
 
@@ -540,131 +689,86 @@ function handleAuthChange(user) {
     loadBoards(user);
   }
 }
-
-
 // --- Init ---
 async function init() {
-  // --- SIGN OUT BUTTON (still allowed on dashboard) ---
+  console.log("Initializing Board Logic...");
+
+  // 1. Close Global Menu when clicking anywhere else
+  document.addEventListener("click", (e) => {
+    if (contextMenuEl && contextMenuEl.contains(e.target)) return;
+    closeContextMenu();
+  });
+
+  // 2. Wire up the Confirm Delete Button (with Debugging)
+  const deleteBtn = document.getElementById("confirm-delete-btn");
+  if (deleteBtn) {
+    console.log("Delete button found. Attaching listener.");
+    // Remove old listeners by cloning (optional safety)
+    const newDeleteBtn = deleteBtn.cloneNode(true);
+    deleteBtn.parentNode.replaceChild(newDeleteBtn, deleteBtn);
+    
+    newDeleteBtn.addEventListener("click", async (e) => {
+      e.preventDefault();
+      console.log("Delete button clicked!");
+      console.log("Board to delete:", boardToDelete);
+
+      if (!boardToDelete) {
+        console.error("Error: No board selected for deletion.");
+        return;
+      }
+      await performDelete(boardToDelete); 
+    });
+  } else {
+    console.error("CRITICAL ERROR: Delete button (confirm-delete-btn) not found in DOM.");
+  }
+
+  // 3. Wire up Tour Button
+  const tourBtn = document.getElementById("bb-tour-help-btn");
+  if (tourBtn) {
+    tourBtn.style.display = "block"; 
+    tourBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      if (typeof startTour === "function") {
+        startTour();
+      } else {
+        console.warn("startTour function not found.");
+      }
+    });
+  }
+  
+  // 4. Wire up Rename Modal Save Button
+  if (modalSaveBtn) {
+    modalSaveBtn.replaceWith(modalSaveBtn.cloneNode(true));
+    document.getElementById("modal-save-btn").addEventListener("click", handleRename);
+  }
+
+  // 5. Sign Out Button
   if (signoutBtn) {
     signoutBtn.addEventListener("click", async () => {
       try {
         await sb.auth.signOut();
-      } catch (err) {
-        console.error("Sign out failed:", err);
-        alert(`Sign out failed: ${err.message || err}`);
-      }
-
-      // After sign-out, send them back to the landing page explicitly
-      const landingUrl = `${window.location.origin}/`;
-      window.location.href = landingUrl;
+      } catch (err) { console.error(err); }
+      window.location.href = "/";
     });
   }
-
-  // --- NEW BOARD BUTTON ---
-  // Fix: Check if button exists before adding listener
+  
+  // 6. New Board Button
   if (newBoardBtn) {
-      newBoardBtn.addEventListener("click", handleNewBoard);
+      newBoardBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        handleNewBoard();
+      });
   }
 
-  // --- BOARD GRID CLICKS (open board, menu actions) ---
-  boardGrid.addEventListener("click", (e) => {
-    const card = e.target.closest(".board-card");
-    if (!card) return;
-
-    // 1) Clicking the 3-dot "more" button
-    const moreBtn = e.target.closest(".more-btn");
-    if (moreBtn) {
-      const menuId = moreBtn.getAttribute("aria-controls");
-      const menu = document.getElementById(menuId);
-      if (menu) {
-        openMenu(menu);
-      }
-      return;
-    }
-
-    // 2) Clicking the card main body (to open)
-    // We check if we clicked specific parts, or just bubbling up
-    if(e.target.closest('.card-main') || e.target.className == "card-footer" || e.target.className == "card-date") {
-      closeActiveMenu();
-      const boardId = card.dataset.id;
-      if (boardId && currentUser) {
-        // From /dashboard/ go up to /board/index.html
-        window.location.href = `../board/index.html?board=${boardId}&owner=${currentUser.id}`;
-      }
-      return;
-    }
-
-    // 3) Menu item actions (rename / delete / share)
-    const menuItem = e.target.closest(".menu-item");
-    if (!menuItem) return;
-
-    const board = {
-      id: card.dataset.id,
-      path: card.dataset.path,
-      title: card.dataset.title,
-    };
-
-    if (menuItem.classList.contains("menu-rename")) {
-      closeActiveMenu();
-      openModal(board);
-    } else if (menuItem.classList.contains("menu-delete")) {
-      closeActiveMenu();
-      currentModalBoard = board;
-      handleDelete();
-    } else if (menuItem.classList.contains("menu-share")) {
-      closeActiveMenu();
-      if (currentUser) {
-        const url = new URL(window.location.origin + "/board/index.html");
-        url.searchParams.set("board", board.id);
-        url.searchParams.set("owner", currentUser.id);
-        const shareUrl = url.toString();
-
-        try {
-          navigator.clipboard.writeText(shareUrl);
-          alert("Link copied!");
-        } catch (err) {
-          console.error("Failed to copy link: ", err);
-          alert("Could not copy link. Check the console for your link.");
-          console.log("Share link:", shareUrl);
-        }
-      }
+  // 7. Listeners for Auth & History
+  window.addEventListener('popstate', () => {
+    const params = new URLSearchParams(window.location.search);
+    const boardId = params.get('board');
+    if (boardId && currentUser) {
+       switchBoard(boardId, currentUser.id);
     }
   });
 
-  // --- MODAL SAVE/DELETE ---
-  modalSaveBtn.addEventListener("click", handleRename);
-  modalDeleteBtn.addEventListener("click", handleDelete);
-  document.getElementById("modal-cancel-btn")?.addEventListener("click", closeModal);
-
-  // --- CLOSE 3-DOT MENU WHEN CLICKING OUTSIDE ---
-  document.addEventListener("click", (e) => {
-    if (!activeMenu) return;
-    if (!e.target.closest(".card-more")) {
-      closeActiveMenu();
-    }
-  });
-
-  // --- FILTER & SORT ---
-  filterInput?.addEventListener("input", refreshGridFromUI);
-  sortSelect?.addEventListener("change", refreshGridFromUI);
-
-  // --- KEYBOARD SHORTCUTS ---
-  document.addEventListener("keydown", (e) => {
-    const tag = (document.activeElement?.tagName || "").toLowerCase();
-    const typing = tag === "input" || tag === "textarea";
-
-    if (!typing && (e.key === "n" || e.key === "N")) {
-      e.preventDefault();
-      newBoardBtn?.click();
-    }
-
-    if (e.key === "Escape") {
-      closeActiveMenu();
-      closeModal();
-    }
-  });
-
-  // --- AUTH: PROTECT THIS PAGE ---
   sb.auth.onAuthStateChange((_event, data) => {
     const user = data?.session?.user || null;
     handleAuthChange(user);
@@ -672,14 +776,274 @@ async function init() {
 
   try {
     const { data, error } = await sb.auth.getSession();
-    if (error) throw error;
-    const user = data.session?.user || null;
-    handleAuthChange(user); 
+    if (error) console.error(error);
+    const user = data?.session?.user || null;
+    handleAuthChange(user);
   } catch (error) {
     console.error("Error getting session:", error);
     handleAuthChange(null);
   }
 }
 
+// hamburgerBtn logic (keep this if it was at the bottom)
+hamburgerBtn?.addEventListener("click", (e) => {
+  e.preventDefault();
+  const sidebar = document.getElementById("sidebar");
+  if (sidebar && sidebar.classList.contains("offscreen")) {
+      // Logic handled in script.js usually, but safety check here
+      sidebar.classList.remove("offscreen");
+      sidebar.classList.add("expanded");
+  }
+});
+
 // Start the app
 init();
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// ==================== ADVANCED SEARCH LOGIC ====================
+
+const searchBackdrop = document.getElementById("search-modal-backdrop");
+const searchInput = document.getElementById("board-search-input");
+const searchResults = document.getElementById("board-search-results");
+const searchBtnSidebar = document.getElementById("search-board-btn-sidebar");
+const newChatSearchBtn = document.getElementById("new-chat-search-btn"); 
+
+// 1. Open Modal
+if (searchBtnSidebar) {
+  searchBtnSidebar.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    openSearchModal();
+  });
+}
+
+function openSearchModal() {
+  if (searchBackdrop) {
+    searchBackdrop.style.display = "flex";
+    searchBackdrop.classList.remove("hidden");
+  }
+  if (searchInput) {
+    searchInput.value = "";
+    searchInput.focus();
+    
+    // FIX: Call the correct function to reset the view
+    handleBoardSearch(""); 
+  }
+  
+  // Close mobile sidebar if open
+  const sidebar = document.getElementById("sidebar");
+  if (sidebar && window.innerWidth < 900) sidebar.classList.add("offscreen");
+}
+
+// Global Close Function
+window.closeSearchModal = function() {
+  if (searchBackdrop) {
+    searchBackdrop.classList.add("hidden");
+    setTimeout(() => { searchBackdrop.style.display = "none"; }, 200); 
+  }
+};
+
+// 2. Search Listener
+if (searchInput) {
+  searchInput.addEventListener("input", (e) => {
+    handleBoardSearch(e.target.value);
+  });
+}
+
+// 3. Helper: Group by Date
+function getBoardGroup(board) {
+  if (!board.updatedAt) return "Older"; 
+
+  const now = new Date();
+  const boardDate = new Date(board.updatedAt);
+
+  // Check for today
+  if (boardDate.getDate() === now.getDate() &&
+      boardDate.getMonth() === now.getMonth() &&
+      boardDate.getFullYear() === now.getFullYear()) {
+    return "Today";
+  }
+
+  // Check for yesterday
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  if (boardDate.getDate() === yesterday.getDate() &&
+      boardDate.getMonth() === yesterday.getMonth() &&
+      boardDate.getFullYear() === yesterday.getFullYear()) {
+    return "Yesterday";
+  }
+
+  return "Older"; 
+}
+
+// 4. The Main Logic
+function handleBoardSearch(query) {
+  if (!searchResults) return;
+  searchResults.innerHTML = ""; // Clear results
+  
+  // Reset "New Chat" button visibility
+  if (newChatSearchBtn) {
+    newChatSearchBtn.style.display = "flex"; 
+  }
+
+  const term = query.toLowerCase().trim();
+
+  // If empty, stop here (Result: "New Chat" is visible, results list is empty)
+  if (!term) return;
+
+  // If we have a term, hide the "New Chat" button
+  if (newChatSearchBtn) {
+    newChatSearchBtn.style.display = "none"; 
+  }
+
+  const matches = loadedBoards.map(board => {
+    let snippetText = ""; 
+
+    // A. Check Title
+    if (board.title.toLowerCase().includes(term)) {
+      snippetText = "Matches title";
+    } 
+    // B. Check Content (Notes, Verses, Songs)
+    else if (board.elements && board.elements.length > 0) {
+      for (const el of board.elements) {
+        const content = extractTextFromElement(el);
+        if (content.toLowerCase().includes(term)) {
+          snippetText = getSnippet(content, term);
+          break; 
+        }
+      }
+    }
+
+    if (snippetText) {
+      return { board, snippetText };
+    }
+    return null;
+  }).filter(Boolean); 
+
+  // Group matches
+  const groupedMatches = {
+    "Today": [],
+    "Yesterday": [],
+    "Older": [],
+  };
+
+  matches.forEach(match => {
+    const group = getBoardGroup(match.board);
+    if (groupedMatches[group]) {
+        groupedMatches[group].push(match);
+    } else {
+        groupedMatches["Older"].push(match); // Safety fallback
+    }
+  });
+  
+  // Sort within groups
+  Object.keys(groupedMatches).forEach(groupName => {
+      groupedMatches[groupName].sort((a, b) => {
+          const dateA = new Date(a.board.updatedAt || 0);
+          const dateB = new Date(b.board.updatedAt || 0);
+          return dateB - dateA; 
+      });
+  });
+
+  let hasResults = false;
+  ["Today", "Yesterday", "Older"].forEach(groupName => {
+    if (groupedMatches[groupName].length > 0) {
+      hasResults = true;
+      const groupHeader = document.createElement("div");
+      groupHeader.className = "search-results-group-header";
+      groupHeader.textContent = groupName;
+      searchResults.appendChild(groupHeader);
+
+      groupedMatches[groupName].forEach(match => {
+        const div = document.createElement("div");
+        div.className = "search-result-item";
+        div.onclick = () => {
+          switchBoard(match.board.id, currentUser.id);
+          closeSearchModal();
+        };
+
+        div.innerHTML = `
+          <span class="material-symbols-outlined">chat_bubble</span>
+          <span class="search-result-title">${highlightText(match.board.title, term)}</span>
+          ${match.snippetText && match.snippetText !== "Matches title" ? 
+            `<span class="search-result-snippet">${highlightText(match.snippetText, term)}</span>` : ''}
+        `;
+        searchResults.appendChild(div);
+      });
+    }
+  });
+
+  if (!hasResults) {
+    searchResults.innerHTML = `<div class="search-placeholder">No results found for "${term}".</div>`;
+  }
+}
+
+// 5. Helper Functions
+function extractTextFromElement(el) {
+  if (!el) return "";
+  if (el.type === "note" || el.type === "text") {
+    return (el.html || el.text || "").replace(/<[^>]*>?/gm, ""); 
+  }
+  if (el.type === "verse") {
+    return `${el.reference} ${el.text}` || "";
+  }
+  if (el.type === "song") {
+    return `${el.title} ${el.lyrics}` || "";
+  }
+  return "";
+}
+
+function getSnippet(fullText, term) {
+  const lower = fullText.toLowerCase();
+  const index = lower.indexOf(term);
+  if (index === -1) return fullText.substring(0, 50);
+
+  const start = Math.max(0, index - 15); 
+  const end = Math.min(fullText.length, index + term.length + 20);
+  return fullText.substring(start, end);
+}
+
+function highlightText(text, term) {
+  if (!term) return text;
+  // Escape special regex chars in term
+  const safeTerm = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const regex = new RegExp(`(${safeTerm})`, "gi");
+  return text.replace(regex, `<span class="highlight-match">$1</span>`);
+}
+
+
+
+
+function openDeleteModal(board) {
+  console.log("Opening delete modal for:", board); // Add this log
+  boardToDelete = board;
+  const nameEl = document.getElementById("delete-board-name");
+  if (nameEl) nameEl.textContent = board.title || "Untitled Board";
+  
+  if (deleteModalBackdrop) {
+    deleteModalBackdrop.classList.remove("hidden");
+    deleteModalBackdrop.style.display = "flex"; // Ensure flex for centering
+  }
+}
+
+window.closeDeleteModal = function() {
+  if (deleteModalBackdrop) {
+    deleteModalBackdrop.classList.add("hidden");
+    setTimeout(() => { deleteModalBackdrop.style.display = "none"; }, 200);
+  }
+  boardToDelete = null;
+};

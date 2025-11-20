@@ -1,750 +1,1008 @@
-/* Relies on variables from style.css (e.g., --bg, --fg, --border, --accent) */
+/* =========================
+   Sidebar (ChatGPT-style)
+   Using your theme variables
+   ========================= */
 
-body {
-  background-color: var(--bg);
-  color: var(--fg);
-  font-family: "Atkinson Hyperlegible", sans-serif;
-  margin: 0;
-  padding: 0px;
-  overflow-y: auto;
+   /* boards.css */
+
+/* =========================
+   Theme Variables
+   ========================= */
+:root {
+  --bg: #171717;
+  --bg-seethroug: #20202050;
+  --bg-trasparent: #17171700;
+  --bg-dots: #1d1d1d;
+  --bg-alt: #202020;
+  --fg: #e6e6e6;
+  --fg-seethrough: #e6e6e620;
+  --accent: #67e495;
+  --border: #2f2f2f;
+  --muted: #8b949e;
+  
+  /* Dark Mode: High brightness to make a dark logo look white/visible */
+  --brightness: 1000%; 
 }
 
-/* === Auth Screen === */
-#auth-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100vh;
-  text-align: center;
-  position: relative;
-  background-color: var(--bg);
+body.light {
+  --bg: #ffffff;
+  --bg-seethroug: #f8f8f8ab;
+  --bg-trasparent: #ffffff00;
+  --bg-dots: #f1f1f1;
+  --bg-alt: #e2e2e2;
+  --fg: #343434;
+  --fg-seethrough: #29292920;
+  --border: #dfdfdf;
+  --accent: #2ea043;
+  --muted: #57606a;
+  
+  /* Light Mode: Lower brightness to make the logo dark */
+  --brightness: 30%; /* Or 30% as you requested, 0% is pure black */
+}
+
+/* ... (Keep your existing sidebar variables like --sidebar-width here) ... */
+
+/* =========================
+   Logo Theme Logic
+   ========================= */
+/* Apply the filter to both the sidebar logo and the top-nav logo */
+.sidebar-logo img, 
+#logo-image {
+  /* transition: filter 0.3s ease; */
+  filter: brightness(var(--brightness));
+}
+
+/* ... (The rest of your existing CSS below) ... */
+:root {
+  --sidebar-width: 280px;
+  --sidebar-collapsed: 72px;
+  --sidebar-transition: 240ms cubic-bezier(.2,.9,.25,1);
+  --overlay-bg: rgba(0, 0, 0, 0.55);
+  --sidebar-z: 2000;
+}
+
+/* Base sidebar */
+.sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+
+  width: var(--sidebar-width);
+
+  /* Use the same background style as the rest of your UI */
+  background: var(--bg-dots);
   background-image: radial-gradient(
-    circle at center,
+    circle at top left,
     var(--bg-dots) 2px,
     transparent 2px
   );
   background-size: 30px 30px;
-}
 
-#sign-in-form-container {
+  border-right: 1px solid var(--border);
+  color: var(--fg);
+
+  transform: translateX(0);
+  transition: width var(--sidebar-transition), transform var(--sidebar-transition);
+
+  z-index: var(--sidebar-z);
+
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content:center;
-  width: 100vw;
-  height: 100vh;
-  background: var(--bg-seethroug);
-  backdrop-filter: blur(1.5rem);
-  -webkit-backdrop-filter: blur(1.5rem);
-  position: fixed;
 }
 
-#sign-in-form-container.hidden {
-  display:none;
-}
+/* =========================
+   Sidebar Header & Toggle
+   ========================= */
 
-#sign-in-form {
+/* Creates the Left-Right layout */
+.sidebar-header {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 0px;
-  background:transparent;
-  position: fixed;
-  width:100%;
-  max-width:400px;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 101;
-}
-
-#bible-board-text {
-  font-size: 50px;
-  font-weight: 700;
-  margin:0px;
-}
-
-/* .connection-svg-overlay {
-  display:none;
-} */
-
-.board-item {
-  position: relative;
+  justify-content: space-between;
   width: 100%;
-  max-width: 600px;
-  margin: 16px 0;
-  border-radius: 16px;
-  background: rgba(15, 23, 42, 0.8);
-  border: 1px solid rgba(148, 163, 184, 0.4);
-  padding: 16px 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+  padding-bottom: 10px; /* Space before the list starts */
 }
 
-.board-title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: #e5e7eb;
+/* Style specifically for the new toggle button */
+#sidebar-toggle-btn {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s, background 0.2s;
+}
+
+#sidebar-toggle-btn:hover {
+  color: var(--fg);
+  background: var(--bg-alt);
+}
+
+/* Hide the toggle button when sidebar is collapsed (too narrow) */
+.sidebar.collapsed #sidebar-toggle-btn {
+  display: none;
+}
+
+/* Adjust Logo to not have extra padding since the header handles it */
+.sidebar-logo {
+  padding: 0; 
   margin: 0;
 }
 
-.board-meta {
+/* Collapsed sidebar (desktop) */
+.sidebar.collapsed {
+  width: var(--sidebar-collapsed);
+}
+
+/* Offscreen (mobile) */
+.sidebar.offscreen {
+  transform: translateX(-110%);
+}
+
+/* Inner content wrapper */
+.sidebar-inner {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  color: #9ca3af;
-  font-size: 0.875rem;
-}
-
-.board-meta span {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.board-meta svg {
-  width: 16px;
-  height: 16px;
-}
-
-.board-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.board-tag {
-  padding: 4px 8px;
-  border-radius: 999px;
-  background: rgba(37, 99, 235, 0.2);
-  color: #bfdbfe;
-  font-size: 0.75rem;
-}
-
-.board-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-}
-
-.board-actions button {
-  background: #1f2933;
-  color: #e5e7eb;
-  border: 1px solid rgba(148, 163, 184, 0.4);
-  border-radius: 999px;
-  padding: 6px 12px;
-  font-size: 0.875rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.board-actions button:hover {
-  background: #111827;
-  border-color: #60a5fa;
-}
-
-#auth-container p {
-  font-size: 1.1rem;
-  color: var(--muted);
-}
-
-/* Logo Styling */
-#auth-logo {
-  display: flex;
-  align-items: center;
+  flex-direction: column;
+  height: 100%;
+  padding: 10px 10px;
   gap: 10px;
 }
 
-#auth-logo img {
-  width: 40px;
-  height: 40px;
-}
-
-#auth-logo span {
-  font-size: 1.4rem;
-  font-weight: 600;
-}
-
-/* Google Sign-in button styling */
-.google-signin-button {
-  display: inline-flex;
+/* Sidebar logo button */
+.sidebar-logo {
+  border: none;
+  background: transparent;
+  color: var(--fg);
+  display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 8px; /* Slightly reduced space between logo and text */
+  gap: 12px;
+  padding: 4px;
+  cursor: pointer;
+  border-radius: 10px;
+}
 
-  /* Box Model */
-  padding: 10px 24px;
-  border: 1px solid var(--border); /* Light grey border */
-  border-radius: 15px;
+.sidebar-logo img {
+  width: 35px;
+  height: 35px;
+}
 
-  /* Typography */
-  font-family: "Roboto", Arial, sans-serif;
+#sidebar-title {
+  font-weight: 800;
   font-size: 15px;
-  font-weight: 600;
-  color: var(--bg); /* Google's standard dark grey text */
-
-  /* Appearance */
-  background-color: var(--fg); /* White background */
-  cursor: pointer;
-  transition: background-color 0.3s, box-shadow 0.3s;
-
-  /* Remove default button styles */
-  outline: none;
 }
 
-/* Style for the SVG logo */
-.google-signin-button svg {
-  width: 18px;
-  height: 18px;
-  /* filter: brightness(0%); */
+.sidebar.collapsed .sidebar-title {
+  display: none;
 }
 
-/* Hover effect */
-.google-signin-button:hover {
-  background-color: #f5f5f5;
-  box-shadow: 0 1px 3px rgba(60, 64, 67, 0.3);
+/* =========================
+   Collapsed Sidebar Logic (Final Fix)
+   ========================= */
+
+/* 1. Hide extra elements */
+.sidebar.collapsed #sidebar-boards-container,
+.sidebar.collapsed #sidebar-status,
+.sidebar.collapsed .sidebar-divider,
+.sidebar.collapsed #bottom-sidebar-fade,
+.sidebar.collapsed #sidebar-toggle-btn {
+  display: none !important;
 }
 
-/* Active (pressed) effect */
-.google-signin-button:active {
-  background-color: #e8e8e8;
+/* 2. Center the Header Container (Fixes the Logo) */
+.sidebar.collapsed .sidebar-header {
+  justify-content: center; /* Forces logo to center */
+  padding-left: 0;
+  padding-right: 0;
 }
 
-/* === Dashboard Layout === */
-#dashboard-container {
-  position:absolute;
-  left:50%;
-  transform:translate(-50%);
-  width:100vw;
-  max-width: 1200px;
-  display:flex;
-  flex-direction: column;
-  justify-content:center;
-  align-items:center;
-  margin-top: 70px;
-}
-
-#dashboard-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 16px;
-  /* padding-bottom: 20px; */
-  /* border-bottom: 1px solid var(--border); */
-  /* margin-bottom: 24px; */
-}
-
-#dashboard-title {
-  height:23px !important;
-  font-size: 1.8rem;
-  font-weight: 700;
-  margin: 0;
-  gap: 5px;
-}
-
-.header-actions {
-  display: flex;
-  gap: 12px;
-}
-
-.header-actions .dash-btn {
-  padding-inline: 16px;
-}
-
-/* Theme toggle button */
-#theme-toggle {
-  display: inline-flex;
-  align-items: center;
+/* 3. Center the Logo Button itself */
+.sidebar.collapsed .sidebar-logo {
   justify-content: center;
-  width: 42px;
-  height: 42px;
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  background: var(--bg-alt);
-  cursor: pointer;
+  width: 100%;
+  padding: 0;
+  gap: 0;
 }
 
-#theme-toggle span {
-  font-size: 18px;
-}
-
-#board-grid-section {
-  width:calc(100vw - 30px);
-  border-radius: 15px;
-  padding: 0px 15px;
-  max-width: 700px;
-  background:var(--bg-dots);
-}
-
-#boards-grid-header-container {
-  width:100%;
-  padding-bottom: 15px;
-  height:fit-content;
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  margin-top: 15px;
-}
-
-@media (max-width:700px) {
-  #board-grid-section {
-    width:100vw;
-    padding:0px;
-    background:transparent;
-  }
-
-  #boards-grid-header-container {
-    width:calc(100vw - 30px);
-    padding: 0px 15px;
-    padding-bottom: 15px;
-  }
-}
-
-#bottom-line {
-  width:100%;
-  height:1px;
-  background:var(--border);
-  position:absolute;
-  left:0px;
-}
-
-/* New board button and status tile */
-#board-grid{
-  display:flex;
-  flex-direction: column;
-  gap:10px;
-  align-items: stretch;
-}
-
-#board-grid{
-  margin-top:15px;
-}
-
-/* New board button (injected by JS) */
-#new-board-btn {
-  border: 1px dashed var(--border);
-  background: var(--bg-alt);
-  color: var(--muted);
+/* 4. Center Nav Items & Remove Gaps */
+.sidebar.collapsed .nav-item {
+  font-size: 0;
   justify-content: center;
+  padding-left: 0;
+  padding-right: 0;
+  gap: 0;
 }
 
-/* Status tile */
-.status-tile {
-  border:none;
-  background:none;
-  padding: 16px;
-  border-radius: 12px;
-  text-align: center;
-  color: var(--muted);
-  height:200px;
-  display:flex;
-  justify-content:center;
-  align-items:center;
+/* 5. Reset Margins on Icons */
+.sidebar.collapsed .nav-item svg,
+.sidebar.collapsed .sidebar-logo img {
+  margin: 4px 0px;
 }
 
-#status-message.hidden {
-  display:none;
-}
+/* =========================
+   Fix for Sidebar Scrolling
+   Paste this into boards.css
+   ========================= */
 
-.skeleton-card {
-  background: var(--bg-alt);
-  border: 1px solid var(--border);
-  border-radius: 5px;
-  padding: 16px;
-  height: 50px; /* Matches min-height of real card */
-  opacity: 0.5;
-  animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-@keyframes pulse {
-  0% {
-    opacity: 0.5;
-  }
-  50% {
-    opacity: 0.9;
-  }
-  100% {
-    opacity: 0.5;
-  }
-}
-
-/* Board card */
-.card-main {
-  position:relative;
-  display:flex;
-  flex-direction:column;
-  gap:8px;
-  align-items:flex-start;
-  align-content: center;
-  justify-content:space-between;
-  padding:17px;
-  /* background:var(--bg-alt); */
-  background:transparent;
-  cursor:pointer;
-  outline:none;
-  width:100%;
-  transition: box-shadow 0.12s ease, border-color 0.12s ease, transform 0.12s ease;
+/* 1. Constraint the nav wrapper */
+.sidebar-nav {
+  /* Flex layout to fill space */
+  display: flex;
+  flex-direction: column;
   flex: 1;
-  border:none;
-  padding-bottom: 27px;
+  min-height: 0;
+  overflow: hidden; 
+  
+  /* IMPORTANT: This allows the fade div to sit absolutely inside here */
+  position: relative; 
 }
 
-#board-grid .board-card:last-of-type {
-  border: none;
-}
-
-.card-text-block{
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  justify-content:left;
-  gap:4px;
-  width:100%;
-}
-
-/* Card container that wraps card-main + menu */
-.board-card {
-  border-bottom: 1px solid var(--border);
+/* 2. Update the container to scroll */
+#sidebar-boards-container {
+  flex: 1;              /* Take up remaining space in the nav */
+  overflow-y: auto;     /* Enable vertical scrolling */
+  min-height: 0;        /* standard flex scroll fix */
+  
+  /* Remove height: 100% if it exists, use flex instead */
+  height: auto; 
+  
+  padding-bottom: 1000px;
   position: relative;
-  display: flex;
-  justify-content:center;
-  align-items:center;
-  /* align-items: stretch; */
+  
+  /* Optional: Smooth scrolling */
+  scroll-behavior: smooth;
 }
 
-/* clickable area should flex to fill width */
-.card-main {
-  flex: 1;
+/* Optional: Make scrollbar thinner/cleaner for dark mode */
+#sidebar-boards-container::-webkit-scrollbar {
+  width: 6px;
+}
+#sidebar-boards-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+#sidebar-boards-container::-webkit-scrollbar-thumb {
+  background-color: var(--border);
+  border-radius: 10px;
 }
 
-/* Tag & date row footer pinned bottom */
-.card-footer{
-  width:100%;
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:8px;
-  margin-top:auto;
-  display:none;
-}
-
-.card-title{
-  width:100%;
-  text-align: left;
-  margin:0px;
-  font-size:16.5px;
-  font-weight:650;
-  color:var(--fg);
-  margin-bottom:3px;
-
-  display:-webkit-box;
-  -webkit-box-orient:vertical;
-  -webkit-line-clamp:1;
-  overflow:hidden;
-}
-
-.card-desc {
-  width:100%;
-  text-align: left;
+/* Navigation items */
+.sidebar-nav ul {
+  list-style: none;
+  padding: 0;
   margin: 0;
-  color: var(--muted);
-  font-size: 0.9rem;
-  display:-webkit-box;
-  justify-content:center;
-  align-items: center;
-  -webkit-box-orient:vertical;
-  -webkit-line-clamp:1;
-  overflow:hidden;
-
-  line-height:1.35;
-  font-size:15px;
-  margin-top:0px;
-}
-
-/* Footer pinned to bottom-left */
-.card-footer{
-  height:100%;
-}
-
-/* Last opened pill styling */
-.card-tags {
-  display:flex;
-  gap:8px;
-  align-items:center;
-}
-
-.card-tag{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  padding-inline:9px;
-  padding-block:3.5px;
-  border-radius:999px;
-  border: 1px solid var(--border);
-  background: var(--bg) !important;
-  color:var(--muted);
-  font-size:13px;
-}
-
-/* Date + icon */
-.card-date{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  gap:7px;
-  font-size:13px;
-  color:var(--muted);
-}
-
-.card-date svg{
-  opacity:0.7;
-}
-
-/* action menu container */
-.card-more{
-  /* position:absolute;
-  top:9px;
-  right:9px; */
-  display:flex;
-  align-items:center;
-  gap:8px;
-}
-
-
-/* ellipsis btn */
-.more-btn{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  width:32px;
-  height:32px;
-  border-radius:999px;
-  border:none;
-  background:transparent;
-  color:var(--muted);
-  cursor:pointer;
-  transition:background 0.12s ease, color 0.12s ease;
-}
-
-.more-btn:hover{
-  background:rgba(148,163,184,0.1);
-  color:var(--fg);
-}
-
-/* menu dropdown */
-.more-menu{
-  position:absolute;
-  top:0px;
-  right:40px;
-  min-width:145px;
-  border-radius:12px;
-  border:1px solid var(--border);
-  background:var(--bg-alt);
-  padding:5px;
-  list-style:none;
-  margin:0px;
-  z-index:200;
-}
-
-.more-menu.hidden{
-  display:none;
-}
-
-.menu-item{
-  display:flex;
-  align-items:center;
-  gap:10px;
-  width:100%;
-  border:none;
-  background:transparent;
-  color:var(--fg);
-  padding:7px 11px;
-  text-align:left;
-  font-size:14px;
-  cursor:pointer;
-  transition:background 0.12s ease;
-  border-bottom: 1px solid var(--border);
-}
-
-.menu-delete {
-  color:rgb(248, 113, 113);
-  border: none;
-}
-
-/* === Filters / Search === */
-
-#dashboard-filters {
   display: flex;
-  gap: 12px;
-  margin-bottom: 16px;
-  align-items: center;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 6px;
 }
 
-.dash-input,
-.dash-select,
-.dash-btn {
-  border-radius: 15px;
-  border: 1px solid var(--border);
-  background: var(--bg-alt);
+.nav-item {
+  width: 100%;
+  background: transparent;
+  border: none;
   color: var(--fg);
-  padding: 8px 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+  cursor: pointer;
+  border-radius: 10px;
   font-size: 0.95rem;
+  font-weight: 300;
 }
 
-.dash-input {
+.nav-item:hover {
+  background: var(--bg-alt);
+}
+
+/* Sidebar footer (Updated for single full-width button) */
+.sidebar-footer {
+  margin-top: auto;
+  margin-bottom: 10px;
+  display: flex;
+  flex-direction: column; /* Stacks items if you add more later */
+  width: 100%;
+}
+
+.icon {
+  font-weight: 500;
+}
+
+.icon-btn {
+  height:fit-content;
+  border: none;
+  background: var(--bg-dots);
+  padding: 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  color: var(--fg);
+}
+
+.icon-btn:hover {
+  background: var(--bg-alt);
+}
+
+/* Overlay (mobile) */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--overlay-bg);
+  z-index: calc(var(--sidebar-z) - 2);
+  opacity: 1;
+  transition: opacity 200ms;
+}
+
+.overlay.hidden {
+  display: none;
+  opacity: 0;
+}
+
+/* Main content shift on desktop */
+.main-content {
+  margin-left: var(--sidebar-width);
+  transition: margin-left var(--sidebar-transition);
+}
+
+.sidebar.collapsed ~ .main-content {
+  margin-left: var(--sidebar-collapsed);
+}
+
+.sidebar.offscreen ~ .main-content {
+  margin-left: 0;
+}
+
+/* Mobile behavior */
+@media (max-width: 900px) {
+  .sidebar {
+    transform: translateX(-110%);
+    width: var(--sidebar-width);
+  }
+
+  .sidebar.expanded {
+    transform: translateX(0);
+  }
+
+  .main-content {
+    margin-left: 0 !important;
+  }
+
+  #hamburger-btn {
+    display: inline-flex;
+  }
+}
+
+/* =========================
+   Sidebar Board List (ChatGPT-style)
+========================= */
+
+#sidebar-boards-container {
+  height:100%;
+  padding-bottom:30px;
+  overflow-y: auto;
   flex: 1;
-  min-width: 180px;
+  position:relative;
 }
 
-.dash-select {
-  min-width: 160px;
+#img {
+  filter:brightness(var(--brightness));
 }
 
-.dash-btn {
-  display: inline-flex;
+
+#top-sidebar-fade {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 60px; /* Adjust height for how subtle/strong you want the fade */
+  z-index: 10;  /* Sits on top of the list */
+  
+  /* The Fade Effect */
+  background: linear-gradient(to top, transparent, var(--bg));
+  
+  /* CRITICAL: Allows clicking buttons behind the fade */
+  pointer-events: none; 
+}
+
+#bottom-sidebar-fade {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 60px; /* Adjust height for how subtle/strong you want the fade */
+  z-index: 10;  /* Sits on top of the list */
+  
+  /* The Fade Effect */
+  background: linear-gradient(to top, var(--bg-dots), var(--bg-trasparent));
+  
+  /* CRITICAL: Allows clicking buttons behind the fade */
+  pointer-events: none; 
+}
+
+.sidebar-group-label {
+  font-size: 0.85rem;
+  opacity: 0.6;
+  margin: 12px 4px;
+  text-transform: uppercase;
+  font-weight:900;
+}
+
+.sidebar-board {
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: var(--fg);
+  text-align: left;
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  margin-bottom: 2px;
+}
+
+.sidebar-board:hover {
+  background: var(--bg-alt);
+}
+
+/* boards.css */
+
+.sidebar-board.active {
+  background: var(--bg-alt);
+  color: var(--fg); 
+}
+
+.sidebar-divider {
+  border: none;
+  border-bottom: 1px solid var(--border);
+  margin: 8px 0;
+}
+
+#sidebar-status {
+  font-size: 0.85rem;
+  padding: 6px 8px;
+  opacity: 0.7;
+  color: var(--fg);
+  white-space: normal;
+}
+
+/* Show hamburger only on small screens */
+#hamburger-btn {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  :root {
+    --sidebar-width: 0px;
+    --sidebar-collapsed: 72px;
+    --sidebar-transition: 240ms cubic-bezier(.2,.9,.25,1);
+    --overlay-bg: rgba(0, 0, 0, 0.55);
+    --sidebar-z: 2000;
+  }
+  
+  #bible-board-container {
+    width:100vw;
+    height:100vh;
+    position:relative;
+    top:0px;
+    left:0px;
+    overflow:hidden;
+    background:red;
+  }
+
+  #hamburger-btn {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    padding: 8px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+  }
+}
+
+#bible-board-container {
+  width:calc(100% - var(--sidebar-width));
+  height:100vh;
+  position:relative;
+  top:0px;
+  right:0px;
+  left:var(--sidebar-width);
+  overflow:hidden;
+  background:red;
+}
+
+
+
+/* --- Sidebar Item Layout (Row with 3-dot) --- */
+.sidebar-board-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  border-radius: 8px;
+  margin-bottom: 2px;
+  position: relative; /* Anchor for dropdown */
+  transition: background 0.2s;
+}
+
+.sidebar-board-item:hover,
+.sidebar-board-item.active {
+  background: var(--bg-alt);
+  backdrop-filter:blur(1rem);
+  transition:.1s;
+}
+
+#new-board-icon {
+  font-weight: 600;
+  width:15px;
+  height:20px;
+  font-size: 20px;
+}
+
+.sidebar-board-btn {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--fg);
+  text-align: left;
+  padding: 10px 15px;
+  cursor: pointer;
+  font-size: .9rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: inherit;
+}
+
+/* --- 3-Dot Menu Button --- */
+.sidebar-menu-btn {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 4px;
+  margin-right: 4px;
+  border-radius: 4px;
+  display: none; /* Hidden by default */
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease,
-    color 0.15s ease, transform 0.12s ease, box-shadow 0.12s ease;
 }
 
-.dash-btn.primary {
-  background: var(--accent);
-  color: #0b1020;
-  border-color: var(--accent);
-  font-weight: 600;
+.sidebar-board-item:hover .sidebar-menu-btn,
+/* .sidebar-board-item.active .sidebar-menu-btn, */
+.sidebar-menu-btn.active {
+  display: flex; /* Show on hover or active */
 }
 
-.dash-btn.secondary {
-  background: var(--bg-alt);
+.sidebar-menu-btn:hover {
+  background: rgb(0, 0, 0, 0.1);
+  backdrop-filter:blur(1rem);
   color: var(--fg);
 }
 
-/* === Modal === */
+/* --- Global Context Menu (Fixed Position) --- */
+#board-context-menu {
+  position: fixed; /* Breaking out of the sidebar */
+  background: var(--bg-dots);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  z-index: 20000; /* Very high to sit on top */
+  min-width: 130px;
+  display: none; 
+  flex-direction: column;
+  padding: 4px;
+  backdrop-filter: blur(10px); /* Glass effect */
+}
 
+#board-context-menu.show {
+  display: flex;
+  animation: menuFadeIn 0.1s ease-out;
+}
+
+@keyframes menuFadeIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.menu-option {
+  background: var(--bg-dots);
+  border: none;
+  color: var(--fg);
+  padding: 8px 12px;
+  text-align: left;
+  margin-bottom:2px;
+  display:flex;
+  align-items:center;
+  gap:5px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border-radius: 4px;
+}
+
+.menu-option:hover {
+  background: var(--bg-alt);
+}
+
+.menu-option.delete {
+  color: #e55353;
+}
+.menu-option.delete:hover {
+  background: rgba(229, 83, 83, 0.1);
+}
+
+/* --- Modal Styles --- */
 #modal-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 500;
-  background: rgba(15, 23, 42, 0.65);
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 20000;
   display: flex;
   align-items: center;
   justify-content: center;
 }
-
 #modal-backdrop.hidden {
   display: none;
 }
 
-#modal {
-  background: var(--bg-alt);
-  border-radius: 16px;
+.modal-content {
+  background: var(--bg-dots);
   border: 1px solid var(--border);
-  padding: 20px 18px 16px;
-  width: 100%;
+  border-radius: 25px;
+  padding:20px;
+  width: 90%;
   max-width: 400px;
-  box-shadow: 0 22px 60px rgba(15, 23, 42, 0.7);
+  box-shadow: 0 10px 25px rgba(0,0,0,0.5);
 }
 
-#modal h2 {
-  margin: 0 0 12px;
-  font-size: 1.2rem;
+.modal-content h3 {
+  margin-top: 0;
+  color: var(--fg);
 }
 
-#modal label {
+.modal-content label {
   display: block;
-  margin-bottom: 6px;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
+  font-weight: 700;
   color: var(--muted);
+  margin-bottom: 8px;
 }
 
-#modal-title-input {
+.modal-content input {
   width: 100%;
-  margin-bottom: 16px;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-alt);
+  color: var(--fg);
+  font-size: 1rem;
+  margin-bottom: 20px;
+  box-sizing: border-box; /* Important for width */
 }
 
 .modal-actions {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
-.modal-actions-right {
+.modal-btn {
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  font-weight: 700;
+}
+.modal-btn.delete { background: #3f1515; color: #ff8888; border-color: #662222; }
+.modal-btn.cancel { background: transparent; color: var(--fg); }
+.modal-btn.primary { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+
+
+
+
+/* =========================
+   Search Modal Styles - Updated for new design
+   ========================= */
+#search-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 20000;
   display: flex;
-  gap: 8px;
+  align-items: center;
+  justify-content: center;
 }
 
-#modal-cancel-btn {
-  border-radius: 999px;
-  border: none;
-  background: transparent;
-  color: var(--muted);
-  cursor: pointer;
-  font-size: 0.9rem;
-}
-
-#modal-delete-btn.danger {
-  border-radius: 999px;
-  border: 1px solid rgba(239, 68, 68, 0.5);
-  background: rgba(239, 68, 68, 0.06);
-  color: rgb(248, 113, 113);
-  padding: 7px 14px;
-  cursor: pointer;
-}
-
-#modal-save-btn.primary {
-  padding: 7px 14px;
-}
-
-/* === Error message in status tile === */
-
-.error-message {
+/* The Modal Container */
+.search-modal-content {
+  max-width: 700px !important; 
+  width: 90%; /* Make it responsive */
+  height: 80vh; 
+  max-height: 500px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  justify-content:center;
+  align-items:center;
+  padding: 0px; /* Adjust padding for inner elements */
+  position: relative; /* For absolute positioning of close button */
+  overflow:hidden;
+  border: 2px solid var(--border);
 }
 
-.error-message strong {
-  color: #fca5a5;
+/* Close button - Top right */
+.modal-close-btn {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 24px;
+  z-index: 1;
+  padding:5px;
+  border-radius: 100%;
+}
+.modal-close-btn:hover {
+  color: var(--fg);
+  background:var(--bg-alt);
 }
 
-/* === Dashboard Footer === */
 
-#dashboard-footer {
+/* Search Input Styling */
+.search-input-wrapper {
   width:100%;
-  margin-top: 32px;
-  padding-top: 16px;
-  border-top: 1px solid var(--border);
+  position: relative;
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+}
+
+.search-input-wrapper .search-icon {
+  position: absolute;
+  left: 12px;
+  top:50%;
+  transform:translate(0, -50%);
+  color: var(--muted);
+  font-size: 20px;
+}
+
+#board-search-input {
+  padding: 20px 25px; /* Left padding for icon */
+  border:none;
+  border-bottom: 2px solid var(--border);
+  background: var(--bg-dots); /* Slightly different background for input */
+  color: var(--fg);
+  border-radius: 0px;
+  font-size: 1rem;
+  box-shadow: none; /* Remove default input shadow */
+  outline: none; /* Remove focus outline */
+  width:100%;
+  z-index: 0;
+}
+#board-search-input::placeholder {
+  color: var(--muted);
+}
+
+/* New Chat Button */
+#new-chat-search-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 15px;
+  margin-bottom: 15px; /* Space below new chat button */
+  border-radius: 8px;
+  background: var(--bg-alt); /* Matches input background */
+  cursor: pointer;
+  font-weight: 500;
+  color: var(--fg);
+  transition: background 0.2s ease;
+}
+#new-chat-search-btn:hover {
+  background: var(--bg-alt); /* Slight hover effect */
+}
+.new-chat-icon {
+  color: var(--accent); /* Accent color for the icon */
+  font-size: 20px;
+}
+
+
+/* Scrollable Results Area */
+#board-search-results {
+  width:calc(100% - 30px);
+  flex: 1; /* Fill remaining height */
+  overflow-y: auto;
+  padding-right: 5px; /* Space for scrollbar */
+  /* Remove border and background here, as individual items will have it */
+}
+
+/* Custom Scrollbar for Results */
+#board-search-results::-webkit-scrollbar {
+  width: 8px;
+}
+#board-search-results::-webkit-scrollbar-track {
+  background: transparent;
+}
+#board-search-results::-webkit-scrollbar-thumb {
+  background-color: var(--scroll-thumb); /* Assuming you have a scroll-thumb variable */
+  border-radius: 10px;
+  border: 2px solid transparent; /* Gives a slight gap */
+  background-clip: padding-box; /* Ensures border doesn't shrink thumb */
+}
+#board-search-results::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scroll-thumb-hover);
+}
+
+
+/* Group Headers (e.g., Today, Yesterday) */
+.search-results-group-header {
   font-size: 0.85rem;
   color: var(--muted);
+  padding: 15px 10px 5px 10px;
+  margin-top: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.search-results-group-header:first-of-type {
+  margin-top: 0;
 }
 
-#dashboard-footer .legal-links {
+
+/* Individual Result Items */
+.search-result-item {
   display: flex;
-  gap: 6px;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 15px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  margin-bottom: 4px; /* Space between items */
+}
+.search-result-item:hover {
+  background: var(--bg-alt);
 }
 
-#dashboard-footer a {
+/* Icon for chat/board item */
+.search-result-item .material-symbols-outlined {
+  font-size: 20px;
   color: var(--muted);
-  text-decoration: none;
 }
 
-#dashboard-footer a:hover {
-  text-decoration: underline;
+.search-result-title {
+  font-weight: 500;
+  font-size: 1rem;
+  color: var(--fg);
+  flex-grow: 1; /* Allow title to take space */
 }
 
-/* === Media Queries === */
+.search-result-snippet {
+  font-size: 0.8rem;
+  color: var(--muted);
+  font-style: italic;
+  margin-left: auto; /* Push snippet to the right if space allows */
+  white-space: nowrap; /* Keep snippet on one line for better layout */
+  overflow: hidden;
+  text-overflow: ellipsis; /* Add ellipsis if too long */
+  max-width: 40%; /* Prevent snippet from taking too much space */
+}
 
-@media (max-width: 768px) {
-  #dashboard-container {
-    /* padding: 16px; */
-  }
+/* Highlight the matching text */
+.highlight-match {
+  background-color: rgba(255, 255, 0, 0.2); /* Soft yellow highlight */
+  color: var(--fg);
+  font-weight: bold;
+  padding: 1px 3px;
+  border-radius: 4px; /* Slightly rounded highlight */
+}
+
+.search-placeholder {
+  text-align: center;
+  color: var(--muted);
+  padding-top: 20px;
+}
+
+
+
+
+/* =========================
+   Missing Backdrop Style
+   ========================= */
+#delete-modal-backdrop {
+  position: fixed;
+  inset: 0; /* Stretches to fill screen */
+  background: rgba(0, 0, 0, 0.6); /* Dark background */
+  backdrop-filter: blur(4px);
+  z-index: 20000; /* Sits on top of everything */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Utility class to hide it */
+#delete-modal-backdrop.hidden {
+  display: none !important;
+}
+
+.delete-modal-content {
+  max-width: 400px;
+  background: var(--bg-alt); /* Or #202020 to match image specifically */
+  border: 1px solid var(--border);
+  box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+  padding: 24px;
+}
+
+.delete-modal-content h3 {
+  font-size: 1.1rem;
+  margin-bottom: 12px;
+  color: var(--fg);
+}
+
+.delete-modal-text {
+  font-size: 0.95rem;
+  color: var(--fg);
+  margin-bottom: 8px;
+}
+
+.delete-modal-text strong {
+  color: var(--fg);
+  font-weight: 700;
+}
+
+.delete-modal-subtext {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-bottom: 24px;
+}
+
+/* The Red Delete Button */
+.modal-btn.delete-solid {
+  background-color: #d93025; /* Google/ChatGPT Red */
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-weight: 600;
+  transition: background 0.2s;
+}
+
+.modal-btn.delete-solid:hover {
+  background-color: #b52218;
+}
+
+/* Make Cancel button blend in */
+.modal-btn.cancel {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--fg);
+  padding: 10px 20px;
+  border-radius: 8px;
+  margin-right: 10px;
+}
+.modal-btn.cancel:hover {
+  background: var(--bg-dots);
+}
+
+/* =========================
+   Fix for Board Width on Collapse
+   ========================= */
+
+/* 1. Add smooth transition to the containers so they slide, not snap */
+#bible-board-container,
+.viewport {
+  transition: left var(--sidebar-transition), width var(--sidebar-transition);
+}
+
+/* 2. When sidebar is collapsed, move the Main Container over */
+/* We use the '~' selector because there are other elements (overlay, buttons) between them in HTML */
+.sidebar.collapsed ~ #bible-board-container {
+  left: var(--sidebar-collapsed) !important;
+  width: calc(100% - var(--sidebar-collapsed)) !important;
+}
+
+/* 3. Also fix the internal Viewport (since it is position:fixed in style.css) */
+.sidebar.collapsed ~ #bible-board-container .viewport {
+  left: var(--sidebar-collapsed) !important;
+  width: calc(100% - var(--sidebar-collapsed)) !important;
 }

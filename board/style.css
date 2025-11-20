@@ -20,6 +20,12 @@
   --border: #2f2f2f;
   --muted: #8b949e;
   --brightness: 1000%;
+
+  /* --- ADD THESE LINES --- */
+  --sidebar-width: 280px;
+  --sidebar-collapsed: 72px;
+  --sidebar-transition: 240ms cubic-bezier(.2,.9,.25,1);
+  /* ----------------------- */
 }
 
 body.light {
@@ -32,20 +38,20 @@ body.light {
   --border: #dfdfdf;
   --accent: #2ea043;
   --muted: #57606a;
-  --brightness: 30%;
 }
 
-html,
-body {
+#main-content-container {
   width: 100%;
   height: 100%;
-  margin: 0;
-  overflow: hidden;
-  background: var(--bg);
+  position: absolute;
+  top:0px;
+  right:0px;
+  transition: width 0.25s ease;
+  /* smooth shrink/expand */
 }
 
 .viewport {
-  width: 100%;
+  width: calc(100% - var(--sidebar-width));
   height: auto;
   overflow: hidden;
   cursor: grab;
@@ -54,7 +60,24 @@ body {
   position: fixed;
   top: 0;
   bottom: 0;
-  left: 0;
+  right: 0px;
+  left:var(--sidebar-width);
+}
+
+@media (max-width:900px) {
+  .viewport {
+    width: calc(100%);
+    height: auto;
+    overflow: hidden;
+    cursor: grab;
+    scroll-behavior: auto;
+    margin: auto;
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    right: 0px;
+    left:0px;
+  }
 }
 
 .workspace {
@@ -67,14 +90,6 @@ body {
       var(--bg-dots) 3px,
       transparent 3px);
   background-size: 40px 40px;
-}
-
-#main-content-container {
-  width: 100vw;
-  height: 100%;
-  position: relative;
-  transition: width 0.25s ease;
-  /* smooth shrink/expand */
 }
 
 /* ==================== Elements (board items) ==================== */
@@ -117,8 +132,16 @@ body {
   border-color: var(--accent);
 }
 
+.search-query-verse-container,
+.verse-list-container .verse {
+  position: relative;
+  /* INCREASED PADDING: Ensure text doesn't flow under the button */
+  padding-right: 50px; 
+}
+
+
 .verse-text {
-  width: 100%;
+  width:calc(100% - 0px);
   font-size: 15px;
   text-align: left;
   color: var(--muted);
@@ -130,7 +153,7 @@ body {
   font-size: 22.5px;
   color: var(--fg);
   font-weight: 900;
-  margin: 5px 0;
+  margin: 0px;
 }
 
 .verse-text-reference {
@@ -169,7 +192,7 @@ body {
   flex-direction: column;
   gap: 8px;
   width: 35px;
-  position: fixed;
+  position: absolute;
   left: 15px;
   /* top:15px; */
   top: 50%;
@@ -419,11 +442,12 @@ body:not(.light) #sun-icon {
   background: var(--bg-seethroug);
   border: 1px solid var(--fg-seethrough);
   color: var(--fg);
-  position: fixed;
+  position: absolute;
   top: 15px;
-  left: 70px;
+  left: 15px;
   width: fit-content;
-  height: 45px;
+  height: 43px;
+  display:none;
 }
 
 #bible-whiteboard-text {
@@ -469,19 +493,21 @@ body:not(.light) #sun-icon {
 }
 
 #search-query-container {
-  width: 100vw;
-  position: fixed;
-  top: 20px;
-  bottom: 0;
-  left: 0px;
+  width: calc(100vw - var(--sidebar-width)); 
+  
+  height: 100vh;
+  position: absolute;
+  top: 0px; /* Changed from 20px to 0px to align with top */
+  bottom: 0px;
+  right: 0px;
   z-index: -1;
   border-left: 1px solid var(--border);
   background: var(--bg);
-  transition: left 0.25s ease;
+  transition: width 0.25s ease; /* Animate width if parent changes */
   display: flex;
   justify-content: center;
   opacity: 0;
-  overflow-y: auto;
+  overflow-y: scroll;
 }
 
 #esc-btn {
@@ -494,7 +520,7 @@ body:not(.light) #sun-icon {
   -webkit-backdrop-filter: blur(1rem);
   color: var(--fg);
   position: fixed;
-  left: 15px;
+  right: 15px;
   top: 15px;
   z-index: 1000;
   padding: 8px 17px;
@@ -511,6 +537,12 @@ body:not(.light) #sun-icon {
 #esc-icon {
   width: 15px;
   height: 15px;
+}
+
+@media (pointer: coarse) {
+  #esc-btn-text {
+    display:none;
+  }
 }
 
 #search-query-content {
@@ -570,7 +602,7 @@ body:not(.light) #sun-icon {
 
 #search-query-verse-container {
   position: relative;
-  width: calc(100% - 30px);
+  width:100%;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -603,7 +635,7 @@ body:not(.light) #sun-icon {
 }
 
 /* You could also hide pending items this way, though 
-   my fix below makes this unnecessary */
+    my fix below makes this unnecessary */
 .verse[data-status="pending"] {
   display: none;
 }
@@ -620,14 +652,21 @@ body:not(.light) #sun-icon {
 }
 
 .search-query-verse-add-button {
-  border-radius: 20px;
-  background: var(--fg);
-  color: var(--bg);
-  border: 1px solid var(--bg);
-  padding: 5px 15px;
-  cursor: pointer;
-  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--bg-alt);
+  color: var(--fg);
+  border: 1px solid var(--fg-seethrough);
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
 }
+
 
 .search-query-verse-reference {
   margin-top: 5px;
@@ -1197,11 +1236,9 @@ body {
 }
 
 .toast {
-  position: fixed;
-  bottom: 25px;
-  /* Raised to avoid search bar */
-  left: 50%;
-  transform: translateX(-50%);
+  position: absolute;
+  bottom: 15px;
+  right: 15px;
   background: var(--bg);
   border: 1px solid var(--border);
   padding: 8px 16px;
@@ -1218,22 +1255,22 @@ body {
 @keyframes bb-toast-fade {
   0% {
     opacity: 0;
-    transform: translate(-50%, 10px);
+    transform: translate(0, 10px);
   }
 
   20% {
     opacity: 1;
-    transform: translate(-50%, 0);
+    transform: translate(0, 0);
   }
 
   80% {
     opacity: 1;
-    transform: translate(-50%, 0);
+    transform: translate(0, 0);
   }
 
   100% {
     opacity: 0;
-    transform: translate(-50%, -5px);
+    transform: translate(0, -5px);
   }
 }
 
@@ -1541,7 +1578,7 @@ body.read-only .connection-handle {
 
 /* --- Verse List (Full Chapter) --- */
 .verse-list-container {
-  padding: 0 15px;
+  padding: 5px;
   font-size: 17.5px;
   font-weight: 200;
   color: var(--fg);
@@ -1653,10 +1690,9 @@ body.read-only .connection-handle {
 .verse-list-container .verse {
   position: relative;
   /* Add padding to the right to make space for the button */
-  padding-right: 45px; 
 }
 .search-query-verse-text {
-  width: 100%;
+  width: calc(100% - 60px);
   font-size: 17px;
   text-align: left;
   color: var(--fg);

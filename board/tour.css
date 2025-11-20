@@ -60,7 +60,7 @@ body.light {
   z-index: calc(var(--bb-tour-z-index) + 1); /* Above shields */
   background: transparent;
   border-radius: 8px;
-  box-shadow: 0 0 0 4px var(--bb-tour-accent); /* Only show accent ring */
+  box-shadow: 0 0 0 2px var(--bb-tour-accent); /* Only show accent ring */
   backdrop-filter: brightness(1.3);
   opacity: 0;
   pointer-events: none; /* Correct: Highlight ring is non-blocking */

@@ -1601,12 +1601,25 @@ function startDragMouse(item, eOrPoint, offX, offY) {
 }
 
 function dragMouseTo(clientX, clientY) {
-  const newLeft = (viewport.scrollLeft + clientX) / scale - offsetX;
-  const newTop = (viewport.scrollTop + clientY) / scale - offsetY;
+  // FIX: Get the viewport's position on the screen
+  const vpRect = viewport.getBoundingClientRect();
+
+  // Calculate mouse position relative to the viewport container
+  // (Screen Mouse X - Container Left Edge)
+  const relX = clientX - vpRect.left;
+  const relY = clientY - vpRect.top;
+
+  // Convert to workspace coordinates (World Space)
+  const newLeft = (viewport.scrollLeft + relX) / scale - offsetX;
+  const newTop = (viewport.scrollTop + relY) / scale - offsetY;
+
+  // Clamp to workspace boundaries
   const maxLeft = workspace.offsetWidth - active.offsetWidth;
   const maxTop = workspace.offsetHeight - active.offsetHeight;
+
   active.style.left = clamp(newLeft, 0, maxLeft) + "px";
   active.style.top = clamp(newTop, 0, maxTop) + "px";
+
   throttledUpdateAllConnections(); // OPTIMIZATION: Use throttled version
 }
 
@@ -3269,20 +3282,22 @@ function closeSearchQuery() {
 // ==================== Theme Toggle ====================
 // ... (Theme toggle logic unchanged) ...
 const toggle = document.getElementById("theme-toggle");
-const body = document.body;
+const body = document.querySelector("body");
 const moonIcon = document.getElementById("moon-icon");
 const sunIcon = document.getElementById("sun-icon");
 
 function setTheme(isLight) {
+  console.log(isLight)
   body.classList.toggle("light", isLight);
   localStorage.setItem("theme", isLight ? "light" : "dark");
   moonIcon.style.display = isLight ? "block" : "none";
   sunIcon.style.display = isLight ? "none" : "block";
 }
 setTheme(localStorage.getItem("theme") === "light");
-toggle?.addEventListener("click", () =>
-  setTheme(!body.classList.contains("light"))
-);
+toggle?.addEventListener("click", () => {
+  console.log("Change Theme!")
+  setTheme(body.classList.contains("light"))
+});
 
 // ==================== Selection + Action buttons ====================
 // ... (updateActionButtonsEnabled, setConnectMode, selectItem, clearSelection unchanged) ...

@@ -174,12 +174,12 @@
     forceFlushSave('beforeunload');
     
     // If a save is in progress, alert the user (standard browser behavior)
-    if (saveInProgress || pendingSave) {
-      const msg = 'Your latest changes are still saving. Are you sure you want to leave?';
-      e.preventDefault(); 
-      e.returnValue = msg;
-      return msg;
-    }
+    // if (saveInProgress || pendingSave) {
+    //   const msg = 'Your latest changes are still saving. Are you sure you want to leave?';
+    //   e.preventDefault(); 
+    //   e.returnValue = msg;
+    //   return msg;
+    // }
   });
 
   logSave("init", "ready");
