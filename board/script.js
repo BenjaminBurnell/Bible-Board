@@ -90,50 +90,55 @@ function logPerf(label) {
  * A simple LRU (Least Recently Used) cache wrapper for the Map API.
  */
 class LruCache {
-  constructor(maxSize) {
+  constructor(maxSize, storageKey = null) {
     this.maxSize = maxSize;
+    this.storageKey = storageKey;
     this.cache = new Map();
+    
+    // Load from storage on init
+    if (this.storageKey) {
+      try {
+        const stored = localStorage.getItem(this.storageKey);
+        if (stored) {
+          const entries = JSON.parse(stored);
+          this.cache = new Map(entries);
+        }
+      } catch (e) { console.warn("Cache load failed", e); }
+    }
   }
 
-  /**
-   * Gets a value, moving it to the "front" (most recent).
-   * @param {string} key
-   * @returns {any}
-   */
+  _persist() {
+    if (!this.storageKey) return;
+    try {
+      // Save as array of entries
+      localStorage.setItem(this.storageKey, JSON.stringify(Array.from(this.cache.entries())));
+    } catch (e) { 
+      // Storage full? Clear it.
+      console.warn("Cache save failed", e); 
+      this.cache.clear(); 
+    }
+  }
+
   get(key) {
     const val = this.cache.get(key);
     if (val) {
-      // Move to front
       this.cache.delete(key);
       this.cache.set(key, val);
+      this._persist(); // Update order
     }
     return val;
   }
 
-  /**
-   * Sets a value, evicting the oldest if at capacity.
-   * @param {string} key
-   * @param {any} value
-   */
   set(key, value) {
-    if (this.cache.has(key)) {
-      // Just update and move to front
-      this.cache.delete(key);
-    } else if (this.cache.size >= this.maxSize) {
-      // Evict oldest (first key in map iterator)
+    if (this.cache.has(key)) this.cache.delete(key);
+    else if (this.cache.size >= this.maxSize) {
       this.cache.delete(this.cache.keys().next().value);
     }
     this.cache.set(key, value);
+    this._persist();
   }
-
-  /**
-   * Checks for a key without updating its recency.
-   * @param {string} key
-   * @returns {boolean}
-   */
-  has(key) {
-    return this.cache.has(key);
-  }
+  
+  has(key) { return this.cache.has(key); }
 }
 
 // ==================== Bible Book API Codes ====================
@@ -290,32 +295,31 @@ function onBoardMutated(reason) {
  * (Existing)
  */
 const FETCH_STRATEGIES = [
-  // Strategy 1: AllOrigins (CORS-friendly proxy)
+  // Strategy 1: Direct Fetch (Fastest, works if API supports CORS)
+  async (url, signal) =>
+    fetch(url, { mode: "cors", signal, credentials: "omit" }),
+
+  // Strategy 2: AllOrigins (Fallback)
   async (url, signal) =>
     fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`, {
       signal,
       credentials: "omit",
     }),
 
-  // Strategy 2: CodeTabs (Another CORS proxy)
+  // Strategy 3: CodeTabs
   async (url, signal) =>
     fetch(`https://api.codetabs.com/v1/proxy?quest=${url}`, {
       signal,
       credentials: "omit",
     }),
-
-  // Strategy 3: thingproxy (CORS-friendly proxy, often slow but a good final backup)
+    
+  // Strategy 4: ThingProxy
   async (url, signal) =>
     fetch(`https://thingproxy.freeboard.io/fetch/${url}`, {
       signal,
       credentials: "omit",
     }),
-
-  // Strategy 4: Direct Fetch (Original attempt, may fail on 127.0.0.1 but work in production)
-  async (url, signal) =>
-    fetch(url, { mode: "cors", signal, credentials: "omit" }),
 ];
-
 /**
  * (Existing)
  */
@@ -2407,73 +2411,76 @@ async function fetchAndStreamVerseTexts(verseElements, signal) {
 }
 // ==================== NEW HELPERS FOR PAGINATED/PRIORITY VERSE LOADING ====================
 /**
- * Fill a batch of verseElements with real text, then enable Add buttons.
+ * OPTIMIZED: Fetches verse texts in PARALLEL instead of sequentially.
  * @param {Array<{ref: string, el: HTMLElement}>} verseBatch
  * @param {AbortSignal} signal
  */
 async function fillVerseBatch(verseBatch, signal, version) {
-  for (const { ref, el } of verseBatch) {
+  // Map each verse element to a fetch promise
+  const promises = verseBatch.map(async ({ ref, el }) => {
     if (signal?.aborted) return;
-    // Skip if already ready
-    if (el.dataset.status === "ready") continue;
+    if (el.dataset.status === "ready") return;
 
     const parts = parseReferenceToParts(ref);
     if (!parts) {
       el.dataset.status = "error";
-      el.querySelector(".search-query-verse-text").textContent =
-        "Verse not found.";
-      continue;
-    }
-    const text = await fetchVerseText(
-      parts.book,
-      parts.chapter,
-      parts.verse,
-      signal,
-      version
-    );
-    if (signal?.aborted) return;
-
-    // If we received an error string, treat as not ready
-    if (!text || /not\s*found|unavailable|error/i.test(String(text))) {
-      el.dataset.status = "error";
-      el.querySelector(".search-query-verse-text").textContent =
-        "Verse not found.";
-      continue;
+      el.querySelector(".search-query-verse-text").textContent = "Verse not found.";
+      return;
     }
 
-    // Populate real text and enable Add
-    el.dataset.status = "ready";
-    // --- NEW: Add data attributes for toggling ---
-    el.dataset.ref = ref;
-    el.dataset.version = version;
-    el.dataset.text = text;
-    // --- END NEW ---
+    try {
+      const text = await fetchVerseText(
+        parts.book,
+        parts.chapter,
+        parts.verse,
+        signal,
+        version
+      );
 
-    el.querySelector(".search-query-verse-text").textContent = text;
-    el.querySelector(".search-query-verse-text").style.color = ""; // Reset color
-    el.querySelector(".search-query-verse-text").style.textAlign = ""; // Reset align
+      if (signal?.aborted) return;
 
-    // Create the Add button only now that we have real text
-    let addBtn = el.querySelector(".search-query-verse-add-button");
-    if (!addBtn) {
-      addBtn = document.createElement("button");
-      addBtn.className = "search-query-verse-add-button";
-      addBtn.setAttribute("aria-label", `Add verse ${ref}`);
-      el.appendChild(addBtn);
+      // If we received an error string, treat as not ready
+      if (!text || /not\s*found|unavailable|error/i.test(String(text))) {
+        el.dataset.status = "error";
+        el.querySelector(".search-query-verse-text").textContent = "Verse not found.";
+        return;
+      }
+
+      // Populate real text and enable Add
+      el.dataset.status = "ready";
+      el.dataset.ref = ref;
+      el.dataset.version = version;
+      el.dataset.text = text;
+
+      el.querySelector(".search-query-verse-text").textContent = text;
+      el.querySelector(".search-query-verse-text").style.color = ""; 
+      el.querySelector(".search-query-verse-text").style.textAlign = ""; 
+
+      let addBtn = el.querySelector(".search-query-verse-add-button");
+      if (!addBtn) {
+        addBtn = document.createElement("button");
+        addBtn.className = "search-query-verse-add-button";
+        addBtn.setAttribute("aria-label", `Add verse ${ref}`);
+        el.appendChild(addBtn);
+      }
+
+      const key = `${ref}::${version}`;
+      if (pendingVerseAdds.has(key)) {
+        el.classList.add("selected-for-add");
+        addBtn.classList.add("selected");
+      }
+      
+      addBtn.disabled = false;
+    } catch (err) {
+      if (!signal?.aborted) {
+         console.warn(`Failed to load ${ref}`, err);
+         el.querySelector(".search-query-verse-text").textContent = "Error loading text.";
+      }
     }
-    
-    // Check if it should be selected
-    const key = `${ref}::${version}`;
-    if (pendingVerseAdds.has(key)) {
-      el.classList.add("selected-for-add");
-      addBtn.classList.add("selected");
-    }
+  });
 
-        // Ensure the button is clickable for event delegation
-    addBtn.disabled = false;
-
-// Click is handled by event delegation, no .onclick needed
-  }
+  // Wait for ALL fetches in this batch to finish (or fail) concurrently
+  await Promise.all(promises);
 }
 
 /**
