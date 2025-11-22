@@ -1,8 +1,6 @@
 # Privacy Policy — BibleBoard
 _Version: v1.0 • Effective: 2025-10-30_
 
-> **Important:** This policy is designed for a Canada/Ontario operator and aims to align with PIPEDA and, where applicable, GDPR/UK GDPR. It is not legal advice.
-
 ## Overview
 This Privacy Policy describes how BibleBoard (“we”, “us”) collects, uses, discloses, and safeguards personal information in connection with the **bibleboard.ca** web application (the “Service”).
 

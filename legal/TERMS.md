@@ -1,8 +1,6 @@
 # Terms of Service — BibleBoard
 _Version: v1.0 • Effective: 2025-10-30_
 
-> **Important:** These Terms are a template tailored for a Canada/Ontario operator running an unregistered project (“BibleBoard”). They are not legal advice.
-
 ## 1) Who we are
 “BibleBoard”, “we”, “us”, or “our” provides a web application at **bibleboard.ca** for creating and arranging Bible-related notes, verses, and other content on a visual board (the “Service”).  
 **Operator:** Sole proprietor (individual) currently using the project name “BibleBoard.”  
