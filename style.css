@@ -1872,3 +1872,18 @@ button, input:focus {
         margin-top: 0;
     }
 }
+
+#bible-board-bottom-img-container {
+    width:100%;
+    max-width: 1200px;
+    height:fit-content;
+    margin-top: 30px;
+    opacity:0.4;
+    overflow: hidden;
+}
+
+#bible-board-bottom-img {
+    width:100%;
+    object-fit: cover;
+    object-position:center;
+}

@@ -7,15 +7,39 @@
   <title>Legal — BibleBoard</title>
 
   <!-- Reuse your app styles & variables -->
-  <link rel="stylesheet" href="../board/style.css" />
   <link rel="stylesheet" href="../boards.css" />
+  <script defer src="script.js"></script>
+
+  
+  <link rel="stylesheet" href="../style.css" />
+  <style>
+    body {
+      overflow-y: scroll !important;
+    }
+
+    #nav-bar {
+      opacity: 1 !important;
+    }
+
+    .footer-desc {
+      padding:0px !important;
+      text-align: left !important;
+    }
+
+    .footer-link-group > h3 {
+      text-align: left !important;
+    }
+
+    .footer-link-group > ul > li {
+      text-align: left !important;
+    }
+  </style>
 
   <style>
     /* Light extra polish while honoring your variables from style.css / boards.css */
     :root {
       --maxw: 1024px;
     }
-    body { margin: 0; }
     header {
       position: sticky; top: 0; z-index: 5;
       background: var(--bg);
@@ -64,8 +88,8 @@
 
     /* Card container borrowing your card feel */
     .legal-card {
-      background: var(--bg-seethroug);
-      border: 1px solid var(--border);
+      margin-top: 50px;
+      background: var(--bg);
       border-radius: 14px;
       padding: 18px;
     }
@@ -81,11 +105,11 @@
     }
 
     /* Markdown presentation */
-    .md h1 { font-size: 1.8rem; margin: .6em 0 .35em; }
-    .md h2 { font-size: 1.35rem; margin: 1.2em 0 .45em; border-bottom: 1px solid var(--border); padding-bottom: .35em; }
-    .md h3 { font-size: 1.1rem; margin: 1em 0 .3em; }
-    .md p { line-height: 1.7; }
-    .md ul, .md ol { padding-left: 1.35em; }
+    .md h1 { color:var(--fg); font-size: 1.8rem; margin: .6em 0 .35em; }
+    .md h2 { color:var(--fg); font-size: 1.35rem; margin: 1.2em 0 .45em; border-bottom: 1px solid var(--border); padding-bottom: .35em; }
+    .md h3 { color:var(--fg); font-size: 1.1rem; margin: 1em 0 .3em; }
+    .md p { color:var(--muted); line-height: 1.7; }
+    .md ul, .md ol { color:var(--muted); padding-left: 1.35em; }
     .md li { margin: .25em 0; }
     .md a { color: var(--fg); text-decoration: underline; }
     .md code { background: var(--bg-alt); padding: .15em .35em; border-radius: 6px; }
@@ -107,21 +131,24 @@
   <script defer src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/dompurify@3.1.7/dist/purify.min.js"></script>
 </head>
-<body>
-  <header>
-    <div class="wrap">
-      <div class="brand">
-        <div class="dot" aria-hidden="true"></div>
-        <h1>BibleBoard</h1>
-        <span class="muted">Legal</span>
-      </div>
-    </div>
-  </header>
-
+<body onload="loadPage()">
   <main>
-    <nav class="tabs" role="tablist" aria-label="Legal documents">
-      <button class="tab-btn" role="tab" data-doc="terms" aria-selected="true">Terms</button>
-      <button class="tab-btn" role="tab" data-doc="privacy" aria-selected="false">Privacy</button>
+    <nav id="nav-bar">
+        <section id="nav-bar-container">
+            <div id="logo-container" onclick="scrollToElement('.section.main')">
+                <img id="logo-image" src="../assets/logo_no_bg.png">
+                <span>BibleBoard</span>
+            </div>
+            <div id="nav-pills-container">
+                <button class="nav-pill" onclick="window.location = '../'">Demo</button>
+                <button class="nav-pill" onclick="window.location = '../'">Features</button>
+                <button class="nav-pill" onclick="window.location = '../'" style="display: none;">Testimonials</button>
+                <button class="nav-pill" style="display: none;">Support Us</button>
+            </div>
+            <div id="action-buttons-container">
+                <button class="action-button">Get Started</button>
+            </div>
+        </section>
     </nav>
 
     <div class="toolbar">
@@ -136,12 +163,65 @@
     </section>
   </main>
 
-  <footer>
-    <p>© 2025 BibleBoard</p>
-    <p class="legal-links">
-      <a href="../legal/?doc=terms" rel="noopener">Terms</a> ·
-      <a href="../legal/?doc=privacy" rel="noopener">Privacy</a>
-    </p>
+  <footer class="site-footer">
+    <div class="footer-container">
+        
+        <div class="footer-grid">
+            
+            <div class="footer-brand-col">
+                <div class="footer-logo">
+                    <div class="logo-icon">
+                        <img id="footer-logo-img" src="../assets/logo_no_bg.png">
+                    </div>
+                    <span class="logo-text">BibleBoard</span>
+                </div>
+
+                <p class="footer-desc">
+                    Turn scattered study into living boards.
+                </p>
+
+                <!-- <div class="footer-socials">
+                    <a href="#" class="social-link"><i class="fa-brands fa-facebook-f"></i></a>
+                    <a href="#" class="social-link"><i class="fa-brands fa-instagram"></i></a>
+                    <a href="#" class="social-link"><i class="fa-brands fa-x-twitter"></i></a>
+                    <a href="#" class="social-link"><i class="fa-brands fa-linkedin-in"></i></a>
+                </div> -->
+            </div>
+
+            <div class="footer-spacer"></div>
+
+            <div class="footer-links-col">
+                
+                <div class="footer-link-group">
+                    <h3>Company</h3>
+                    <ul>
+                        <li><a href="../">About us</a></li>
+                        <li><a href="../">Contact us</a></li>
+                    </ul>
+                </div>
+
+                <div class="footer-link-group">
+                    <h3>Legal</h3>
+                    <ul>
+                        <li><a href="#">Privacy Policy</a></li>
+                        <li><a href="#">Terms of Condition</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer-bottom">
+            <p class="copyright">© 2025 BibleBoard. All rights reserved.</p>
+            
+            <div class="footer-bottom-links">
+                <a href="../legal/?doc=privacy">Privacy Policy</a>
+                <a href="../legal/?doc=tems">Terms & Conditions</a>
+            </div>
+        </div>
+        <div id="bible-board-bottom-img-container">
+            <img id="bible-board-bottom-img" src="../assets/bibleboardbottom.png">
+        </div>
+    </div>
   </footer>
 
   <script>
@@ -229,5 +309,7 @@
       loadDoc(doc);
     });
   </script>
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script type="module" src="../supabaseClient.js"></script>
 </body>
 </html>
