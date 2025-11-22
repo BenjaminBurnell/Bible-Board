@@ -348,9 +348,26 @@ async function ensureBoardFile(user, ownerId) {
 }
 
 async function loadBoard(user, ownerId) {
-  // Use currentBoardId for loading, as that comes from URL/Switch
   const path = pathFor(ownerId, currentBoardId);
   if (!path) return;
+
+  // --- 1. STRICT CLIENT-SIDE GUARD ---
+  // If the board belongs to someone else (based on URL), block it immediately.
+  // We don't even need to ask Supabase, because we know the answer is "No".
+  if (ownerId !== user.id) {
+    console.warn("Access denied: User ID does not match Board Owner ID.");
+    showPersistenceBadge("no-access");
+    
+    const blocker = document.getElementById("access-denied-blocker");
+    if (blocker) {
+      blocker.style.display = "flex";
+    }
+    
+    window.BoardAPI.clearBoard();
+    return; // Stop here. Do not fetch.
+  }
+
+  // --- 2. Standard Loading for Owner ---
   showPersistenceBadge("loading");
 
   try {
@@ -359,24 +376,32 @@ async function loadBoard(user, ownerId) {
     const json = JSON.parse(text || "{}");
     
     deserializeBoard(json);
-    
-    // FIX: Only now that we have successfully loaded do we consider this board "active" for saving.
     loadedBoardId = currentBoardId;
+    
+    // Success!
+    hidePersistenceBadge();
 
-    if (isReadOnly) showPersistenceBadge("readonly");
-    else hidePersistenceBadge();
   } catch (error) {
-    const isMissing = error?.status === 404 || error?.statusCode === 404;
+    // Since we blocked non-owners above, any error here is happening to YOU (the owner).
+    // It's likely just that the file doesn't exist yet (404).
+    
+    const isMissing = error?.status === 404 || error?.statusCode === 404 || (error.message && error.message.includes("not found"));
+    
     if (isMissing) {
+      // File missing? Create it.
+      console.log("Board file missing. Creating new default board...");
       const ok = await ensureBoardFile(user, ownerId);
-      if (ok && user && ownerId === user.id) {
-        deserializeBoard(serializeBoard());
-        loadedBoardId = currentBoardId; // Set ID for new board
+      
+      if (ok) {
+        // Creation successful, load empty state
+        deserializeBoard(serializeBoard()); // Loads default state
+        loadedBoardId = currentBoardId; 
         showPersistenceBadge("saved");
       } else {
         showPersistenceBadge("error-load");
       }
     } else {
+      console.error("Load error:", error);
       showPersistenceBadge("error-load");
     }
   }

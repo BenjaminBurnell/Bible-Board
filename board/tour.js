@@ -18,7 +18,7 @@ class Tour {
       window.matchMedia?.("(prefers-reduced-motion: reduce)") || {
         matches: false,
       };
-    this._vpSnapshot = null; // <-- ADDED
+    this._vpSnapshot = null; 
 
     // DOM elements
     this.overlay = null;
@@ -146,7 +146,7 @@ class Tour {
     this.skipBtn = document.createElement("button");
     this.skipBtn.className = "bb-tour-btn bb-tour-btn-skip";
     this.skipBtn.textContent = "Skip";
-    this.skipBtn.onclick = () => this.end({ completed: true });
+    this.skipBtn.onclick = () => this.end({ completed: false });
 
     this.backBtn = document.createElement("button");
     this.backBtn.className = "bb-tour-btn";
@@ -210,7 +210,6 @@ class Tour {
   _handleKeydown(e) {
     if (!this.isOpen) return;
 
-    // --- ADDED ---
     const ae = document.activeElement;
     const isTyping =
       ae &&
@@ -218,19 +217,18 @@ class Tour {
         ae.tagName === "TEXTAREA" ||
         ae.isContentEditable ||
         ae.closest?.("#search-container"));
-    // If user is typing, do not hijack Enter/Arrow keys
+    
     if (isTyping) return;
-    // --- END ADDED ---
 
     if (e.key === "Escape") {
       e.preventDefault();
       e.stopPropagation();
       this.end({ completed: false });
-    } else if (e.key === "ArrowRight" || e.key === "Enter") {
+    } else if ((e.key === "ArrowRight" || e.key === "Enter") && this.nextBtn.style.display !== "none") {
       e.preventDefault();
       e.stopPropagation();
       this.next();
-    } else if (e.key === "ArrowLeft") {
+    } else if (e.key === "ArrowLeft" && !this.backBtn.disabled) {
       e.preventDefault();
       e.stopPropagation();
       this.back();
@@ -240,7 +238,7 @@ class Tour {
   _focusTrap(e) {
     const isStartTrap = e.target === this.focusTrapStart;
     const focusableElements = [this.skipBtn, this.backBtn, this.nextBtn].filter(
-      (el) => !el.disabled
+      (el) => !el.disabled && el.style.display !== "none"
     );
 
     if (isStartTrap) {
@@ -268,23 +266,15 @@ class Tour {
     return step.target;
   }
 
-  /**
-   * NEW HELPER: Pans the .viewport to center a board target.
-   * Uses correct math for scaled content.
-   */
   async _ensureBoardTargetVisible(target, padding = 16) {
     const viewport = document.querySelector(".viewport");
     const workspace = document.getElementById("workspace");
     if (!target || !viewport || !workspace) return;
 
-    // Current zoom
     const scale = window.BoardAPI?.getScale?.() || 1;
-
-    // Target rect on screen
     const t = target.getBoundingClientRect();
     const vp = viewport.getBoundingClientRect();
 
-    // Compute deltas in SCREEN pixels to center target
     const targetCx = (t.left + t.right) / 2;
     const targetCy = (t.top + t.bottom) / 2;
     const viewCx = (vp.left + vp.right) / 2;
@@ -293,27 +283,20 @@ class Tour {
     const deltaScreenX = targetCx - viewCx;
     const deltaScreenY = targetCy - viewCy;
 
-    // Convert to SCROLL deltas (divide by scale)
     const dx = deltaScreenX / scale;
     const dy = deltaScreenY / scale;
 
-    // Scroll viewport by those world units
     viewport.scrollBy({
       left: dx,
       top: dy,
       behavior: this.motionQuery.matches ? "auto" : "smooth",
     });
 
-    // Wait 2 frames for layout to settle, then reflow highlight
     await new Promise((r) =>
       requestAnimationFrame(() => requestAnimationFrame(r))
     );
   }
 
-  /**
-   * REPLACED: Ensures target is visible, using the correct
-   * scroll/pan method (document vs. viewport).
-   */
   async _ensureTargetVisible(step) {
     const target = this._getTarget(step);
     if (!target) return;
@@ -324,7 +307,6 @@ class Tour {
     if (isBoardTarget) {
       await this._ensureBoardTargetVisible(target, step.padding ?? 16);
     } else {
-      // OK to use document scroll for regular UI
       try {
         target.scrollIntoView({
           behavior: this.motionQuery.matches ? "auto" : "smooth",
@@ -336,11 +318,7 @@ class Tour {
     }
   }
 
-  /**
-   * NEW: Robust tooltip positioning with auto-placement.
-   */
   _positionTooltip(targetRect, placement) {
-    // Ensure tooltip is rendered but off-screen to measure
     this._style(this.tooltip, {
       transform: "",
       top: "-9999px",
@@ -348,7 +326,7 @@ class Tour {
       visibility: "visible",
     });
     const tipRect = this.tooltip.getBoundingClientRect();
-    const arrowPad = 25; // Space for the arrow
+    const arrowPad = 25;
     const margin = this.options.tooltipMargin;
     const vpW = window.innerWidth;
     const vpH = window.innerHeight;
@@ -389,7 +367,6 @@ class Tour {
 
     let { top, left } = placements[finalPlacement];
 
-    // Final check to keep it on screen
     if (top < margin) top = margin;
     if (left < margin) left = margin;
     if (top + tipRect.height > vpH - margin)
@@ -401,9 +378,6 @@ class Tour {
     this.tooltip.setAttribute("data-placement", finalPlacement);
   }
 
-  /**
-   * CORRECTED: Positions highlight, shields, and tooltip, handling the final step first.
-   */
   async _positionCurrentStep() {
     const step = this.steps[this.currentStep];
     if (!step) return;
@@ -412,10 +386,7 @@ class Tour {
     const vpW = window.innerWidth;
     const vpH = window.innerHeight;
 
-    // --- SPECIAL CASE: Handle Final Step First ---
     if (step.id === "finish") {
-      console.log("Final step detected, applying full screen shield."); // Keep for debugging
-      // 1. Force full screen block
       this._style(this.shields.top, {
         display: "block",
         position: "fixed",
@@ -429,23 +400,16 @@ class Tour {
       this._style(this.shields.bottom, { display: "none" });
       this._style(this.shields.left, { display: "none" });
       this._style(this.shields.right, { display: "none" });
-
-      // 2. Hide highlight
       this._style(this.highlight, { display: "none" });
-
-      // 3. Center tooltip
       this.tooltip.classList.add("bb-tour-centered");
       this._style(this.tooltip, {
         top: "50%",
         left: "50%",
         transform: "translate(-50%, -50%)",
       });
-      return; // Exit early for the final step
+      return;
     }
 
-    // --- REGULAR STEP LOGIC (Non-Final Steps) ---
-
-    // 1. Handle non-target (centered) step (shouldn't happen if not 'finish', but good fallback)
     if (!target) {
       this._style(this.highlight, { display: "none" });
       this.tooltip.classList.add("bb-tour-centered");
@@ -454,7 +418,6 @@ class Tour {
         left: "50%",
         transform: "translate(-50%, -50%)",
       });
-      // Full screen shield
       this._style(this.shields.top, {
         left: "0",
         top: "0",
@@ -468,14 +431,12 @@ class Tour {
       return;
     }
 
-    // 2. We have a target. Ensure it's visible.
     await this._ensureTargetVisible(step);
 
-    // 3. Get pixel-snapped rect for the hole
     const dpr = Math.max(1, window.devicePixelRatio || 1);
     const snap = (v) => Math.round(v * dpr) / dpr;
     const pad = (step.padding ?? this.options.padding) | 0;
-    const r = target.getBoundingClientRect(); // Re-measure after scroll
+    const r = target.getBoundingClientRect();
 
     const hole = {
       left: snap(r.left - pad),
@@ -490,7 +451,6 @@ class Tour {
     const holeHeight = Math.max(0, hole.bottom - hole.top);
     const holeWidth = Math.max(0, hole.right - hole.left);
 
-    // 4. Position Highlight Ring
     this._style(this.highlight, {
       display: "block",
       left: `${hole.left}px`,
@@ -499,9 +459,7 @@ class Tour {
       height: `${holeHeight}px`,
     });
 
-    // 5. Position Shields based on interactivity
     if (step.allowPointerThrough) {
-      // --- Interactive Step (Hole-punch) ---
       this._style(this.shields.top, {
         left: "0",
         top: "0",
@@ -531,7 +489,6 @@ class Tour {
         display: "block",
       });
     } else {
-      // --- Non-Interactive Step (Full screen shield) ---
       this._style(this.shields.top, {
         display: "block",
         position: "fixed",
@@ -547,16 +504,11 @@ class Tour {
       this._style(this.shields.right, { display: "none" });
     }
 
-    // 6. Position Tooltip
     this.tooltip.classList.remove("bb-tour-centered");
-    this._positionTooltip(r, step.placement || "auto"); // Use original rect 'r'
+    this._positionTooltip(r, step.placement || "auto"); 
   }
 
-  /**
-   * NEW: Made async to handle step hooks and positioning.
-   */
   async _setStep(index) {
-    // Run cleanup for the *previous* step
     const prevStep = this.steps[this.currentStep];
     if (prevStep && typeof prevStep.afterStep === "function") {
       try {
@@ -569,15 +521,13 @@ class Tour {
     this.currentStep = index;
     const step = this.steps[index];
     if (!step) {
-      this.end({ completed: true }); // No await needed, end() is sync
+      this.end({ completed: true });
       return;
     }
 
-    // Fade out old step
     this.highlight.style.opacity = 0;
     this.tooltip.style.opacity = 0;
 
-    // Run setup for the *current* step
     if (typeof step.beforeStep === "function") {
       try {
         await step.beforeStep();
@@ -586,17 +536,21 @@ class Tour {
       }
     }
 
-    // Update content (while invisible)
     this.titleEl.textContent = step.title;
     this.contentEl.textContent = step.text;
     this.stepsEl.textContent = `${index + 1} / ${this.steps.length}`;
 
-    // Update buttons
     this.backBtn.disabled = index === 0;
     this.skipBtn.textContent =
       index === this.steps.length - 1 ? "Finish" : "Skip";
-    this.nextBtn.style.display =
-      index === this.steps.length - 1 ? "none" : "inline-block";
+    
+    // Interactive Steps Hide "Next" Button
+    if (step.hideNext) {
+        this.nextBtn.style.display = "none";
+    } else {
+        this.nextBtn.style.display =
+          index === this.steps.length - 1 ? "none" : "inline-block";
+    }
 
     if (this.skipBtn.textContent === "Finish") {
       this.skipBtn.classList.add("bb-tour-btn-primary");
@@ -606,10 +560,8 @@ class Tour {
       this.skipBtn.onclick = () => this.end({ completed: false });
     }
 
-    // Position, scroll, and wait for layout
     await this._positionCurrentStep();
 
-    // Fade in
     this.tooltip.style.visibility = "visible";
     this.highlight.style.opacity = 1;
     this.tooltip.style.opacity = 1;
@@ -619,22 +571,22 @@ class Tour {
       ? "translate(-50%, -50%) scale(1)"
       : "";
 
-    // Set focus
-    this.nextBtn.style.display !== "none"
-      ? this.nextBtn.focus()
-      : this.skipBtn.focus();
+    // Focus management
+    if (this.nextBtn.style.display !== "none") {
+        this.nextBtn.focus();
+    } else {
+        this.skipBtn.focus();
+    }
 
     this.options.onStep(index, step);
   }
 
-  // --- Public API (now async) ---
   async start(startIndex = 0) {
     if (this.isOpen) return;
     this.isOpen = true;
     this._createElements();
     this._attachListeners();
 
-    // --- ADDED: Snapshot viewport state ---
     const viewport = document.querySelector(".viewport");
     this._vpSnapshot = viewport
       ? {
@@ -643,9 +595,8 @@ class Tour {
           scale: window.BoardAPI?.getScale?.() || 1,
         }
       : null;
-    // --- End Added ---
 
-    this.overlay.style.opacity = 1; // Fade in visual overlay
+    this.overlay.style.opacity = 1;
     await this._setStep(startIndex);
     this.options.onStart();
   }
@@ -654,7 +605,7 @@ class Tour {
     if (this.currentStep < this.steps.length - 1) {
       await this._setStep(this.currentStep + 1);
     } else {
-      this.end({ completed: true }); // No await needed
+      this.end({ completed: true });
     }
   }
 
@@ -670,49 +621,35 @@ class Tour {
     }
   }
 
-  /**
-   * REPLACED: New end() logic to restore viewport state
-   * cleanly after DOM removal.
-   */
   end(options = {}) {
     const { completed = false } = options;
-    if (!this.isOpen) return; // Prevent double-ends
+    if (!this.isOpen) return;
     this.isOpen = false;
 
-    // 1. Clean up listeners and DOM
     this._removeListeners();
-    this._destroyElements(); // Removes overlay, highlight, tooltip, shields
+    this._destroyElements(); 
 
-    // Run final afterStep if it exists (and was missed)
     const currentStep = this.steps[this.currentStep];
     if (currentStep && typeof currentStep.afterStep === "function") {
       try {
-        // Not awaiting, just firing
         currentStep.afterStep();
-      } catch (e) {
-        /* ignore */
-      }
+      } catch (e) {}
     }
 
-    // 2. Restore viewport state *after* DOM is gone
     setTimeout(() => {
       const viewport = document.querySelector(".viewport");
       const workspace = document.getElementById("workspace");
 
       if (viewport && workspace && this._vpSnapshot) {
-        // Restore scale
         if (typeof window.BoardAPI?.setScale === "function") {
           window.BoardAPI.setScale(this._vpSnapshot.scale);
         } else {
-          // Fallback if API shim failed
           workspace.style.transformOrigin = "top left";
           workspace.style.transform = `scale(${this._vpSnapshot.scale})`;
         }
-        // Restore scroll
         viewport.scrollLeft = this._vpSnapshot.left;
         viewport.scrollTop = this._vpSnapshot.top;
 
-        // Finalize layout
         try {
           window.clampScroll?.();
         } catch {}
@@ -721,147 +658,241 @@ class Tour {
         } catch {}
       }
 
-      // 3. Clear snapshot and fire callback
       this._vpSnapshot = null;
       try {
         this.options?.onEnd?.({ completed });
       } catch (e) {
         console.error("Tour onEnd callback failed", e);
       }
-    }, 0); // Use setTimeout to run after current call stack
+    }, 0);
   }
 }
 
-
-
-
 // ==========================================
-// ADD THIS TO THE BOTTOM OF board/tour.js
+// CONTEXT-AWARE TOUR CONFIGURATION
 // ==========================================
 
-// 1. Define your Tour Steps
-const bibleBoardSteps = [
+// 1. Dashboard Steps (dashboard/index.html)
+const dashboardSteps = [
   {
-    id: "welcome",
+    id: "dash-welcome",
     title: "Welcome to BibleBoard",
-    text: "This is your digital workspace for studying scripture. Let's take a quick look around.",
-    // No target = centers on screen
-    placement: "right", 
+    text: "This is your dashboard. Manage your study boards here.",
+    placement: "center",
   },
   {
-    id: "sidebar-toggle",
-    title: "Collapse Sidebar",
-    text: "Click here to collapse and expand the sidebar",
+    id: "dash-sidebar",
+    title: "Navigation",
+    text: "Collapse the sidebar to save space, or use it to switch boards.",
     target: "#sidebar-toggle-btn",
-    placement: "bottom",
+    placement: "right",
   },
   {
-    id: "new-board",
-    title: "Create Boards",
-    text: "Click here to create a new canvas for your study.",
+    id: "dash-new",
+    title: "Create a Board",
+    text: "Start a new study canvas by clicking here.",
     target: "#new-board-btn-sidebar",
     placement: "right",
   },
   {
-    id: "search-boards",
-    title: "Search & Chat",
-    text: "Search through your past notes, verses, and songs to find a specific study",
+    id: "dash-search",
+    title: "Search Boards",
+    text: "Quickly find specific notes or verses across all your boards.",
     target: "#search-board-btn-sidebar",
     placement: "right",
+  }
+];
+
+// ==========================================
+// 2. WORKSPACE TOUR (Interactive)
+// ==========================================
+let _tourObserver = null;
+let _tourClickListener = null;
+
+const workspaceSteps = [
+  {
+    id: "welcome",
+    title: "Welcome to your canvas",
+    text: "Let's add your first item. We'll search for a verse and drop it on the board.",
+    placement: "center",
   },
   {
-    id: "undo",
-    title: "Undo Your Last Action",
-    text: "Made a mistake? Tap this button to undo your last action, like adding an item or making a connection. You can also use the shortcut Ctrl+Z.",
-    target: "#undo-btn",
-    placement: "right",
+    id: "interactive-search",
+    title: "Search for a Verse",
+    text: "Type 'John 3:16' (or any topic) in the search bar and press Enter.",
+    target: "#search-container",
+    placement: "top",
+    padding: 4,
+    allowPointerThrough: true,
+    hideNext: true, // User must search to proceed
+    beforeStep: () => {
+        return new Promise(resolve => {
+            const container = document.getElementById("search-query-verse-container");
+            if(!container) { resolve(); return; }
+            
+            // Watch for results to appear
+            _tourObserver = new MutationObserver((mutations) => {
+                if (container.children.length > 0) {
+                    _tourObserver.disconnect();
+                    setTimeout(() => myTour.next(), 500); // Wait for UI to settle
+                }
+            });
+            _tourObserver.observe(container, { childList: true });
+            resolve();
+        });
+    },
+    afterStep: () => {
+        if(_tourObserver) _tourObserver.disconnect();
+    }
   },
   {
-    id: "redo",
-    title: "Redo an Action",
-    text: "If you undo too far, tap this button to bring your action back. The shortcut for this is Ctrl+Shift+Z.",
-    target: "#redo-btn",
-    placement: "right",
-  },
-  {
-    id: "connect",
-    title: "Connect Ideas",
-    text: "Select a card, then tap this 'Connect' button. Tap another card to draw a line between them.",
-    target: "#mobile-action-button",
-    placement: "right",
-  },
-  {
-    id: "disconnect",
-    title: "Disconnect Ideas",
-    text: "Made a mistake? Connecting some ideas just click this and enter 'Disconnect Mode' allowing you to disconnect any connections.",
-    target: "#disconnect-mode-btn",
-    placement: "right",
-  },
-  {
-    id: "notes",
-    title: "Add Notes",
-    text: "Tap this 'note' button to add a blank note card to your board. You can type anything you want!",
-    target: "#text-action-button",
-    placement: "right",
-  },
-  {
-    id: "delete",
-    title: "Delete Item",
-    text: "Select a item on the bible board, then tap the 'Delete' button to delete the selected item.",
-    target: "#delete-action-button",
-    placement: "right",
-  },
-  {
-    id: "colors",
-    title: "Colors for your connections",
-    text: "If you want to add some color to your board select a color and when connecting ideas the 'Connection Lines' will be the selected color.",
-    target: "#connection-color-toolbar",
+    id: "interactive-add",
+    title: "Add to Selection",
+    text: "Click the '+' button next to a verse to add it to your pending items.",
+    target: ".search-query-verse-add-button", // Will target the first one found
     placement: "left",
+    hideNext: true,
+    allowPointerThrough: true,
+    beforeStep: () => {
+        return new Promise(resolve => {
+            // Wait a tick for DOM
+            setTimeout(() => {
+                // Attach ONE-TIME global capture listener
+                _tourClickListener = (e) => {
+                     if(e.target.closest(".search-query-verse-add-button")) {
+                         setTimeout(() => myTour.next(), 300);
+                     }
+                };
+                document.addEventListener("click", _tourClickListener, { capture: true, once: true });
+                resolve();
+            }, 200);
+        });
+    },
+    afterStep: () => {
+        if(_tourClickListener) document.removeEventListener("click", _tourClickListener, { capture: true });
+    }
   },
   {
-    id: "search",
-    title: "Search anything",
-    text:"Use this search bar to find verses, topics, and songs. It's your quick entry into the board.",
-    target: "#search-bar",
-    placement: "top",
+    id: "interactive-music",
+    title: "Switch to Music",
+    text: "Now let's find a song. Click the 'Music' tab.",
+    target: "#search-mode-songs",
+    placement: "bottom",
+    hideNext: true,
+    allowPointerThrough: true,
+    beforeStep: () => {
+        return new Promise(resolve => {
+            const btn = document.getElementById("search-mode-songs");
+            if(btn) {
+                btn.addEventListener("click", () => {
+                    setTimeout(() => myTour.next(), 500);
+                }, { once: true });
+            } else {
+                myTour.next();
+            }
+            resolve();
+        });
+    }
   },
   {
-    id: "choose-version",
-    title: "Choose your version",
-    text: "Use this menu beside the search bar to choose your Bible version. Searches and added verses use this selection.",
-    target: "#version-select",
-    placement: "top",
+    id: "interactive-add-song",
+    title: "Add a Song",
+    text: "Click '+' on a song to add it to your selection.",
+    target: "#search-query-song-container", // Target container so tooltip is visible even if empty initially
+    placement: "left",
+    hideNext: true,
+    allowPointerThrough: true,
+    beforeStep: () => {
+        return new Promise(resolve => {
+            // Wait a moment for the container to become ready
+            setTimeout(() => {
+                 const container = document.getElementById("search-query-song-container");
+                 
+                 // Attach global capture listener on the container
+                 _tourClickListener = (e) => {
+                     // Check if the user clicked anything inside the container (row, button, etc)
+                     // BUT specifically look for the add action or the row toggle
+                     if(e.target.closest(".search-query-verse-add-button") || e.target.closest(".search-query-verse-container")) {
+                          setTimeout(() => myTour.next(), 300);
+                     }
+                 };
+                 
+                 if(container) {
+                    // Use capture: true to intercept before the song card stops prop
+                    container.addEventListener("click", _tourClickListener, { capture: true, once: true });
+                 } else {
+                    // Fallback: Listen on document if container isn't found yet
+                    document.addEventListener("click", _tourClickListener, { capture: true, once: true });
+                 }
+                 
+                 resolve();
+            }, 500);
+        });
+    },
+    afterStep: () => {
+        const container = document.getElementById("search-query-song-container");
+        if(container && _tourClickListener) {
+            container.removeEventListener("click", _tourClickListener, { capture: true });
+        }
+        if(_tourClickListener) {
+            document.removeEventListener("click", _tourClickListener, { capture: true });
+        }
+    }
+  },
+  {
+    id: "interactive-flush",
+    title: "Drop on Board",
+    text: "Click the floating button to drop your selected items onto the canvas.",
+    target: "#floating-add-to-board-btn",
+    placement: "left",
+    hideNext: true,
+    allowPointerThrough: true,
+    beforeStep: () => {
+        return new Promise(resolve => {
+            const btn = document.getElementById("floating-add-to-board-btn");
+            if(btn && btn.style.display !== 'none') {
+                btn.addEventListener("click", () => {
+                    setTimeout(() => myTour.next(), 800); // Wait for animation
+                }, { once: true });
+            } else {
+                myTour.next();
+            }
+            resolve();
+        });
+    }
   },
   {
     id: "finish",
     title: "You're Ready!",
-    text: "Explore the tools and start connecting verses. Enjoy!",
-    target: null, // Center screen
+    text: "Great job! You can now arrange items, connect them, or add notes.",
     placement: "center",
   }
 ];
 
-// 2. Initialize the Tour Instance
-const myTour = new Tour(bibleBoardSteps, {
-  onEnd: () => {
-    console.log("Tour ended");
-    // Optional: Save to localStorage so it doesn't show again automatically
-    localStorage.setItem("tour_completed", "true");
+// 3. Init Logic
+const isWorkspace = !!document.getElementById("workspace");
+const currentSteps = isWorkspace ? workspaceSteps : dashboardSteps;
+const storageKey = isWorkspace ? "tour_workspace_v2_interactive" : "tour_dashboard_v2";
+
+const myTour = new Tour(currentSteps, {
+  onEnd: ({ completed }) => {
+    if (completed) {
+      localStorage.setItem(storageKey, "true");
+    }
   }
 });
 
-// 3. Expose the start function globally
 window.startTour = function() {
   myTour.start();
 };
 
-// 4. (Optional) Auto-start if never seen
-if (!localStorage.getItem("tour_completed")) {
-  // Wait a moment for UI to load
-  setTimeout(() => {
-     // window.startTour(); // Uncomment this line if you want it to auto-start
-  }, 1000);
-}
+// 4. Auto-start
+setTimeout(() => {
+  const hasSeen = localStorage.getItem(storageKey);
+  // Only auto-start if we are on the workspace
+  if (!hasSeen) {
+      myTour.start();
+  }
+}, 2000); // Wait for UI to settle
 
-// Attach to window
 window.Tour = Tour;

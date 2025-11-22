@@ -22,7 +22,7 @@
     #access-denied-blocker {
       position: fixed;
       top: 0;
-      left: 0;
+      left: var(--sidebar-width);
       right: 0;
       bottom: 0;
       background: var(--bg);
@@ -214,6 +214,7 @@
               cursor: pointer;
               top: 0px;
               right: 100px;
+              display:none;
             ">
         Share
       </button>
@@ -242,15 +243,15 @@
               display: none;
               font-size: 12.5px;
               font-weight: 700;
-              color: var(--muted);
-              padding: 5px 15px;
+              color: var(--fg);
+              padding: 5px;
               background: var(--bg-seethroug);
-              border-radius: 10px;
+              border-radius: 15px;
               border: 1px solid var(--fg-seethrough);
               -webkit-backdrop-filter: blur(1rem);
               backdrop-filter: blur(1rem);
               cursor: pointer;
-              height: 50px;
+              height: 40px;
               margin-right: 8px;
               position: absolute;
               top: 25px;

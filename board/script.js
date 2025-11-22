@@ -3590,9 +3590,16 @@ function renderInterlinearTokens(tokens, referenceTitle) {
        addBtn.classList.add("selected");
     }
 
-    // Click Handler -> CALLS THE NEW FUNCTION
+    // --- CLICK HANDLERS (New Logic) ---
+    
+    // 1. Button Click (Stop propagation to prevent double-toggle)
     addBtn.onclick = (e) => {
       e.stopPropagation();
+      toggleInterlinearSelection(addBtn, row, cardData);
+    };
+
+    // 2. Row Click (Same action as button)
+    row.onclick = (e) => {
       toggleInterlinearSelection(addBtn, row, cardData);
     };
 
@@ -3904,13 +3911,15 @@ function addSongElement({ title, artist, cover }, delay = 0) {
 (function initVerseClickDelegation() {
   const verseContainer = document.getElementById("search-query-verse-container");
   
-  verseContainer?.addEventListener("click", (e) => {
-    // Check if the click was on an add button
-    if (e.target.classList.contains("search-query-verse-add-button")) {
-      const card = e.target.closest(".verse, .search-query-verse-container");
-      if (card) {
-        toggleVerseSelection(card);
-      }
+  if (!verseContainer) return;
+
+  verseContainer.addEventListener("click", (e) => {
+    // 1. Find the closest verse card (row)
+    const card = e.target.closest(".verse, .search-query-verse-container");
+    
+    // 2. If we clicked inside a card, toggle it
+    if (card) {
+      toggleVerseSelection(card);
     }
   });
 })();
@@ -4757,17 +4766,17 @@ function setupBoardSettingsPanel() {
     }
 
     // Board Actions Section
-    if (exportBtn || shareBtn) {
-      content.appendChild(createLabel("Board Actions"));
-      if (exportBtn) {
-        resetPosition(exportBtn);
-        content.appendChild(exportBtn);
-      }
-      if (shareBtn) {
-        resetPosition(shareBtn);
-        content.appendChild(shareBtn);
-      }
-    }
+    // if (exportBtn || shareBtn) {
+    //   content.appendChild(createLabel("Board Actions"));
+    //   if (exportBtn) {
+    //     resetPosition(exportBtn);
+    //     content.appendChild(exportBtn);
+    //   }
+    //   if (shareBtn) {
+    //     resetPosition(shareBtn);
+    //     content.appendChild(shareBtn);
+    //   }
+    // }
 
     // Help Section
     if (tourBtn) {

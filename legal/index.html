@@ -135,7 +135,7 @@
   <main>
     <nav id="nav-bar">
         <section id="nav-bar-container">
-            <div id="logo-container" onclick="scrollToElement('.section.main')">
+            <div id="logo-container" onclick="window.location = '../'">
                 <img id="logo-image" src="../assets/logo_no_bg.png">
                 <span>BibleBoard</span>
             </div>
@@ -203,8 +203,8 @@
                 <div class="footer-link-group">
                     <h3>Legal</h3>
                     <ul>
-                        <li><a href="#">Privacy Policy</a></li>
-                        <li><a href="#">Terms of Condition</a></li>
+                        <li><a href="../legal/?doc=privacy">Privacy Policy</a></li>
+                        <li><a href="../legal/?doc=terms">Terms of Service</a></li>
                     </ul>
                 </div>
             </div>
@@ -215,7 +215,7 @@
             
             <div class="footer-bottom-links">
                 <a href="../legal/?doc=privacy">Privacy Policy</a>
-                <a href="../legal/?doc=tems">Terms & Conditions</a>
+                <a href="../legal/?doc=terms">Terms of Service</a>
             </div>
         </div>
         <div id="bible-board-bottom-img-container">
@@ -282,7 +282,7 @@
         window.scrollTo({ top: 0, behavior: "smooth" });
       } catch (e) {
         errBox.style.display = "block";
-        errBox.textContent = "Failed to load: " + (e && e.message ? e.message : e);
+        errBox.textContent = "Failed to load: " + (e && e.message ? e.message : e) + ". Please refresh your page to view.";
       } finally {
         setBusy(false);
       }
