@@ -34,7 +34,7 @@ body.light {
   z-index: var(--bb-tour-z-index);
   /* background: var(--bb-tour-overlay); */
   background: transparent !important;
-  backdrop-filter:brightness(0.7);
+  /* backdrop-filter:brightness(0.7); */
   opacity: 0;
   pointer-events: none; /* Correct: Makes overlay non-blocking */
 }
@@ -50,7 +50,7 @@ body.light {
 /* NEW: Individual shield pieces */
 .bb-tour-shield {
   position: fixed;
-  background: var(--bb-tour-overlay);
+  /* background: var(--bb-tour-overlay); */
   pointer-events: auto; /* Correct: Shields block clicks */
 }
 

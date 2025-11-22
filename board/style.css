@@ -496,8 +496,8 @@ body:not(.light) #sun-icon {
   width: calc(100vw - var(--sidebar-width)); 
   
   height: 100vh;
-  position: absolute;
-  top: 0px; /* Changed from 20px to 0px to align with top */
+  position: fixed;
+  top: 50px; /* Changed from 20px to 0px to align with top */
   bottom: 0px;
   right: 0px;
   z-index: -1;
@@ -520,7 +520,7 @@ body:not(.light) #sun-icon {
   -webkit-backdrop-filter: blur(1rem);
   color: var(--fg);
   position: fixed;
-  right: 15px;
+  left: calc(var(--sidebar-width) + 15px);
   top: 15px;
   z-index: 1000;
   padding: 8px 17px;
@@ -833,18 +833,46 @@ body:not(.light) #sun-icon {
   gap: 10px;
 }
 
+/* ==================== UPDATED INTERLINEAR STYLES ==================== */
+
+/* 1. Update the row container to handle absolute positioning of the button */
 .interlinear-row {
+  width:calc(100% - 25px);
+  position: relative;       /* Critical for the absolute button */
+  padding-right: 50px;      /* Make space for the button on the right */
+  
+  /* Keep existing styles */
   border-radius: 16px;
   color: var(--fg);
-  border: 1px solid var(--border);
-  background: var(--bg-dots);
-  padding: 12px;
+  /* border: 1px solid var(--border); */
+  /* background: var(--bg-dots); */
+  padding: 0px 12px;
   display: flex;
   flex-direction: column;
   gap: 6px;
+  margin-bottom: 10px;      /* Add spacing between rows */
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+/* 2. Highlight style when selected (Same as verses) */
+.interlinear-row.selected-for-add {
+  border-color: var(--accent);
+  /* background: var(--bg-alt); */
+}
+
+/* 3. Hide the OLD pill-shaped add button if it still exists in HTML */
+.interlinear-add {
+  display: none !important; 
+}
+
+/* 4. Ensure the existing .search-query-verse-add-button works inside here */
+.interlinear-row .search-query-verse-add-button {
+  /* It inherits styles from style.css, but we ensure it's visible */
+  display: flex;
 }
 
 .interlinear-surface {
+  width:calc(100% - 50px);
   font-size: 20px;
   font-weight: 900;
   line-height: 1.1;
@@ -852,6 +880,7 @@ body:not(.light) #sun-icon {
 }
 
 .interlinear-english {
+  width:calc(100% - 50px);
   font-size: 16px;
   font-weight: 800;
   color: var(--fg);
@@ -859,6 +888,7 @@ body:not(.light) #sun-icon {
 }
 
 .interlinear-meta {
+  width:calc(100% - 50px);
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
@@ -872,24 +902,6 @@ body:not(.light) #sun-icon {
   font-size: 12px;
   font-weight: 700;
   color: var(--muted);
-}
-
-.interlinear-add {
-  align-self: flex-start;
-  margin-top: 4px;
-  border-radius: 14px;
-  background: var(--fg);
-  color: var(--bg);
-  border: 1px solid var(--bg);
-  padding: 6px 12px;
-  cursor: pointer;
-  font-weight: 700;
-}
-
-@media (pointer: fine) {
-  .interlinear-add:hover {
-    opacity: 0.8;
-  }
 }
 
 /* Drawer states */
@@ -1013,6 +1025,7 @@ body:not(.light) #sun-icon {
   flex-direction: column;
   gap: 2px;
   margin-right: auto;
+  width: calc(100% - 100px);
 }
 
 .song-title {
@@ -1730,15 +1743,6 @@ body.read-only .connection-handle {
   border-color: var(--muted);
   background: var(--bg-dots);
 }
-
-/* --- 4. "Selected" State for Card and Button --- */
-
-/* Card highlight */
-/* .search-query-verse-container.selected-for-add,
-.verse-list-container .verse.selected-for-add {
-  border-color: var(--accent);
-  background: var(--bg-alt);
-} */
 
 /* Button changes to a checkmark */
 .search-query-verse-add-button.selected {

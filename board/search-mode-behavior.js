@@ -1,11 +1,8 @@
-
 /**
  * Bible Board — Search Mode Header + Defaulting Logic (+ Interlinear sync)
  * Drop this file AFTER script.js in index.html.
  *
- * Update: ALWAYS show `Search for "<query>"` as the header text when a query exists,
- * regardless of the active search mode (Bible / Songs / Interlinear).
- * Defaults to mode-specific labels only when the query is empty.
+ * Update: Prevents re-fetching Interlinear data if the reference hasn't changed.
  */
 (function () {
   const searchQueryEl = document.getElementById("search-query");
@@ -17,6 +14,9 @@
 
   let lastRawQuery = "";
   let lastKnownDrawerOpen = !!window.searchDrawerOpen;
+  
+  // NEW: Track the last reference we successfully fetched to prevent spam
+  let lastFetchedInterlinearRef = null; 
 
   // --- Helpers ---------------------------------------------------------------
   function parseReferenceString(refStr) {
@@ -36,8 +36,7 @@
 
   function headerTextFor(mode, raw) {
     const q = (raw || "").trim();
-    if (q) return `Search for "${q}"`; // <-- always this when query exists
-    // only when empty, show mode defaults
+    if (q) return `Search for "${q}"`;
     if (mode === "bible") return "Bible";
     if (mode === "songs") return "Search songs";
     if (mode === "interlinear") return "Interlinear";
@@ -62,38 +61,62 @@
     searchQueryEl.textContent = headerTextFor(mode, lastRawQuery);
   }
 
-  function updateInterlinearForCurrentQuery() {
+  /**
+   * UPDATED: Logic to fetch interlinear only when necessary
+   * @param {boolean} force - If true, ignores the cache and forces a fetch (used on Enter key)
+   */
+  function updateInterlinearForCurrentQuery(force = false) {
     const mode = getMode();
     if (mode !== "interlinear") return;
 
     const ref = parseReferenceString(lastRawQuery);
-    if (ref && typeof window.openInterlinearForReference === "function") {
-      if (!window.searchDrawerOpen) {
-        window.searchDrawerOpen = true;
-        try { window.applyLayout?.(true); } catch {}
-      }
-      try { window.setSearchMode?.("interlinear", { openDrawer: true }); } catch {}
-      window.openInterlinearForReference(`${ref.book} ${ref.chapter}:${ref.verse}`);
-    } else {
+
+    // If query is invalid reference, show "No interlinear" state
+    if (!ref) {
       const interList = document.getElementById("interlinear-list");
       const interLoader = document.getElementById("interlinear-loader");
       const interError = document.getElementById("interlinear-error");
       const interPanel = document.getElementById("interlinear-panel");
+      
       if (interPanel) interPanel.setAttribute("aria-busy", "false");
       if (interLoader) interLoader.style.display = "none";
       if (interError) interError.style.display = "none";
+      
       if (interList) {
         const q = (lastRawQuery || "").trim();
         interList.innerHTML = q
           ? `<div class="search-query-no-verse-found-container" style="text-align:center; color:var(--muted); padding: 12px;">No interlinear for "${q}".</div>`
           : `<div class="search-query-no-verse-found-container" style="text-align:center; color:var(--muted); padding: 12px;">No interlinear.</div>`;
       }
-      if (!window.searchDrawerOpen) {
-        window.searchDrawerOpen = true;
-        try { window.applyLayout?.(true); } catch {}
-      }
-      try { window.setSearchMode?.("interlinear", { openDrawer: true }); } catch {}
+      openDrawerUI();
+      return;
     }
+
+    // Construct a canonical string (e.g., "john 3:16") to compare against cache
+    const currentRefString = `${ref.book} ${ref.chapter}:${ref.verse}`.toLowerCase();
+
+    // CHECK: If we aren't forcing a refresh, and we already fetched this ref, STOP.
+    if (!force && currentRefString === lastFetchedInterlinearRef) {
+      openDrawerUI(); // Just ensure the UI is open
+      return; 
+    }
+
+    // Update cache
+    lastFetchedInterlinearRef = currentRefString;
+
+    // Perform Fetch
+    if (typeof window.openInterlinearForReference === "function") {
+      openDrawerUI();
+      window.openInterlinearForReference(`${ref.book} ${ref.chapter}:${ref.verse}`);
+    }
+  }
+
+  function openDrawerUI() {
+    if (!window.searchDrawerOpen) {
+      window.searchDrawerOpen = true;
+      try { window.applyLayout?.(true); } catch {}
+    }
+    try { window.setSearchMode?.("interlinear", { openDrawer: true }); } catch {}
   }
 
   // --- Wire up events --------------------------------------------------------
@@ -103,7 +126,11 @@
     window.BBSearchHeader && (window.BBSearchHeader.__lastRawQuery = (searchBar?.value||"").trim());
     if (e.key === "Enter") {
       lastRawQuery = (searchBar.value || "").trim();
-      setTimeout(() => { updateHeader(); updateInterlinearForCurrentQuery(); }, 0);
+      setTimeout(() => { 
+        updateHeader(); 
+        // Force = true because user explicitly hit Enter to search
+        updateInterlinearForCurrentQuery(true); 
+      }, 0);
     }
   });
 
@@ -113,23 +140,28 @@
       this.__lastRawQuery = q || "";
       lastRawQuery = q || "";
       updateHeader();
-      updateInterlinearForCurrentQuery();
+      updateInterlinearForCurrentQuery(true); // External set usually implies a new search
     },
     refresh() {
       updateHeader();
-      updateInterlinearForCurrentQuery();
+      updateInterlinearForCurrentQuery(false);
     },
   };
 
-  // Update when user switches pills (even without changing the query)
+  // Update when user switches pills
   pillBible?.addEventListener("click", () => {
-    setTimeout(() => { updateHeader(); /* interlinear hidden via setSearchMode */ }, 0);
+    setTimeout(() => { updateHeader(); }, 0);
   });
   pillSongs?.addEventListener("click", () => {
-    setTimeout(() => { updateHeader(); /* interlinear hidden via setSearchMode */ }, 0);
+    setTimeout(() => { updateHeader(); }, 0);
   });
+  
   pillInter?.addEventListener("click", () => {
-    setTimeout(() => { updateHeader(); updateInterlinearForCurrentQuery(); }, 0);
+    setTimeout(() => { 
+      updateHeader(); 
+      // Force = false. Only fetch if the query changed since last time we were here.
+      updateInterlinearForCurrentQuery(false); 
+    }, 0);
   });
 
   // Patch applyLayout to default Bible when drawer closes
@@ -145,12 +177,14 @@
         }
       }
       updateHeader();
-      updateInterlinearForCurrentQuery();
+      // Don't auto-fetch interlinear just on layout change unless visible
+      if (getMode() === "interlinear" && isOpen) {
+         updateInterlinearForCurrentQuery(false);
+      }
     } catch (_) {}
     return res;
   };
 
-  // Initial
+  // Initial load
   updateHeader();
-  updateInterlinearForCurrentQuery();
 })();

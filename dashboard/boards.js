@@ -890,7 +890,7 @@ function getBoardGroup(board) {
   return "Older"; 
 }
 
-// 4. The Main Logic
+// 4. The Main Logic (Updated with Fix)
 function handleBoardSearch(query) {
   if (!searchResults) return;
   searchResults.innerHTML = ""; // Clear results
@@ -971,10 +971,16 @@ function handleBoardSearch(query) {
       groupedMatches[groupName].forEach(match => {
         const div = document.createElement("div");
         div.className = "search-result-item";
+        
+        // --- FIX STARTS HERE ---
         div.onclick = () => {
-          switchBoard(match.board.id, currentUser.id);
+          // If currentUser is null (race condition), fallback to extracting ID from the board path
+          const ownerId = currentUser ? currentUser.id : match.board.path.split('/')[0];
+          
+          switchBoard(match.board.id, ownerId);
           closeSearchModal();
         };
+        // --- FIX ENDS HERE ---
 
         div.innerHTML = `
           <span class="material-symbols-outlined">chat_bubble</span>

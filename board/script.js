@@ -82,7 +82,7 @@ function startPerfTimer() {
 }
 function logPerf(label) {
   const now = performance.now();
-  console.log(`[Perf] ${label}: ${Math.round(now - perfTimer)}ms`);
+  // console.log(`[Perf] ${label}: ${Math.round(now - perfTimer)}ms`);
   perfTimer = now;
 }
 
@@ -358,9 +358,9 @@ async function safeFetchWithFallbacks(url, signal) {
         );
       }
 
-      console.log(
-        `Fetch strategy ${index + 1} succeeded for: ${url.substring(0, 100)}...`
-      );
+      // console.log(
+      //   `Fetch strategy ${index + 1} succeeded for: ${url.substring(0, 100)}...`
+      // );
       return resp;
     } catch (err) {
       lastError = err;
@@ -437,12 +437,12 @@ async function fetchVerseText(book, chapter, verse, signal, version = "KJV") {
     return text;
   } catch (err) {
     if (signal?.aborted) {
-      console.log("Verse fetch aborted.");
+      // console.log("Verse fetch aborted.");
       // Re-throw abort so searchForQuery() can catch it and stop processing
       throw err;
     }
 
-    console.error("❌ Error fetching verse (all fallbacks failed):", err);
+    // console.error("❌ Error fetching verse (all fallbacks failed):", err);
     return "Verse temporarily unavailable."; // Graceful error
   }
 }
@@ -478,7 +478,7 @@ async function fetchBibleSearchResults(query, limit = 5, signal, version = "KJV"
     return refs;
   } catch (e) {
     if (effSignal?.aborted) return [];
-    console.error("Search API error:", e);
+    // console.error("Search API error:", e);
     return [];
   }
 }
@@ -618,6 +618,9 @@ const pendingVerseAdds = new Map();
 
 // NEW: Song queue (parallel to verse queue)
 window.pendingSongAdds = window.pendingSongAdds || new Map();
+
+// NEW: Interlinear queue (parallel to others)
+window.pendingInterlinearAdds = window.pendingInterlinearAdds || new Map();
 
 // OPTIMIZATION: Throttled version of updateAllConnections
 const throttledUpdateAllConnections = throttleRAF(updateAllConnections);
@@ -803,10 +806,10 @@ async function fetchChapterText(book, chapter, signal, version = "KJV") {
   const cacheKey = `${version}:${code}:${chapter}`;
   const cached = chapterCache.get(cacheKey);
   if (cached) {
-    // console.log(`[Cache] HIT: ${cacheKey}`);
+    console.log(`[Cache] HIT: ${cacheKey}`);
     return cached;
   }
-  // console.log(`[Cache] MISS: ${cacheKey}`);
+  console.log(`[Cache] MISS: ${cacheKey}`);
   // --- END NEW ---
 
   // OPTIMIZATION: Check signal before fetching
@@ -830,10 +833,10 @@ async function fetchChapterText(book, chapter, signal, version = "KJV") {
     return data.verses; // e.g., [{ verse: 1, text: "..." }, ...]
   } catch (err) {
     if (signal?.aborted) {
-      console.log("Chapter fetch aborted.");
+      // console.log("Chapter fetch aborted.");
       throw err; // Re-throw abort
     }
-    console.error("❌ Error fetching chapter (all fallbacks failed):", err);
+    // console.error("❌ Error fetching chapter (all fallbacks failed):", err);
     throw err; // Re-throw for searchForQuery to catch
   }
 }
@@ -981,6 +984,11 @@ function mountInterlinearInline() {
   interPanel.style.maxHeight = "none";
   interPanel.style.overflow = "visible";
 }
+
+/**
+ * UPDATED: Handles switching modes and VISIBILITY of the main container.
+ * Fixes the issue where Bible/Music tabs appeared empty after an Interlinear search.
+ */
 function setSearchMode(mode, opts = {}) {
   if (mode !== "bible" && mode !== "songs" && mode !== "interlinear") return;
   const { openDrawer = false } = opts;
@@ -995,77 +1003,86 @@ function setSearchMode(mode, opts = {}) {
   const verseContainer = document.getElementById("search-query-verse-container");
   const songsContainer = document.getElementById("search-query-song-container");
   const interlinearPanelEl = document.getElementById("interlinear-panel");
+  const fullContainer = document.getElementById("search-query-full-container"); // <--- NEW REF
 
   const versesHeader = document.getElementById("search-query-verses-text");
   const songsHeader  = document.getElementById("search-query-songs-text");
 
-  // Hide all
+  // 1. Reset standard containers (Hide all first)
   if (verseContainer) verseContainer.style.display = "none";
   if (songsContainer) songsContainer.style.display = "none";
   if (interlinearPanelEl) interlinearPanelEl.style.display = "none";
   if (versesHeader) versesHeader.style.display = "none";
   if (songsHeader)  songsHeader.style.display  = "none";
 
-  // Update pills
+  // 2. Update pills
   document.getElementById("search-mode-bible")?.classList.toggle("active", mode === "bible");
   document.getElementById("search-mode-songs")?.classList.toggle("active", mode === "songs");
   document.getElementById("search-mode-interlinear")?.classList.toggle("active", mode === "interlinear");
 
+  // 3. Handle specific modes and FULL CONTAINER visibility
   if (mode === "bible") {
+    // Show standard container
+    if (fullContainer) fullContainer.style.display = "flex"; 
+    
     if (versesHeader) versesHeader.style.display = "block";
     if (verseContainer) verseContainer.style.display = "block";
+    
   } else if (mode === "songs") {
+    // Show standard container
+    if (fullContainer) fullContainer.style.display = "flex";
+
     if (songsHeader) songsHeader.style.display = "block";
     if (songsContainer) songsContainer.style.display = "grid";
+    
   } else if (mode === "interlinear") {
-    // Mount inline and populate from the current query
-    mountInterlinearInline();
+    // Hide standard container so Interlinear can take over
+    if (fullContainer) fullContainer.style.display = "none";
+
+    // Mount inline and show the panel
+    if (typeof mountInterlinearInline === 'function') mountInterlinearInline();
     if (interlinearPanelEl) interlinearPanelEl.style.display = "block";
-    populateInterlinearFromCurrentQuery();
   }
 }
 
 /**
  * NEW: Updates the floating "Add to Board" button's visibility and text.
+ * Updated to include Interlinear items.
  */
 function updateFloatingAddButton() {
   if (!floatingAddBtn) return;
 
-  const count = pendingVerseAdds.size + (window.pendingSongAdds ? window.pendingSongAdds.size : 0);
+  const vCount = pendingVerseAdds.size;
+  const sCount = window.pendingSongAdds ? window.pendingSongAdds.size : 0;
+  const iCount = window.pendingInterlinearAdds ? window.pendingInterlinearAdds.size : 0;
+
+  const count = vCount + sCount + iCount;
 
   // If nothing is selected, hide and clear the button
   if (count === 0) {
     floatingAddBtn.style.display = "none";
-    // Clear any previous content/icon
     floatingAddBtn.replaceChildren?.() || (floatingAddBtn.innerHTML = "");
     return;
   }
 
   // Show the button
-  floatingAddBtn.style.display = "inline-flex"; // let CSS handle layout
+  floatingAddBtn.style.display = "inline-flex"; 
 
-  // Clear any previous content/icon so we don't duplicate
+  // Clear any previous content
   floatingAddBtn.replaceChildren?.() || (floatingAddBtn.innerHTML = "");
 
-  // Label text on the LEFT
+  // Label text
   const labelSpan = document.createElement("span");
   labelSpan.textContent = `Add ${count} item${count > 1 ? "s" : ""}`;
   floatingAddBtn.appendChild(labelSpan);
 
-  // SVG icon on the RIGHT
+  // SVG icon
   const SVG_NS = "http://www.w3.org/2000/svg";
   const iconElement = document.createElementNS(SVG_NS, "svg");
   iconElement.setAttribute("class", "add-to-board-icon-open");
   iconElement.setAttribute("viewBox", "0 -960 960 960");
-  iconElement.setAttribute("aria-hidden", "true");
-  iconElement.setAttribute("focusable", "false");
-
   const path = document.createElementNS(SVG_NS, "path");
-  path.setAttribute(
-    "d",
-    "M212-86q-53 0-89.5-36.5T86-212v-536q0-53 36.5-89.5T212-874h268v126H212v536h536v-268h126v268q0 53-36.5 89.5T748-86H212Zm207-246-87-87 329-329H560v-126h314v314H748v-101L419-332Z"
-  );
-
+  path.setAttribute("d", "M212-86q-53 0-89.5-36.5T86-212v-536q0-53 36.5-89.5T212-874h268v126H212v536h536v-268h126v268q0 53-36.5 89.5T748-86H212Zm207-246-87-87 329-329H560v-126h314v314H748v-101L419-332Z");
   iconElement.appendChild(path);
   floatingAddBtn.appendChild(iconElement);
 }
@@ -1104,51 +1121,83 @@ function toggleVerseSelection(cardEl) {
 }
 
 /**
- * NEW: Adds all pending verses to the board.
+ * 1. helper function to toggle selection in the global map
+ * Paste this near the bottom of script.js
+ */
+function toggleInterlinearSelection(btn, row, data) {
+  // Ensure the map exists
+  if (!window.pendingInterlinearAdds) window.pendingInterlinearAdds = new Map();
+  
+  // Create a unique key based on reference + word
+  const key = `${data.reference}::${data.surface}`;
+
+  if (window.pendingInterlinearAdds.has(key)) {
+    // REMOVE
+    window.pendingInterlinearAdds.delete(key);
+    row.classList.remove("selected-for-add");
+    btn.classList.remove("selected");
+  } else {
+    // ADD
+    window.pendingInterlinearAdds.set(key, data);
+    row.classList.add("selected-for-add");
+    btn.classList.add("selected");
+  }
+
+  // Update the floating button (helper from script.js)
+  if (typeof updateFloatingAddButton === "function") {
+    updateFloatingAddButton();
+  }
+}
+
+/**
+ * UPDATED: Adds all pending verses, songs, AND interlinear items with ANIMATION DELAYS.
  */
 function handleFloatingAddClick() {
   clearSelection();
   closeInterlinearPanel();
   closeSearchQuery();
 
-  // Snapshot queues for verses and songs
+  // Snapshot queues
   const versesToAdd = Array.from(pendingVerseAdds.values());
   const songsToAdd  = window.pendingSongAdds ? Array.from(window.pendingSongAdds.values()) : [];
+  const interlinearToAdd = window.pendingInterlinearAdds ? Array.from(window.pendingInterlinearAdds.values()) : [];
 
-  // If nothing is selected, do nothing
-  if (versesToAdd.length === 0 && songsToAdd.length === 0) return;
+  if (versesToAdd.length === 0 && songsToAdd.length === 0 && interlinearToAdd.length === 0) return;
 
-  // Clear the queues immediately
+  // Clear queues immediately
   pendingVerseAdds.clear();
   if (window.pendingSongAdds) window.pendingSongAdds.clear();
+  if (window.pendingInterlinearAdds) window.pendingInterlinearAdds.clear();
 
-  let delay = 0.25;
+  let delay = 0.05; // Start with a tiny delay
 
-  // Add each verse
+  // 1. Add Verses
   for (const { ref, text, version } of versesToAdd) {
     window.BoardAPI.addBibleVerse(ref, text, false, version, delay);
-    delay += 0.10;
-    // Prefetch neighbors (using null signal, as this is a fire-and-forget)
+    delay += 0.10; // Stagger effect
     prefetchAdjacentVerses(ref, null, version);
   }
 
-  // Add each song with the same staggered fade / slide-in animation
+  // 2. Add Songs
   for (const song of songsToAdd) {
     if (typeof window.BoardAPI.addSongElement === "function") {
       window.BoardAPI.addSongElement(song, delay);
-    } else {
-      addSongElement(song, delay);
     }
     delay += 0.10;
   }
 
-  // Clear all visual selection states from the DOM
+  // 3. Add Interlinear Items (NOW WITH DELAY)
+  for (const item of interlinearToAdd) {
+    window.BoardAPI.addInterlinearCard(item, delay); 
+    delay += 0.10; 
+  }
+
+  // Clear visual selection states
   document.querySelectorAll(".selected-for-add").forEach(el => {
     el.classList.remove("selected-for-add");
     el.querySelector('.search-query-verse-add-button')?.classList.remove('selected');
   });
 
-  // Hide/update the floating button
   updateFloatingAddButton();
 }
 
@@ -1956,7 +2005,7 @@ function addBibleVerse(
   el.style.left = `${randX + delay * 200}px`;
   el.style.top = `${randY + delay * 200}px`;
   el.style.zIndex = currentIndex;
-  console.log(currentIndex)
+  // console.log(currentIndex)
 
   // Use createdFromLoad flag to determine reference format
   const displayReference = createdFromLoad ? reference : `- ${reference}`;
@@ -2109,138 +2158,9 @@ function addTextNote(initial = "New note") {
   return el;
 }
 
-/* ========== NEW: Dedicated Interlinear card element ========== */
-function addInterlinearCard({
-  surface,
-  english,
-  translit,
-  morph,
-  strong,
-  reference,
-}) {
-  currentIndex += 1;
-  // GUARD: Allow creation during load/restore, but not by user action
-  if (window.__readOnly && !window.__RESTORING_FROM_SUPABASE) return;
-
-  const el = document.createElement("div");
-  el.classList.add("board-item", "interlinear-card");
-  el.style.position = "absolute";
-
-  // Default position: near the selected verse if possible; else center-ish
-  let targetLeft, targetTop;
-  const vpRect = viewport.getBoundingClientRect();
-  if (selectedItem && selectedItem.classList.contains("bible-verse")) {
-    const ar = selectedItem.getBoundingClientRect();
-    const ax = (viewport.scrollLeft + (ar.left - vpRect.left)) / scale;
-    const ay = (viewport.scrollTop + (ar.top - vpRect.top)) / scale;
-    targetLeft = ax + 20;
-    targetTop = ay + ar.height + 12;
-  } else {
-    const visibleX = viewport.scrollLeft / scale,
-      visibleY = viewport.scrollTop / scale;
-    const visibleW = vpRect.width / scale,
-      visibleH = vpRect.height / scale;
-    targetLeft = visibleX + (visibleW - 320) / 2;
-    targetTop = visibleY + (visibleH - 120) / 2;
-  }
-  el.style.left = `${targetLeft}px`;
-  el.style.top = `${targetTop}px`;
-  el.style.zIndex = currentIndex;
-
-  // Build content
-  const chips = [];
-  if (translit) chips.push(`<span class="interlinear-chip">${translit}</span>`);
-  if (morph) chips.push(`<span class="interlinear-chip">${morph}</span>`);
-  if (strong)
-    chips.push(`<span class="interlinear-chip">Strong: ${strong}</span>`);
-
-  el.innerHTML = `
-    <div class="interlinear-card-header">
-      <div class="interlinear-card-badge">INTERLINEAR</div>
-      <div class="interlinear-card-ref">${reference || ""}</div>
-    </div>
-    <div class="interlinear-card-body">
-      <div class="interlinear-card-surface">${surface || ""}</div>
-      ${english ? `<div class="interlinear-card-english">${english}</div>` : ""}
-      ${
-        chips.length
-          ? `<div class="interlinear-card-meta">${chips.join(" ")}</div>`
-          : ""
-      }
-    </div>
-  `;
-
-  // Useful metadata for saving/export (already robust)
-  el.dataset.type = "interlinear";
-  el.dataset.reference = reference || "";
-  el.dataset.surface = surface || "";
-  el.dataset.english = english || "";
-  el.dataset.translit = translit || "";
-  el.dataset.morph = morph || "";
-  el.dataset.strong = strong || "";
-
-  workspace.appendChild(el);
-  el.dataset.vkey = itemKey(el);
-
-  // Drag handlers (simple: start drag anywhere on the card)
-  // OPTIMIZATION: Use .on... properties
-  el.onmousedown = (e) => {
-    if (isConnectMode) return;
-    startDragMouse(el, e);
-  };
-  el.ontouchstart = (e) => {
-    // --- NEW: READ-ONLY GUARD ---
-    if (isConnectMode || window.__readOnly || e.touches.length !== 1) return;
-    // --- END NEW ---
-    const t = e.touches[0];
-    const rect = el.getBoundingClientRect();
-    pendingTouchDrag = {
-      item: el,
-      startX: t.clientX,
-      startY: t.clientY,
-      offX: (t.clientX - rect.left) / scale,
-      offY: (t.clientY - rect.top) / scale,
-    };
-  };
-  el.ontouchmove = (e) => {
-    if (isConnectMode) return;
-    const t = e.touches[0];
-    if (pendingTouchDrag && !touchDragElement) {
-      const dx = t.clientX - pendingTouchDrag.startX;
-      const dy = t.clientY - pendingTouchDrag.startY;
-      if (Math.hypot(dx, dy) > DRAG_SLOP) {
-        startDragTouch(
-          pendingTouchDrag.item,
-          t,
-          pendingTouchDrag.offX,
-          pendingTouchDrag.offY
-        );
-        pendingTouchDrag = null;
-      }
-    }
-    if (!touchDragElement) return;
-    e.preventDefault();
-    touchMoved = true;
-    dragTouchTo(t);
-  };
-  el.ontouchend = () => {
-    if (touchDragElement) onBoardMutated("item_move_touch_end"); // AUTOSAVE
-    if (!touchDragElement) {
-      pendingTouchDrag = null;
-      return;
-    }
-    touchDragElement = null;
-    setTimeout(() => {
-      touchMoved = false;
-    }, 0);
-  };
-
-  // Select on create (nice UX)
-  // selectItem(el);
-
-  onBoardMutated("add_interlinear_card"); // AUTOSAVE (safe)
-  return el;
-}
+// Ensure this function is attached to BoardAPI
+if (!window.BoardAPI) window.BoardAPI = {};
+window.BoardAPI.addInterlinearCard = addInterlinearCard;
 
 // ==================== Search UI glue ====================
 // ... (searchForQueryFromSuggestion, displaySearchVerseOption, displayNoVerseFound unchanged) ...
@@ -2713,7 +2633,7 @@ function prefetchSearchForQuery(query) {
 
       // --- 1. ALWAYS prefetch songs ---
       fetchSongs(query, SEARCH_RESULT_LIMIT, signal).catch(() => {});
-      // console.log(`[Prefetch] Warmed songs cache for "${query}"`);
+      console.log(`[Prefetch] Warmed songs cache for "${query}"`);
 
       // --- 2. Prefetch correct Bible data ---
       if (refShaped) {
@@ -2722,18 +2642,18 @@ function prefetchSearchForQuery(query) {
         if (bibleRef && bibleRef.book && bibleRef.chapter) {
           // Prefetch the full chapter (e.g., "John 3:16" or "Josua 1:9" -> "Joshua 1:9")
           fetchChapterText(bibleRef.book, bibleRef.chapter, signal, version).catch(() => {});
-          // console.log(`[Prefetch] Warmed chapter cache for ${bibleRef.book} ${bibleRef.chapter}`);
+          console.log(`[Prefetch] Warmed chapter cache for ${bibleRef.book} ${bibleRef.chapter}`);
         } else {
           // It's reference-shaped but didn't parse (e.g., "Asdf 1:1" or "Josua 1:9" -> didYouMean)
           // We can't prefetch a chapter, so just prefetch text search as a fallback.
           fetchBibleSearchResults(query, SEARCH_RESULT_LIMIT, signal, version).catch(() => {});
-          // console.log(`[Prefetch] Warmed bible text search for "${query}" (ref-shaped fallback)`);
+          console.log(`[Prefetch] Warmed bible text search for "${query}" (ref-shaped fallback)`);
         }
       } else {
         // NOT reference-shaped (e.g., "love")
         // Prefetch the text search results
         fetchBibleSearchResults(query, SEARCH_RESULT_LIMIT, signal, version).catch(() => {});
-        // console.log(`[Prefetch] Warmed bible text search for "${query}" (text query)`);
+        console.log(`[Prefetch] Warmed bible text search for "${query}" (text query)`);
       }
     } catch (err) {
       if (!signal.aborted) {
@@ -2825,7 +2745,7 @@ function renderSongResults(songs, songsContainer, signal, options = {}) {
  * MODIFIED: Now calls the new runSongsSearch helper.
  */
 async function runSongsFallback(query, signal, version) {
-  console.log("Bible search failed, falling back to Songs mode...");
+  // console.log("Bible search failed, falling back to Songs mode...");
   setSearchMode("songs");
   
   // Reset header text from "John 3" back to the query
@@ -2884,7 +2804,7 @@ async function runSongsSearch(query, signal, version, options = {}) {
     if (signal.aborted) return;
     // Only show errors if we're not in the background
     if (!isBackground) {
-      console.error("Error in song search:", err);
+      // console.error("Error in song search:", err);
       // ESCAPE USER INPUT HERE
       const safeQuery = escapeHtml(query);
       const safeMessage = err.message ? escapeHtml(err.message) : `No songs found for "${safeQuery}".`;
@@ -3047,7 +2967,7 @@ async function runBibleTextSearch(query, signal, version, options = {}) { // Add
     // --- MODIFICATION: SECURITY FIX ---
     if (!isBackground) {
       // Only show errors in the UI if this was the primary task
-      console.error("Error in Bible text search:", err);
+      // console.error("Error in Bible text search:", err);
       
       // ESCAPE USER INPUT HERE
       const safeQuery = escapeHtml(query);
@@ -3088,17 +3008,15 @@ async function fetchBibleSearchResults(query, limit = 5, signal, version = "KJV"
     return refs;
   } catch (e) {
     if (effSignal?.aborted) return [];
-    console.error("Search API error:", e);
+    // console.error("Search API error:", e);
     return [];
   }
 }
 
 /**
- * REFACTORED: Handles search for "Bible" or "Songs" mode.
- * - Implements "Did you mean..." suggestion.
- * - Implements background Bible search when in Songs mode.
- * - MODIFIED: Uses isReferenceShaped to separate text vs. ref searches.
- * - SECURITY: Escapes HTML in error messages.
+ * REFACTORED: Handles search for "Bible", "Songs", or "Interlinear" mode.
+ * - FIX: Shows "Did you mean" suggestions in Interlinear mode.
+ * - FIX: Runs background searches so other tabs aren't empty when switching.
  */
 async function searchForQuery(event) {
   // --- 1. Setup & Abort ---
@@ -3107,7 +3025,7 @@ async function searchForQuery(event) {
   }
 
   const input = document.getElementById("search-bar");
-  const rawQuery = (input?.value || "").trim(); // Use rawQuery per prompt
+  const rawQuery = (input?.value || "").trim(); 
 
   if (!rawQuery) return false;
 
@@ -3130,18 +3048,24 @@ async function searchForQuery(event) {
   const version = getSelectedVersion();
 
   // --- 2. Show Skeleton UI & Open Panel ---
+  // Reset "Did You Mean" initially
   if (typeof didYouMeanText !== "undefined")
-    didYouMeanText.style.display = "none"; // Always hide suggestion on new search
+    didYouMeanText.style.display = "none"; 
+  
   if (typeof searchQueryFullContainer !== "undefined")
     searchQueryFullContainer.style.display = "none";
   if (typeof loader !== "undefined") loader.style.display = "flex";
 
   searchDrawerOpen = true;
-  if (interlinearOpen) closeInterlinearPanel();
+  
+  // Only close interlinear panel if we are NOT in interlinear mode
+  if (currentSearchMode !== "interlinear" && interlinearOpen) {
+      closeInterlinearPanel();
+  }
+  
   applyLayout(true); // This triggers the slide-up animation
 
   if (typeof searchQuery !== "undefined")
-    // .textContent is SAFE
     searchQuery.textContent = `Search for "${rawQuery}"`;
 
   // Get containers and clear them for the new results
@@ -3156,7 +3080,6 @@ async function searchForQuery(event) {
 
   // --- 3. Determine Search Paths ---
   try {
-    // --- NEW LOGIC (USER REQUEST) ---
     // 1. Decide if it's reference-shaped
     const refShaped = window.isReferenceShaped ? window.isReferenceShaped(rawQuery) : false;
     
@@ -3167,34 +3090,54 @@ async function searchForQuery(event) {
     
     const isClearBibleRef = bibleRefInfo && bibleRefInfo.book && bibleRefInfo.chapter;
     const isDidYouMean = refShaped && bibleRefInfo && bibleRefInfo.didYouMean && !isClearBibleRef;
-    // --- END NEW LOGIC ---
 
     let primarySearchPromise;
 
-    if (currentSearchMode === "bible") {
-      // User is on the Bible tab
+    // --- CASE: INTERLINEAR MODE ---
+    if (currentSearchMode === "interlinear") {
+       
+       // A. "Did You Mean" Logic (NEW)
+       if (isDidYouMean) {
+          showDidYouMeanSuggestion(bibleRefInfo);
+       }
+
+       // B. Primary Task: Interlinear
+       if (typeof window.openInterlinearFromCurrentQuery === "function") {
+           primarySearchPromise = window.openInterlinearFromCurrentQuery();
+       } else {
+           primarySearchPromise = Promise.resolve();
+       }
+       
+       // Hide the loader since openInterlinearFromCurrentQuery manages its own loader
+       if (loader) loader.style.display = "none"; 
+
+       // C. Background Tasks (Fixes "Empty Tabs" issue)
+       // 1. Background Songs
+       runSongsSearch(rawQuery, signal, version, { isBackground: true }).catch(() => {});
+
+       // 2. Background Bible
+       if (isClearBibleRef) {
+          runBibleSearch(bibleRefInfo, signal, version, { isBackground: true }).catch(() => {});
+       } else {
+          // If it's not reference-shaped or just a fuzzy match, run text search
+          runBibleTextSearch(rawQuery, signal, version, { isBackground: true }).catch(() => {});
+       }
+    } 
+    
+    // --- CASE: BIBLE MODE ---
+    else if (currentSearchMode === "bible") {
       if (isClearBibleRef) {
-        // --- A. Bible reference mode ---
         primarySearchPromise = runBibleSearch(bibleRefInfo, signal, version, { isBackground: false });
         // Background: Songs
-        runSongsSearch(rawQuery, signal, version, { isBackground: true }).catch(err => {
-          if (!signal.aborted) console.warn("Background song load failed:", err);
-        });
-
+        runSongsSearch(rawQuery, signal, version, { isBackground: true }).catch(() => {});
       } else if (isDidYouMean) {
-        // --- B. Did you mean mode ---
         showDidYouMeanSuggestion(bibleRefInfo);
-        primarySearchPromise = Promise.resolve(); // Task is complete
+        primarySearchPromise = Promise.resolve(); 
         // Background: Songs
-        runSongsSearch(rawQuery, signal, version, { isBackground: true }).catch(err => {
-          if (!signal.aborted) console.warn("Background song load failed:", err);
-        });
-
+        runSongsSearch(rawQuery, signal, version, { isBackground: true }).catch(() => {});
       } else if (refShaped && bibleRefInfo === null) {
-        // --- C. Ref-shaped but no match (e.g., "Asdf 1:1") ---
-        // Show "No verses found" and DO NOT fall back to songs
+        // Ref-shaped but no match (e.g., "Asdf 1:1")
         if (verseContainer) {
-          // ESCAPE USER INPUT HERE
           const safeQuery = escapeHtml(rawQuery);
           verseContainer.innerHTML = `
             <div class="search-query-no-verse-found-container" 
@@ -3202,59 +3145,53 @@ async function searchForQuery(event) {
               No verses found for "${safeQuery}".
             </div>`;
         }
-        primarySearchPromise = Promise.resolve(); // Task is complete (showing error)
-        
+        primarySearchPromise = Promise.resolve(); 
       } else {
-        // --- D. NOT reference-shaped (e.g., "love") → Bible text search mode ---
+        // NOT reference-shaped (e.g., "love") -> Text Search
         primarySearchPromise = runBibleTextSearch(rawQuery, signal, version, { isBackground: false });
-        // This function (runBibleTextSearch) already handles its own fallback to songs if 0 results
-        
-        // Background: Songs (good to warm the cache anyway)
-        runSongsSearch(rawQuery, signal, version, { isBackground: true }).catch(err => {
-          if (!signal.aborted) console.warn("Background song load failed:", err);
-        });
+        // Background: Songs
+        runSongsSearch(rawQuery, signal, version, { isBackground: true }).catch(() => {});
       }
 
-    } else {
-      // --- E. User is on the Songs tab ---
+    } 
+    
+    // --- CASE: SONGS MODE ---
+    else {
       primarySearchPromise = runSongsSearch(rawQuery, signal, version, { isBackground: false });
       
-      // Background Bible Search (respecting new logic)
+      // Background Bible Search
       if (isClearBibleRef) {
-        // Background: Bible Reference
-        runBibleSearch(bibleRefInfo, signal, version, { isBackground: true }).catch(err => {
-           if (!signal.aborted) console.warn("Background Bible ref load failed:", err);
-        });
+        runBibleSearch(bibleRefInfo, signal, version, { isBackground: true }).catch(() => {});
       } else if (isDidYouMean) {
-        // Background: Show Suggestion
         showDidYouMeanSuggestion(bibleRefInfo); 
       } else if (!refShaped) {
-        // Background: Bible Text (ONLY if not ref-shaped, e.g., "love")
-        runBibleTextSearch(rawQuery, signal, version, { isBackground: true }).catch(err => {
-            if (!signal.aborted) console.warn("Background Bible text load failed:", err);
-        });
+        runBibleTextSearch(rawQuery, signal, version, { isBackground: true }).catch(() => {});
       }
     }
     
     // --- 5. Wait for the Primary task to complete ---
-    await primarySearchPromise;
+    if (primarySearchPromise) {
+        await primarySearchPromise;
+    }
 
   } catch (err) {
-    // This catches unexpected errors from the primary task
     if (!signal.aborted) {
-      console.error("Error in searchForQuery:", err);
+      // console.error("Error in searchForQuery:", err);
       const container = currentSearchMode === 'bible' ? verseContainer : songsContainer;
-      if (container) {
-        // ESCAPE USER INPUT HERE
+      if (container && currentSearchMode !== 'interlinear') {
         const safeQuery = escapeHtml(rawQuery);
         const safeMessage = err.message ? escapeHtml(err.message) : `No results found for "${safeQuery}".`;
         container.innerHTML = `<div class="search-query-no-verse-found-container" style="text-align:center; color:var(--muted); padding: 15px;">${safeMessage}</div>`;
       }
     }
   } finally {
-    // Hide main loader
-    if (loader) loader.style.display = "none";
-    if (searchQueryFullContainer) searchQueryFullContainer.style.display = "flex";
+    // Hide main loader (unless we are in interlinear, which handles its own)
+    if (loader && currentSearchMode !== 'interlinear') {
+        loader.style.display = "none";
+    }
+    if (searchQueryFullContainer && currentSearchMode !== 'interlinear') {
+        searchQueryFullContainer.style.display = "flex";
+    }
   }
 
   return false; // prevent default navigation
@@ -3294,7 +3231,7 @@ const moonIcon = document.getElementById("moon-icon");
 const sunIcon = document.getElementById("sun-icon");
 
 function setTheme(isLight) {
-  console.log(isLight)
+  // console.log(isLight)
   body.classList.toggle("light", isLight);
   localStorage.setItem("theme", isLight ? "light" : "dark");
   moonIcon.style.display = isLight ? "block" : "none";
@@ -3302,7 +3239,7 @@ function setTheme(isLight) {
 }
 setTheme(localStorage.getItem("theme") === "light");
 toggle?.addEventListener("click", () => {
-  console.log("Change Theme!")
+  // console.log("Change Theme!")
   setTheme(body.classList.contains("light"))
 });
 
@@ -3585,87 +3522,88 @@ async function fetchInterlinear(book, chapter, verse, signal) {
   }
 
   // If loop finishes, all attempts failed
-  console.error("❌ Interlinear fetch failed (all attempts):", lastError);
+  // console.error("❌ Interlinear fetch failed (all attempts):", lastError);
   throw lastError || new Error("Interlinear fetch failed after all attempts.");
 }
 
-function renderInterlinearTokens(data) {
-  interLoader.style.display = "none";
-  // Note: busy state is handled by the click handler's finally block
+/**
+ * 2. The fixed render function
+ * Replaces the broken one at the bottom of your file.
+ */
+function renderInterlinearTokens(tokens, referenceTitle) {
+  const list = document.getElementById("interlinear-list");
+  if (!list) return;
+  
+  list.innerHTML = ""; // Clear loading state
 
-  let tokens = [];
-  let reference = "";
-
-  // Normalize data shape
-  if (Array.isArray(data)) {
-    tokens = data;
-  } else if (data && Array.isArray(data.tokens)) {
-    tokens = data.tokens;
-    reference =
-      data.reference ||
-      `${data.book || ""} ${data.chapter || ""}:${data.verse || ""}`.trim();
-  }
-
-  // Check for empty results
   if (!tokens || tokens.length === 0) {
-    interEmpty.textContent = "No interlinear tokens found for this verse.";
-    interEmpty.style.display = "block";
-    interError.style.display = "none";
+    list.innerHTML = `<div style="padding:15px; color:var(--muted); text-align:center;">No interlinear data available.</div>`;
     return;
   }
 
-  // Valid data, hide empty/error
-  interEmpty.style.display = "none";
-  interError.style.display = "none";
-
-  interSubtitle.textContent = reference || interSubtitle.textContent || ""; // Use normalized ref
-
-  const frag = document.createDocumentFragment();
-
-  tokens.forEach((tok) => {
-    const surface = tok.surface || "";
-    const english = tok.resolved_gloss || tok.translation || tok.gloss || "";
-    const translit = tok.resolved_translit || tok.translit || "";
-    const morph = tok.morph || "";
-    const strongRaw = tok.strong || "";
-    const strong = strongRaw.replace(/^.*?(\/)?/, "").trim();
-
+  tokens.forEach((token, index) => {
+    // Create the Row
     const row = document.createElement("div");
-    row.className = "interlinear-row";
+    row.className = "interlinear-row"; 
 
-    row.innerHTML = `
-      <div class="interlinear-surface">${surface}</div>
-      <div class="interlinear-english">${english}</div>
-      <div class="interlinear-meta"></div>
-      <button class="interlinear-add">add</button>
-    `;
+    // Extract Data with safe fallbacks
+    const surface = token.text || token.surface || token.original || token.word || "?";
+    const english = token.gloss || token.english || token.translated || token.definition || token.meaning || token.trans || token.translation || "?";
+    const translit = token.translit || token.transliteration || "";
+    const morph = token.morph || token.grammar || "";
+    const strong = token.strong || token.strongs || "";
+    
+    // Build Content
+    const surfaceEl = document.createElement("div");
+    surfaceEl.className = "interlinear-surface";
+    surfaceEl.textContent = surface;
 
-    const meta = row.querySelector(".interlinear-meta");
-    const parts = [];
-    if (translit) parts.push(`<span class="meta-chip">${translit}</span>`);
-    if (morph) parts.push(`<span class="meta-chip">${morph}</span>`);
-    if (strong) parts.push(`<span class="meta-chip">Strong: ${strong}</span>`);
-    if (parts.length) meta.innerHTML = parts.join(" ");
-    else meta.style.display = "none";
+    const englishEl = document.createElement("div");
+    englishEl.className = "interlinear-english";
+    englishEl.textContent = english;
 
-    // ⬇️ Add dedicated interlinear card on board
-    // OPTIMIZATION: Use .onclick
-    row.querySelector(".interlinear-add").onclick = () => {
-      window.BoardAPI.addInterlinearCard({
-        surface,
-        english,
-        translit,
-        morph,
-        strong,
-        reference: interSubtitle.textContent,
-      });
+    const metaEl = document.createElement("div");
+    metaEl.className = "interlinear-meta";
+    if (translit) metaEl.innerHTML += `<span class="meta-chip">${translit}</span>`;
+    if (morph) metaEl.innerHTML += `<span class="meta-chip">${morph}</span>`;
+    if (strong) metaEl.innerHTML += `<span class="meta-chip">${strong}</span>`;
+
+    // --- THE ADD BUTTON ---
+    const addBtn = document.createElement("div");
+    addBtn.className = "search-query-verse-add-button";
+    
+    // Data payload
+    const cardData = {
+      type: "interlinear",
+      surface: surface,
+      english: english,
+      translit: translit,
+      morph: morph,
+      strong: strong,
+      reference: `${referenceTitle}:${index + 1}`
     };
 
-    frag.appendChild(row);
-  });
+    // Check if already selected (Persistence)
+    const key = `${cardData.reference}::${surface}`;
+    if (window.pendingInterlinearAdds && window.pendingInterlinearAdds.has(key)) {
+       row.classList.add("selected-for-add");
+       addBtn.classList.add("selected");
+    }
 
-  interList.innerHTML = "";
-  interList.appendChild(frag);
+    // Click Handler -> CALLS THE NEW FUNCTION
+    addBtn.onclick = (e) => {
+      e.stopPropagation();
+      toggleInterlinearSelection(addBtn, row, cardData);
+    };
+
+    // Assemble
+    row.appendChild(surfaceEl);
+    row.appendChild(englishEl);
+    row.appendChild(metaEl);
+    row.appendChild(addBtn);
+
+    list.appendChild(row);
+  });
 }
 
 // Parse selected verse reference ("– Genesis 1:1 KJV")
@@ -3687,7 +3625,7 @@ function parseSelectedVerseRef() {
     .replace(/\s+KJV$/, "")
     .replace(/\s+&middot;.*$/, "") // ADDED: Remove new version label
     .trim();
-  console.log(cleanedRef);
+  // console.log(cleanedRef);
 
   if (!cleanedRef) return null;
 
@@ -3745,7 +3683,7 @@ interlinearBtn?.addEventListener("click", async (e) => {
 
     // Check if this is still the latest request
     if (currentSeq !== interlinearSeq) {
-      console.log("Ignoring stale interlinear response");
+      // console.log("Ignoring stale interlinear response");
       return;
     }
 
@@ -3753,7 +3691,7 @@ interlinearBtn?.addEventListener("click", async (e) => {
   } catch (err) {
     // Check if this is still the latest request AND not an intentional abort
     if (currentSeq !== interlinearSeq || controller.signal.aborted) {
-      console.log("Ignoring stale interlinear error/abort", err.message);
+      // console.log("Ignoring stale interlinear error/abort", err.message);
       return;
     }
 
@@ -3761,7 +3699,7 @@ interlinearBtn?.addEventListener("click", async (e) => {
     interLoader.style.display = "none";
     interError.textContent = "Couldn’t load interlinear data."; // Generic error
     interError.style.display = "block";
-    console.error("Interlinear fetch failed:", err);
+    // console.error("Interlinear fetch failed:", err);
   } finally {
     // Only the LATEST request can clear the busy state
     if (currentSeq === interlinearSeq) {
@@ -3783,10 +3721,10 @@ async function fetchSongs(query, limit = 5, signal = null) {
   const cacheKey = `${query.toLowerCase()}::${limit}`;
   const cached = songsCache.get(cacheKey); // .get() updates recency
   if (cached) {
-    // console.log(`[Cache] HIT: ${cacheKey}`);
+    console.log(`[Cache] HIT: ${cacheKey}`);
     return cached;
   }
-  // console.log(`[Cache] MISS: ${cacheKey}`);
+  console.log(`[Cache] MISS: ${cacheKey}`);
   // --- END NEW ---
 
   const url = `https://itunes.apple.com/search?${new URLSearchParams({
@@ -3813,7 +3751,7 @@ async function fetchSongs(query, limit = 5, signal = null) {
     return data.results;
   } catch (e) {
     if (signal?.aborted) {
-      console.log("Song search aborted");
+      // console.log("Song search aborted");
       throw e;
     }
     console.warn("Song search error:", e);
@@ -4291,7 +4229,7 @@ async function exportBoardPNGUsedArea({ scale = 1 } = {}) {
     });
     downloadDataURL(dataUrl, makeExportFilename("used", "png"));
   } catch (e) {
-    console.error("Export failed:", e);
+    // console.error("Export failed:", e);
     alert("Export failed. Try a smaller scale.");
   } finally {
     // Restore styles
@@ -4458,7 +4396,7 @@ function serializeBoard() {
 
     return { title, viewport: viewportData, items, connections: conns };
   } catch (err) {
-    console.error("❌ Serialization Failed:", err);
+    // console.error("❌ Serialization Failed:", err);
     return null; // Return null to prevent saving corrupt data
   }
 }
@@ -4505,7 +4443,7 @@ function deserializeBoard(data) {
             itemEls[item.vkey] = el;
           }
         } catch (itemErr) {
-          console.error("Failed to restore item:", item, itemErr);
+          // console.error("Failed to restore item:", item, itemErr);
         }
       });
     }
@@ -4552,7 +4490,7 @@ function deserializeBoard(data) {
 
     updateAllConnections(); // one full pass
   } catch (err) {
-    console.error("❌ Error during board restore:", err);
+    // console.error("❌ Error during board restore:", err);
     BoardAPI.clearBoard();
   } finally {
     window.__RESTORING_FROM_SUPABASE = false;
@@ -4999,42 +4937,6 @@ window.BoardAPI = {
   deserializeBoard,
 }
 
-// === INTERLINEAR_PILL_FETCH ===
-document.getElementById("search-mode-interlinear")?.addEventListener("click", () => {
-  setSearchMode && setSearchMode("interlinear", { openDrawer: true });
-
-  const q = (document.getElementById("search-bar")?.value || "").trim() || (window.__lastRawQuery || "").trim() || "";
-  const interList = document.getElementById("interlinear-list");
-  const interLoader = document.getElementById("interlinear-loader");
-  const interError = document.getElementById("interlinear-error");
-  const interPanel = document.getElementById("interlinear-panel");
-
-  if (interPanel) interPanel.setAttribute("aria-busy", "true");
-  if (interLoader) interLoader.style.display = "flex";
-  if (interError) interError.style.display = "none";
-  if (interList) interList.innerHTML = "";
-
-  // Use shared parser if available, else fallback regex
-  let ref = null;
-  try { if (typeof parseReferenceString === "function") ref = parseReferenceString(q); } catch {}
-  if (!ref) {
-    const m = q.match(/^([\dI]{0,3}\s*[A-Za-z .'-]+?)\s+(\d+):(\d+)$/);
-    if (m) ref = { book: m[1].trim(), chapter: parseInt(m[2],10), verse: parseInt(m[3],10) };
-  }
-
-  if (ref && typeof openInterlinearForReference === "function") {
-    openInterlinearForReference(`${ref.book} ${ref.chapter}:${ref.verse}`);
-  } else {
-    if (interPanel) interPanel.setAttribute("aria-busy", "false");
-    if (interLoader) interLoader.style.display = "none";
-    if (interError) interError.style.display = "none";
-    if (interList) interList.innerHTML = q
-      ? `<div class="search-query-no-verse-found-container" style="text-align:center; color:var(--muted); padding: 12px;">No interlinear for "${q}".</div>`
-      : `<div class="search-query-no-verse-found-container" style="text-align:center; color:var(--muted); padding: 12px;">No interlinear.</div>`;
-  }
-});
-
-
 /**
  * Parse "Book C:V" into {book, chapter, verse} or null
  */
@@ -5083,32 +4985,10 @@ function openInterlinearFromCurrentQuery() {
     if (interLoader) interLoader.style.display = "none";
     if (interError) interError.style.display = "none";
     if (interList) interList.innerHTML = q
-      ? `<div class="search-query-no-verse-found-container" style="text-align:center; color:var(--muted); padding: 12px;">No interlinear for "${q}".</div>`
+      ? `<div class="search-query-no-verse-found-container" style="text-align:center; color:var(--muted); padding: 12px;">No interlinear for "${q}". Please search for a verse(John 3:16, e.g)</div>`
       : `<div class="search-query-no-verse-found-container" style="text-align:center; color:var(--muted); padding: 12px;">No interlinear.</div>`;
   }
 }
-
-
-
-// BIND_INTERLINEAR_PILL
-(function bindInterlinearPill(){
-  function handler() {
-    // Ensure drawer open and switch mode visibly
-    if (!window.searchDrawerOpen) { window.searchDrawerOpen = true; try { applyLayout && applyLayout(true); } catch {} }
-    setSearchMode && setSearchMode("interlinear", { openDrawer: true });
-    openInterlinearFromCurrentQuery();
-  }
-  const btn = document.getElementById("search-mode-interlinear");
-  if (btn) {
-    btn.addEventListener("click", handler, false);
-  } else {
-    // In case DOM loads later
-    document.addEventListener("DOMContentLoaded", () => {
-      const lateBtn = document.getElementById("search-mode-interlinear");
-      lateBtn && lateBtn.addEventListener("click", handler, false);
-    });
-  }
-})();
 
 
 function populateInterlinearFromCurrentQuery() {
@@ -5141,17 +5021,11 @@ function populateInterlinearFromCurrentQuery() {
     if (interLoader) interLoader.style.display = "none";
     if (interError) interError.style.display = "none";
     if (interList) interList.innerHTML = q
-      ? `<div class="search-query-no-verse-found-container" style="text-align:center; color:var(--muted); padding: 12px;">No interlinear for "${q}".</div>`
+      ? `<div class="search-query-no-verse-found-container" style="text-align:center; color:var(--muted); padding: 12px;">No interlinear for "${q}". Please search for a verse(John 3:16, e.g)</div>`
       : `<div class="search-query-no-verse-found-container" style="text-align:center; color:var(--muted); padding: 12px;">No interlinear.</div>`;
   }
 }
 
-
-
-// INTERLINEAR_PILL_HANDLER_V3
-document.getElementById("search-mode-interlinear")?.addEventListener("click", () => {
-  setSearchMode && setSearchMode("interlinear", { openDrawer: true });
-});
 
 
 
@@ -5182,7 +5056,7 @@ async function openInterlinearFromCurrentQuery() {
   const searchEl = document.getElementById("search-bar");
   const q = (searchEl?.value || window.__lastRawQuery || "").trim();
 
-  console.log(q)
+  // console.log(q)
   const interPanel = document.getElementById("interlinear-panel");
   const interList  = document.getElementById("interlinear-list");
   const interErr   = document.getElementById("interlinear-error");
@@ -5213,7 +5087,7 @@ async function openInterlinearFromCurrentQuery() {
     // Not a verse-shaped query → show friendly message
     if (interList) {
       interList.innerHTML = q
-        ? `<div class="search-query-no-verse-found-container" style="text-align:center; color:var(--muted); padding: 12px;">No interlinear for "${q}".</div>`
+        ? `<div class="search-query-no-verse-found-container" style="text-align:center; color:var(--muted); padding: 12px;">No interlinear for "${q}". Please search for a verse(John 3:16, e.g)</div>`
         : `<div class="search-query-no-verse-found-container" style="text-align:center; color:var(--muted); padding: 12px;">No interlinear.</div>`;
     }
     if (interPanel) interPanel.setAttribute("aria-busy", "false");
@@ -5253,42 +5127,57 @@ async function openInterlinearFromCurrentQuery() {
   });
 })();
 
-// Make sure clicking the Interlinear pill always uses the current query
-(function bindInterlinearPill() {
-  const pill = document.getElementById("search-mode-interlinear");
-  if (!pill) return;
-  pill.addEventListener("click", (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    openInterlinearFromCurrentQuery();
-  }, false);
-})();
-
 // Also expose a safe global (optional utility)
 window.openInterlinearFromCurrentQuery = openInterlinearFromCurrentQuery;
 
-// --- END: Interlinear-from-query hardening ---
+// =============================================================================
+// 1. The Fetching Logic (Your provided code, kept intact)
+// =============================================================================
+// Global variable to track what is currently on screen
+let _lastLoadedInterlinearRef = null;
 
 async function openInterlinearForReference(refString) {
   // Ensure panel visible/inline
   try { mountInterlinearInline && mountInterlinearInline(); } catch {}
+  
   const interPanel = document.getElementById("interlinear-panel");
   const interList  = document.getElementById("interlinear-list");
   const interLoader= document.getElementById("interlinear-loader");
   const interError = document.getElementById("interlinear-error");
 
+  // 1. Parse the requested reference
+  const ref = parseReferenceString(refString);
+  
+  if (!ref) {
+    // Handle invalid reference logic
+    if (interPanel) interPanel.setAttribute("aria-busy", "false");
+    if (interLoader) interLoader.style.display = "none";
+    if (interList) interList.innerHTML = `<div class="search-query-no-verse-found-container" style="text-align:center; color:var(--muted); padding: 12px;">No interlinear for "${refString}". Please search for a verse(John 3:16, e.g)</div>`;
+    return;
+  }
+
+  // 2. CACHE CHECK: Construct a unique ID for this request
+  const requestKey = `${ref.book.toUpperCase()}_${ref.chapter}:${ref.verse}`;
+  const hasContent = interList && interList.children.length > 0;
+
+  // If we are already showing this exact chapter/verse, STOP here.
+  if (_lastLoadedInterlinearRef === requestKey && hasContent) {
+    // Just ensure UI is in "Ready" state (hide loader, show content)
+    if (interPanel) interPanel.setAttribute("aria-busy", "false");
+    if (interLoader) interLoader.style.display = "none";
+    if (interError)  interError.style.display = "none";
+    if (interList)   interList.style.display = "block";
+    return; // <--- EXIT EARLY
+  }
+
+  // 3. New request proceeding... update cache key
+  _lastLoadedInterlinearRef = requestKey;
+
+  // Show Loading UI
   if (interPanel) interPanel.setAttribute("aria-busy", "true");
   if (interLoader) interLoader.style.display = "flex";
   if (interError)  interError.style.display  = "none";
   if (interList)   interList.innerHTML       = "";
-
-  const ref = parseReferenceString(refString);
-  if (!ref) {
-    if (interList) interList.innerHTML = `<div class="search-query-no-verse-found-container" style="text-align:center; color:var(--muted); padding: 12px;">No interlinear for "${refString}".</div>`;
-    if (interPanel) interPanel.setAttribute("aria-busy", "false");
-    if (interLoader) interLoader.style.display = "none";
-    return;
-  }
 
   // Map to code if bibleBookCodes exists
   let bookCode = ref.book;
@@ -5298,11 +5187,10 @@ async function openInterlinearForReference(refString) {
     }
   } catch (_) {}
 
-  // Build API URL (use user's full-bible-api)
-  const version = (typeof getSelectedVersion === "function") ? getSelectedVersion() : "KJV";
+  // Build API URL
   const apiUrl = `https://full-bible-api.onrender.com/interlinear/${encodeURIComponent(bookCode)}/${ref.chapter}/${ref.verse}`;
 
-  // Abort in-flight
+  // Abort previous in-flight request
   if (window.__interlinearAbortController) {
     try { window.__interlinearAbortController.abort(); } catch (_) {}
   }
@@ -5310,18 +5198,26 @@ async function openInterlinearForReference(refString) {
   window.__interlinearAbortController = controller;
 
   try {
-    // Prefer project's robust fetch helper for CORS resilience
+    // Fetch
     let resp;
     if (typeof safeFetchWithFallbacks === "function") {
       resp = await safeFetchWithFallbacks(apiUrl, controller.signal);
     } else {
       resp = await fetch(apiUrl, { signal: controller.signal, mode: "cors", credentials: "omit" });
     }
+    
     const data = await resp.json();
     const tokens = Array.isArray(data?.tokens) ? data.tokens : (Array.isArray(data) ? data : []);
+    
+    // Render
     renderInterlinearTokens(tokens, `${ref.book} ${ref.chapter}:${ref.verse}`);
+    
   } catch (err) {
     if (controller.signal.aborted) return;
+    
+    // Reset cache on error so user can try again
+    _lastLoadedInterlinearRef = null; 
+
     console.warn("Interlinear fetch failed:", err);
     if (interError) {
       interError.textContent = "Couldn’t load interlinear data.";
@@ -5333,8 +5229,483 @@ async function openInterlinearForReference(refString) {
   }
 }
 
+// This should already be in your script.js, but ensure 
+// it handles the visual toggling for the parent row correctly.
+function toggleItemInQueue(btn, rowElement, data) {
+  const queue = window.itemsToAddQueue;
+  const floatBtn = document.getElementById("floating-add-to-board-btn");
 
-// INTERLINEAR_PILL_BIND_CORE
-document.getElementById("search-mode-interlinear")?.addEventListener("click", async () => {
-  try { await openInterlinearFromCurrentQuery(); } catch (e) { console.warn(e); }
-});
+  // Check if item is already in queue (simple object reference check might fail if recreating objs, 
+  // but for this UI lifecycle it's usually fine. If strict dedupe needed, use a unique ID).
+  
+  // Basic toggle logic
+  if (btn.classList.contains("selected")) {
+    // REMOVE
+    btn.classList.remove("selected");
+    rowElement.classList.remove("selected-for-add");
+    
+    // Find and delete from Set (since object references might differ, we might need to find by ID/content)
+    // Simple approach: Iterate set and match specific props
+    for (const i of queue) {
+      if (i.type === data.type && 
+         (i.reference === data.reference && i.surface === data.surface)) { // Unique check for Interlinear
+         queue.delete(i);
+         break;
+      }
+      // Add checks for verse/song uniqueness if needed
+      if (i.type === 'verse' && i.reference === data.reference) {
+         queue.delete(i);
+         break;
+      }
+    }
+  } else {
+    // ADD
+    btn.classList.add("selected");
+    rowElement.classList.add("selected-for-add");
+    queue.add(data);
+  }
+
+  // Update Floating Button
+  if (queue.size > 0) {
+    floatBtn.style.display = "flex";
+    floatBtn.innerHTML = `<svg class="add-to-board-icon-open" ...>...</svg> Add ${queue.size} to Board`;
+    // Add click listener only once or rely on global listener
+    floatBtn.onclick = flushItemsQueueToBoard; 
+  } else {
+    floatBtn.style.display = "none";
+  }
+}
+
+/**
+ * UPDATED: Handles 'interlinear' type in the flush queue.
+ */
+async function flushItemsQueueToBoard() {
+  const floatBtn = document.getElementById("floating-add-to-board-btn");
+  if (window.itemsToAddQueue.size === 0) return;
+
+  // 1. Hide the search/drawer UI
+  const searchContainer = document.getElementById("search-query-container");
+  const searchInput = document.getElementById("search-bar");
+  
+  // Fade out search
+  if (searchContainer) {
+    searchContainer.style.opacity = "0";
+    setTimeout(() => {
+      searchContainer.style.width = "0px";
+      if (searchInput) searchInput.value = "";
+    }, 250);
+  }
+  
+  // Hide Interlinear Panel if open
+  const interlinearPanel = document.getElementById("interlinear-panel");
+  if (interlinearPanel) interlinearPanel.classList.remove("open");
+
+  // Reset floating button
+  if (floatBtn) {
+    floatBtn.style.display = "none";
+    floatBtn.innerHTML = ""; // Clear icon
+  }
+
+  // 2. Calculate center position for new items
+  const viewport = document.querySelector(".viewport");
+  const rect = viewport.getBoundingClientRect();
+  const centerX = rect.width / 2;
+  const centerY = rect.height / 2;
+
+  // Offset logic
+  let index = 0;
+  const offsetStep = 30; 
+  const totalItems = window.itemsToAddQueue.size;
+  const startX = centerX - ((totalItems - 1) * offsetStep) / 2;
+  const startY = centerY - ((totalItems - 1) * offsetStep) / 2;
+
+  // 3. Iterate and Add
+  for (const item of window.itemsToAddQueue) {
+    let newEl = null;
+
+    // --- CASE: VERSE ---
+    if (item.type === "verse") {
+      newEl = window.BoardAPI.addBibleVerse(
+        item.reference,
+        item.text,
+        false, // not from load
+        item.version
+      );
+    } 
+    // --- CASE: SONG ---
+    else if (item.type === "song") {
+      newEl = window.BoardAPI.addSongElement(item);
+    }
+    // --- NEW CASE: INTERLINEAR ---
+    else if (item.type === "interlinear") {
+       // This calls the existing BoardAPI function (wrapped by undo-redo.js)
+       newEl = window.BoardAPI.addInterlinearCard({
+         surface: item.surface,
+         english: item.english,
+         translit: item.translit,
+         morph: item.morph,
+         strong: item.strong,
+         reference: item.reference
+       });
+    }
+
+    // 4. Position & Animate
+    if (newEl) {
+      const x = startX + index * offsetStep;
+      const y = startY + index * offsetStep;
+
+      newEl.style.left = `${x}px`;
+      newEl.style.top = `${y}px`;
+      
+      // Add the "pop-in" animation class
+      newEl.classList.add("item-pop-in");
+      
+      // Trigger a save/sync
+      if (window.BoardAPI.triggerAutosave) {
+        window.BoardAPI.triggerAutosave("items_flushed");
+      }
+    }
+    index++;
+  }
+
+  // 5. Clean up
+  window.itemsToAddQueue.clear();
+  
+  // Remove "selected" styling from all buttons in the DOM
+  document.querySelectorAll(".search-query-verse-add-button.selected").forEach(btn => {
+      btn.classList.remove("selected");
+  });
+  document.querySelectorAll(".selected-for-add").forEach(row => {
+      row.classList.remove("selected-for-add");
+  });
+}
+
+
+/* =================================================================
+   SINGLE INTERLINEAR HANDLER (Paste at bottom of script.js)
+   =================================================================
+*/
+
+// Global variable to track what is currently on screen
+window.__currentInterlinearRef = null;
+
+// Override the helper to check cache BEFORE clearing the DOM
+window.openInterlinearFromCurrentQuery = async function() {
+  const searchEl = document.getElementById("search-bar");
+  const q = (searchEl?.value || window.__lastRawQuery || "").trim();
+
+  // 1. Parse
+  const ref = (typeof parseReferenceString === "function")
+    ? parseReferenceString(q)
+    : (() => {
+        const m = q.match(/^([\dI]{0,3}\s*[A-Za-z .'-]+?)\s+(\d+):(\d+)$/);
+        return m ? { book: m[1].trim(), chapter: parseInt(m[2],10), verse: parseInt(m[3],10) } : null;
+    })();
+
+  const interPanel = document.getElementById("interlinear-panel");
+  const interLoader = document.getElementById("interlinear-loader");
+  const interList = document.getElementById("interlinear-list");
+
+  if (!ref) {
+    if (interList) interList.innerHTML = `<div class="search-query-no-verse-found-container" style="text-align:center; color:var(--muted); padding: 12px;">No interlinear for "${q}". Please search for a verse(John 3:16, e.g)</div>`;
+    if (interLoader) interLoader.style.display = "none";
+    return;
+  }
+
+  // 2. CHECK CACHE
+  const requestKey = `${ref.book.toUpperCase()}_${ref.chapter}:${ref.verse}`;
+  const hasContent = interList && interList.children.length > 0;
+  
+  // If the panel is open AND showing this exact verse, STOP.
+  if (window.__currentInterlinearRef === requestKey && interPanel && interPanel.classList.contains("open") && hasContent) {
+    // console.log("Interlinear already loaded for:", requestKey);
+    return; 
+  }
+
+  // 3. Proceed
+  window.__currentInterlinearRef = requestKey;
+  
+  if (interPanel) {
+      interPanel.setAttribute("aria-busy", "true");
+      interPanel.classList.add("open");
+  }
+  if (interLoader) interLoader.style.display = "flex";
+  if (interList) interList.innerHTML = ""; 
+
+  if (typeof openInterlinearForReference === "function") {
+    await openInterlinearForReference(`${ref.book} ${ref.chapter}:${ref.verse}`);
+  }
+};
+
+/* =================================================================
+   FINAL FIX: INTERLINEAR REFRESH LOOP
+   Paste this at the VERY BOTTOM of board/script.js
+   =================================================================
+*/
+
+(function() {
+  // console.log("🔧 Applying Interlinear Refresh Fix...");
+
+  // 1. Global tracking for the current view
+  window.__lastInterlinearRef = null;
+
+  // 2. Define the "Smart" logic that checks cache
+  const smartInterlinearOpener = async function() {
+    const searchEl = document.getElementById("search-bar");
+    // Get query from input OR the global fallback
+    const q = (searchEl?.value || window.__lastRawQuery || "").trim();
+
+    const interPanel = document.getElementById("interlinear-panel");
+    const interList  = document.getElementById("interlinear-list");
+    const interLoad  = document.getElementById("interlinear-loader");
+    
+    // 1. Parse the reference (e.g. "John 3:16")
+    // Use your project's parser if available, otherwise simple regex
+    let ref = null;
+    if (typeof parseReferenceString === "function") {
+      ref = parseReferenceString(q);
+    } else {
+      const m = q.match(/^([\dI]{0,3}\s*[A-Za-z .'-]+?)\s+(\d+):(\d+)$/);
+      if (m) ref = { book: m[1].trim(), chapter: parseInt(m[2],10), verse: parseInt(m[3],10) };
+    }
+
+    // If not a verse, just clear and show message
+    if (!ref) {
+      if (interList) interList.innerHTML = `<div class="search-query-no-verse-found-container" style="text-align:center; color:var(--muted); padding: 12px;">No interlinear for "${q}". Please search for a verse(John 3:16, e.g)</div>`;
+      if (interLoad) interLoad.style.display = "none";
+      return;
+    }
+
+    // 2. CACHE CHECK (The Fix)
+    // Generate a unique key for this specific verse
+    const requestKey = `${ref.book.toUpperCase()}_${ref.chapter}:${ref.verse}`;
+    const hasContent = interList && interList.children.length > 0;
+    const isPanelOpen = interPanel && (interPanel.classList.contains("open") || interPanel.style.display === "block");
+
+    // If we are already looking at this verse, and the panel has content... STOP.
+    if (window.__lastInterlinearRef === requestKey && isPanelOpen && hasContent) {
+      // console.log("🛑 Interlinear Cache Hit: Preventing refresh for", requestKey);
+      return; 
+    }
+
+    // 3. It's a new request. Update tracking and proceed.
+    // console.log("🚀 Fetching Interlinear for", requestKey);
+    window.__lastInterlinearRef = requestKey;
+
+    // Ensure UI is open/loading
+    if (interPanel) {
+      // Use inline style if not using classes, or class if using CSS
+      interPanel.style.display = "block"; 
+      interPanel.classList.add("open");
+      interPanel.setAttribute("aria-busy", "true");
+    }
+    if (interLoad) interLoad.style.display = "flex";
+    if (interList) interList.innerHTML = ""; // NOW it is safe to clear
+
+    // 4. Call the API Fetcher
+    if (typeof openInterlinearForReference === "function") {
+      await openInterlinearForReference(`${ref.book} ${ref.chapter}:${ref.verse}`);
+    }
+  };
+
+  // 3. OVERWRITE global helpers so any other code calls our smart logic
+  window.populateInterlinearFromCurrentQuery = smartInterlinearOpener;
+  window.openInterlinearFromCurrentQuery = smartInterlinearOpener;
+
+  // 4. NUCLEAR OPTION: Strip all existing listeners from the button
+  const oldBtn = document.getElementById("search-mode-interlinear");
+  if (oldBtn) {
+    // Cloning the node removes all event listeners attached via .addEventListener
+    const newBtn = oldBtn.cloneNode(true);
+    oldBtn.parentNode.replaceChild(newBtn, oldBtn);
+
+    // Attach EXACTLY ONE listener
+    newBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      // 1. Update Visuals (Pills)
+      if (window.setSearchMode) {
+        // We assume you fixed setSearchMode to NOT fetch data automatically
+        window.setSearchMode("interlinear", { openDrawer: true });
+      }
+
+      // 2. Trigger Data Load (using our smart logic)
+      smartInterlinearOpener();
+    });
+
+    // console.log("✅ Interlinear Button: Listeners reset.");
+  }
+
+})();
+
+
+
+
+/* =============================================================================
+   FIX: INTERLINEAR CARD SETUP & DRAG LOGIC
+   Paste this at the VERY BOTTOM of board/script.js
+   ============================================================================= */
+
+// 1. Define a standalone helper to attach drag/drop events
+function attachInterlinearEvents(el) {
+  if (!el) return;
+
+  // A. Card Dragging (Mouse)
+  el.addEventListener("mousedown", (e) => {
+    // Ignore clicks on buttons/inputs or the connection handle (handled separately)
+    if (e.target.tagName === "BUTTON" || 
+        e.target.tagName === "INPUT" || 
+        e.target.closest(".connection-handle")) {
+      return;
+    }
+    
+    // Try to call the global BoardAPI handler if it exists
+    if (window.BoardAPI && typeof window.BoardAPI.onItemDown === "function") {
+      window.BoardAPI.onItemDown(e, el);
+    }
+  });
+
+  // B. Card Dragging (Touch)
+  el.addEventListener("touchstart", (e) => {
+    if (e.target.tagName === "BUTTON" || 
+        e.target.tagName === "INPUT" || 
+        e.target.closest(".connection-handle")) {
+      return;
+    }
+    
+    if (window.BoardAPI && typeof window.BoardAPI.onItemDown === "function") {
+      window.BoardAPI.onItemDown(e, el);
+    }
+  }, { passive: false });
+
+  // C. Connection Handle Logic
+  const handle = el.querySelector(".connection-handle");
+  if (handle) {
+    handle.addEventListener("mousedown", (e) => {
+      e.stopPropagation(); // Stop card drag
+      if (window.BoardAPI && typeof window.BoardAPI.startConnectionDrag === "function") {
+        window.BoardAPI.startConnectionDrag(e, el);
+      }
+    });
+
+    handle.addEventListener("touchstart", (e) => {
+      e.stopPropagation();
+      if (window.BoardAPI && typeof window.BoardAPI.startConnectionDrag === "function") {
+        window.BoardAPI.startConnectionDrag(e, el);
+      }
+    }, { passive: false });
+  }
+}
+
+/* =============================================================================
+   FIXED: ADD INTERLINEAR CARD
+   Replaces the broken function at the bottom of script.js.
+   Uses 'startDragMouse' directly to ensure compatibility with your board.
+   ============================================================================= */
+
+function addInterlinearCard(data, delay = 0) {
+  const el = document.createElement("div");
+  el.className = "board-item interlinear-card";
+  
+  // --- Animation ---
+  if (delay !== 0) {
+    el.style.opacity = "0";
+    el.style.animation = "loadItemToBoard 1s forwards " + delay + "s";
+  }
+
+  // --- ID & Type ---
+  const id = crypto.randomUUID();
+  el.dataset.vkey = id;
+  el.dataset.type = "interlinear";
+
+  // --- Data Attributes ---
+  el.dataset.surface = data.surface || "";
+  el.dataset.english = data.english || "";
+  el.dataset.translit = data.translit || "";
+  el.dataset.morph = data.morph || "";
+  el.dataset.strong = data.strong || "";
+  el.dataset.reference = data.reference || "";
+
+  // --- Position (Center of Viewport) ---
+  const viewport = document.querySelector(".viewport");
+  if (viewport) {
+    const rect = viewport.getBoundingClientRect();
+    const visibleX = viewport.scrollLeft / scale;
+    const visibleY = viewport.scrollTop / scale;
+    const visibleW = rect.width / scale;
+    const visibleH = rect.height / scale;
+
+    // Base position centered
+    const baseX = visibleX + (visibleW - 320) / 2;
+    const baseY = visibleY + (visibleH - 90) / 2;
+
+    // Apply delay offset
+    el.style.left = `${baseX + delay * 200}px`;
+    el.style.top = `${baseY + delay * 200}px`;
+  }
+
+  // --- HTML Content ---
+  el.innerHTML = `
+    <div style="width:100%">
+      <div class="interlinear-card-header">
+        <span class="interlinear-card-badge">Interlinear</span>
+        <span class="interlinear-card-ref">${data.reference || ""}</span>
+      </div>
+      <div class="interlinear-card-surface">${data.surface || "?"}</div>
+      <div class="interlinear-card-english">${data.english || "?"}</div>
+      <div class="interlinear-card-meta">
+        ${data.translit ? `<span class="interlinear-chip">${data.translit}</span>` : ""}
+        ${data.morph ? `<span class="interlinear-chip">${data.morph}</span>` : ""}
+        ${data.strong ? `<span class="interlinear-chip">${data.strong}</span>` : ""}
+      </div>
+    </div>
+    <div class="connection-handle">
+      <svg viewBox="0 0 100 100" width="30" height="30">
+        <circle class="handle-circle" cx="50" cy="50" r="45"></circle>
+        <line class="handle-cross" x1="50" y1="30" x2="50" y2="70"></line>
+        <line class="handle-cross" x1="30" y1="50" x2="70" y2="50"></line>
+      </svg>
+    </div>
+  `;
+
+  // --- EVENT ATTACHMENT (The Fix) ---
+  // Matches how addBibleVerse and addSongElement work in your file
+  el.onmousedown = (e) => {
+    // Ignore clicks on buttons/inputs or the handle
+    if (e.target.closest("button") || 
+        e.target.closest("input") || 
+        e.target.closest(".connection-handle")) {
+      return;
+    }
+    
+    // Check for connect mode or standard drag
+    if (typeof isConnectMode !== "undefined" && isConnectMode) return;
+
+    // Use the global drag starter
+    if (typeof startDragMouse === "function") {
+       startDragMouse(el, e);
+    }
+  };
+
+  // Note: Touch events are handled globally by the workspace listener in your script.js,
+  // so we don't need to attach ontouchstart here manually.
+
+  // --- Append to Board ---
+  const workspace = document.getElementById("workspace");
+  if (workspace) workspace.appendChild(el);
+  
+  // --- Save ---
+  // Use the safe autosave trigger
+  if (typeof onBoardMutated === "function") {
+      onBoardMutated("add_interlinear");
+  } else if (window.BoardAPI && window.BoardAPI.triggerAutosave) {
+      window.BoardAPI.triggerAutosave("add_interlinear");
+  }
+
+  return el;
+}
+
+// Attach to Global API
+if (!window.BoardAPI) window.BoardAPI = {};
+window.BoardAPI.addInterlinearCard = addInterlinearCard;

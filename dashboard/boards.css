@@ -488,7 +488,6 @@ body.light {
     top:0px;
     left:0px;
     overflow:hidden;
-    background:red;
   }
 
   #hamburger-btn {
@@ -510,7 +509,6 @@ body.light {
   right:0px;
   left:var(--sidebar-width);
   overflow:hidden;
-  background:red;
 }
 
 

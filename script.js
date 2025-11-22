@@ -142,7 +142,8 @@ window.addEventListener("scroll", () => {
   // Bottom fade-out factor
   const bottomTDen = (FOOTER_END_FADE - FOOTER_START_FADE) || 1;
   const bottomTRaw = (scrollTop - FOOTER_START_FADE) / bottomTDen;
-  const tBottom    = Math.min(Math.max(bottomTRaw, 0), 1); // 0..1
+  // const tBottom    = Math.min(Math.max(bottomTRaw, 0), 1); // 0..1
+  const tBottom    = 0; // 0..1
 
   // Combined strength: fade in from top, fade out near bottom
   const navStrength = tTop * (1 - tBottom); // 0..1
