@@ -1475,6 +1475,28 @@ textarea:disabled {
   background: transparent;
 }
 
+@media (max-width:900px) {
+  /* Horizontal bar (bottom) */
+  #viewbar-x {
+    left: 12px;
+    right: 12px;
+    /* track width; the thumb is inside via left/width inline styles */
+    height: 5px;
+    bottom: 120px;
+    background: transparent;
+    /* track is transparent; we render the thumb as an inner div */
+  }
+  /* Vertical bar (right) */
+  #viewbar-y {
+    top: 12px;
+    bottom: 120px;
+    /* track height; the thumb is inside via top/height inline styles */
+    width: 5px;
+    right: 5px;
+    background: transparent;
+  }
+}
+
 /* Thumbs inside tracks */
 #viewbar-x .vb-thumb,
 #viewbar-y .vb-thumb {
