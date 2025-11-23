@@ -535,6 +535,7 @@ document.addEventListener("DOMContentLoaded", () => {
   playVideoOverlay.addEventListener("click", () => {
     if (video.paused) {
       video.play();
+      video.volume = 10
       playVideoOverlay.style.zIndex         = "1";
       playVideoOverlay.style.opacity        = "0";
       playVideoOverlay.style.gap            = "0px";

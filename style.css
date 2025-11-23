@@ -414,8 +414,8 @@ body {
     overflow: hidden;
     border: 1px solid var(--border);
     position: relative;
-    aspect-ratio: 15 / 6.7;
-    /* aspect-ratio: 16 / 9; */
+    /* aspect-ratio: 15 / 6.7; */
+    aspect-ratio: 16 / 9;
 }
 
 @media (pointer:coarse) {
@@ -1878,7 +1878,7 @@ button, input:focus {
     max-width: 1200px;
     height:fit-content;
     margin-top: 30px;
-    opacity:0.4;
+    opacity:0.7;
     overflow: hidden;
 }
 
