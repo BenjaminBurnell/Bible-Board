@@ -1906,8 +1906,20 @@ body.read-only .connection-handle {
   content: 'add'; /* Google Icon name for + */
 }
 
-#bottom-Fade-element {
-  width:100vw;
+.sidebar > #bottom-Fade-element {
+  width:calc(100% - var(--sidebar-width));
+  height: 75px;
+  position:fixed;
+  bottom:0px;
+  left:0px;
+  background:linear-gradient(to top, var(--bg), transparent);
+  z-index:1;
+  /* background: linear-gradient(to top, var(--bg), transparent); */
+  /* background:red; */
+}
+
+.sidebar.collapsed > #bottom-Fade-element {
+  width:calc(100% - var(--sidebar-collapsed));
   height: 75px;
   position:fixed;
   bottom:0px;

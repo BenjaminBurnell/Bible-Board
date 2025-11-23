@@ -1065,7 +1065,7 @@ body {
   #search-container {
     width: 100%;
     max-width: none;
-    position: absolute; /* Stick to bottom of sidebar, not screen */
+    position: fixed; /* Stick to bottom of sidebar, not screen */
     bottom: 0;
     left: 0;
     transform: none;
