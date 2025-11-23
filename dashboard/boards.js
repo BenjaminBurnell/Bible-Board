@@ -682,11 +682,13 @@ async function handleNewBoard() {
   }
 }
 
-function handleAuthChange(user) {
+function handleAuthChange(user, valid=false) {
   currentUser = user;
 
   if (user) {
     loadBoards(user);
+  } else if(valid) {
+    window.location = "../"
   }
 }
 // --- Init ---
@@ -769,6 +771,23 @@ async function init() {
     }
   });
 
+  // 8. Wire up Login Popup Button
+  const popupLoginBtn = document.getElementById("popup-signin-btn");
+  if (popupLoginBtn) {
+    popupLoginBtn.addEventListener("click", async () => {
+      try {
+        // Use current URL as redirect to come back to dashboard
+        await sb.auth.signInWithOAuth({
+          provider: "google",
+          options: { redirectTo: window.location.href } 
+        });
+      } catch (err) {
+        console.error("Login failed:", err);
+        alert("Failed to launch login window.");
+      }
+    });
+  }
+
   sb.auth.onAuthStateChange((_event, data) => {
     const user = data?.session?.user || null;
     handleAuthChange(user);
@@ -778,7 +797,7 @@ async function init() {
     const { data, error } = await sb.auth.getSession();
     if (error) console.error(error);
     const user = data?.session?.user || null;
-    handleAuthChange(user);
+    handleAuthChange(user, true);
   } catch (error) {
     console.error("Error getting session:", error);
     handleAuthChange(null);

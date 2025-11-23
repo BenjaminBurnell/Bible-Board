@@ -5669,13 +5669,6 @@ function addInterlinearCard(data, delay = 0) {
         ${data.strong ? `<span class="interlinear-chip">${data.strong}</span>` : ""}
       </div>
     </div>
-    <div class="connection-handle">
-      <svg viewBox="0 0 100 100" width="30" height="30">
-        <circle class="handle-circle" cx="50" cy="50" r="45"></circle>
-        <line class="handle-cross" x1="50" y1="30" x2="50" y2="70"></line>
-        <line class="handle-cross" x1="30" y1="50" x2="70" y2="50"></line>
-      </svg>
-    </div>
   `;
 
   // --- EVENT ATTACHMENT (The Fix) ---
