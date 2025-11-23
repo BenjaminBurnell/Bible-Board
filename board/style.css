@@ -344,11 +344,11 @@ body.light {
 @media (max-width:900px) {
   #search-container {
     width:100vw;
-    max-width: 600px;
+    max-width: 1000px;
     height: 50px;
     background: var(--bg-seethroug);
     backdrop-filter: blur(1rem);
-    position: absolute;
+    position: fixed;
     display: flex;
     bottom: 0px;
     left: 50%;
