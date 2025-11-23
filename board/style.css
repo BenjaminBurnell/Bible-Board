@@ -65,18 +65,32 @@ body.light {
 }
 
 @media (max-width:900px) {
+
+  #main-content-container {
+    width: auto;
+    height: auto;
+    position: fixed;
+    overflow:hidden;
+    top:0;
+    bottom:0;
+    left:0;
+    right:0;
+    transition: width 0.25s ease;
+    background:yellow;
+    /* smooth shrink/expand */
+  }
+  
   .viewport {
     width: calc(100%);
     height: auto;
     overflow: hidden;
     cursor: grab;
     scroll-behavior: auto;
-    margin: auto;
     position: fixed;
     top: 0;
     bottom: 0;
-    right: 0px;
-    left:0px;
+    right: 0;
+    left:0;
   }
 }
 
@@ -209,6 +223,30 @@ body.light {
   z-index: 10001;
 }
 
+@media (max-width:900px) {
+  #action-buttons-container {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-evenly;
+    gap: 8px;
+    width:calc(100vw - 10px) !important;
+    height: 35px;
+    position: fixed !important;
+    transform: none;
+    left: 0px;
+    top:auto;
+    bottom:65px !important;
+    background: var(--bg-seethroug);
+    border: 1px solid var(--fg-seethrough);
+    backdrop-filter: blur(1rem);
+    padding: 8px 4px;
+    border-radius: 0px;
+    border-top-right-radius: 15px;
+    border-top-left-radius: 15px;
+    z-index: 10001;
+  }
+}
+
 .action-button {
   width: 30px;
   height: 30px;
@@ -303,6 +341,41 @@ body.light {
   color: var(--fg);
 }
 
+@media (max-width:900px) {
+  #search-container {
+    width:100vw;
+    max-width: 600px;
+    height: 50px;
+    background: var(--bg-seethroug);
+    backdrop-filter: blur(1rem);
+    position: absolute;
+    display: flex;
+    bottom: 0px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-radius: 0px;
+    padding-bottom: 15px;
+    border: 1px solid var(--fg-seethrough);
+    z-index: 20000;
+  }
+
+  #search-bar {
+    width: calc(100% - 185px);
+    max-width: 500px;
+    height: 30px;
+    position: absolute;
+    top: 50%;
+    left: 25px;
+    display: flex;
+    transform: translateY(-50%);
+    background: transparent;
+    border: none;
+    font-size: 17.5px;
+    font-weight: 800;
+    color: var(--fg);
+  }
+}
+
 
 /* ADDED: Version Select Styling */
 #version-select {
@@ -380,6 +453,21 @@ body.light #version-select {
   cursor: pointer;
 }
 
+
+@media (max-width:900px) {
+  #search-button {
+    width: 50px;
+    height: 100%;
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    border-radius: 0px;
+    border: 1px solid var(--muted);
+    background: var(--fg);
+    cursor: pointer;
+  }
+}
 input,
 button,
 select,
@@ -1651,6 +1739,19 @@ body.read-only .connection-handle {
 /* Ensure the ESC button stays on top of the sticky header */
 #esc-btn {
   z-index: 11;
+}
+
+@media (max-width:900px) {
+  #search-panel-header {
+    position: sticky;
+    top: 0;
+    /* Use the panel's background color to hide content scrolling under it */
+    background: var(--bg);
+    z-index: 10;
+    /* Add a little space below the header before content starts */
+    padding-top: 50px;
+    padding-bottom: 8px;
+  }
 }
 
 /* ==================== NEW: Verse Multi-Select Queue ==================== */

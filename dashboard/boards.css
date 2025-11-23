@@ -40,6 +40,15 @@ body.light {
   --brightness: 30%; /* Or 30% as you requested, 0% is pure black */
 }
 
+body {
+  position:fixed;
+  left:0;
+  right:0;
+  top:0;
+  bottom:0;
+  overflow: hidden;
+}
+
 /* ... (Keep your existing sidebar variables like --sidebar-width here) ... */
 
 /* =========================
@@ -482,11 +491,13 @@ body.light {
   }
   
   #bible-board-container {
-    width:100vw;
-    height:100vh;
-    position:relative;
-    top:0px;
-    left:0px;
+    width:auto;
+    height:auto;
+    position:fixed;
+    top:0;
+    bottom:0;
+    left:0;
+    right:0;
     overflow:hidden;
   }
 
@@ -498,6 +509,9 @@ body.light {
     background: transparent;
     border: none;
     cursor: pointer;
+    position:fixed;
+    top:15px;
+    left:15px;
   }
 }
 
