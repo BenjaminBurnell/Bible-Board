@@ -741,7 +741,6 @@ const workspaceSteps = [
             
             // Watch for VALID results (must have add button)
             _tourObserver = new MutationObserver((mutations) => {
-                input.focus()
                 if (container.querySelector(".search-query-verse-add-button")) {
                     // VALIDATION: Ensure user typed a full reference "Book C:V"
                     const val = input.value.trim();
@@ -936,9 +935,8 @@ const storageKey = isWorkspace ? "tour_workspace_v2_interactive" : "tour_dashboa
 
 const myTour = new Tour(currentSteps, {
   onEnd: ({ completed }) => {
-    if (completed) {
-      localStorage.setItem(storageKey, "true");
-    }
+    // Always set seen flag so tour doesn't annoy users on refresh
+    localStorage.setItem(storageKey, "true");
   }
 });
 
