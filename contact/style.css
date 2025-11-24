@@ -1,0 +1,201 @@
+/* --- Contact Section Layout --- */
+.contact-container {
+  background: var(--bg); /* Uses your site background */
+  width: 100%;
+  padding: 80px 0;
+  /* border-top: 1px solid var(--border); */
+  gap: 100px;
+  position: relative;
+  z-index: 2;
+}
+
+.contact-wrapper {
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  gap: 100px;
+  align-items: start !important;
+}
+
+#contact-section-text {
+  width: 100%;
+  max-width: 550px;
+}
+
+/* --- Text Styling --- */
+#features-section-text-header {
+  font-size: 3rem;
+  font-weight: 900;
+  text-align: left;
+  color: var(--fg);
+}
+
+#features-section-subheader {
+    width: fit-content;
+    max-width: 600px;
+    text-align: left;
+    font-size: 1rem;
+    margin-top: 10px;
+    color: var(--muted);
+}
+
+.method-item {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 20px;
+}
+
+.method-item .label {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--muted);
+  margin-bottom: 5px;
+  font-weight: 700;
+}
+
+.method-item .value {
+  font-size: 1.1rem;
+  color: var(--fg);
+}
+
+/* --- Form Styling --- */
+.bibleboard-form {
+  width: 350px;
+  background: var(--bg-alt, #f9f9f9); /* Fallback if var missing */
+  padding: 40px;
+  border-radius: 24px;
+  border: 1px solid var(--border);
+  box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.05);
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--fg);
+  margin-bottom: 8px;
+}
+
+.form-group input,
+.form-group textarea {
+  resize: none; /* <--- This stops the user from resizing it */
+  width: calc(100% - 32px);
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--fg);
+  font-family: inherit;
+  font-size: 1rem;
+  transition: all 0.2s ease;
+  outline: none;
+}
+
+/* --- Button Styling --- */
+.submit-btn {
+  width: 100%;
+  padding: 14px;
+  background: var(--fg); /* Dark button */
+  color: var(--bg);
+  border: none;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.2s;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+}
+
+.submit-btn:hover {
+  opacity: 0.9;
+}
+
+.submit-btn .spinner {
+  display: none; /* Hidden by default */
+  border-top-color: var(--bg); /* Spinner matches button text */
+}
+
+.submit-btn.loading span {
+  display: none;
+}
+.submit-btn.loading .spinner {
+  display: block;
+}
+
+/* Status Messages */
+.form-status {
+  margin-top: 15px;
+  font-size: 0.9rem;
+  /* text-align: center; */
+  min-height: 20px;
+}
+.form-status.success {
+  color: #10b981;
+}
+.form-status.error {
+  color: #ef4444;
+}
+
+/* --- Mobile Responsive --- */
+@media (max-width: 768px) {
+  .contact-wrapper {
+    grid-template-columns: 1fr; /* Stack vertically */
+    /* gap: 40px; */
+  }
+
+  .bibleboard-form {
+    padding: 24px;
+  }
+
+  #features-section-text-header {
+    font-size: 2rem;
+  }
+}
+
+
+@media (max-width:1100px) {
+    .contact-wrapper {
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        gap: 100px;
+        justify-content: center !important;
+        align-items:center !important;
+        padding:0 !important;
+    }
+
+    .bibleboard-form {
+        width:calc(100vw - 120px) !important;
+        width: 350px;
+        background: var(--bg-alt, #f9f9f9); /* Fallback if var missing */
+        padding: 40px;
+        border-radius: 24px;
+        border: 1px solid var(--border);
+        box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.05);
+    }
+
+    #features-section-text-header {
+        width:100%;
+        font-size: 2rem;
+        font-weight: 900;
+        text-align: center;
+        color: var(--fg);
+    }
+
+    #features-section-subheader {
+        width:calc(100% - 15px);
+        text-align: center;
+        font-size: 1rem;
+        font-weight: 800;
+        margin-top: 10px;
+        color: var(--muted);
+    }
+}

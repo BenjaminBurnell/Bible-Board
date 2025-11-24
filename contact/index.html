@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <link
+      rel="shortcut icon"
+      href="../assets/logo_with_bg.png"
+      type="image/x-icon"
+    />
+    <title>Contact — BibleBoard</title>
+
+    <!-- Reuse your app styles & variables -->
+    <link rel="stylesheet" href="../boards.css" />
+    <script defer src="../legal/script.js"></script>
+
+    <link rel="stylesheet" href="../style.css" />
+    <link rel="stylesheet" href="style.css" />
+    <script defer src="script.js"></script>
+    <style>
+      body {
+        overflow-y: scroll !important;
+      }
+
+      #nav-bar {
+        opacity: 1 !important;
+      }
+
+      .footer-desc {
+        padding: 0px !important;
+        text-align: left !important;
+      }
+
+      .footer-link-group > h3 {
+        text-align: left !important;
+      }
+
+      .footer-link-group > ul > li {
+        text-align: left !important;
+      }
+    </style>
+
+    <style>
+      /* Light extra polish while honoring your variables from style.css / boards.css */
+      :root {
+        --maxw: 1024px;
+      }
+      header {
+        position: sticky;
+        top: 0;
+        z-index: 5;
+        background: var(--bg);
+        border-bottom: 1px solid var(--border);
+        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
+      }
+      .wrap {
+        max-width: var(--maxw);
+        margin: 0 auto;
+        padding: 12px 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 900;
+        letter-spacing: 0.2px;
+      }
+      .brand .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 999px;
+        background: var(--accent);
+        box-shadow: 0 0 0 3px rgba(122, 162, 247, 0.18);
+        flex: none;
+      }
+      .brand h1 {
+        margin: 0;
+        font-size: 1rem;
+      }
+      .muted {
+        color: var(--muted);
+      }
+
+      main {
+        max-width: var(--maxw);
+        margin: 24px auto 80px;
+        padding: 0 20px;
+      }
+
+      /* Tabs use your button DNA */
+      .tabs {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+      .tab-btn {
+        /* inherit .dash-btn visuals by layering */
+        composes: dash-btn;
+      }
+      .tab-btn {
+        border-radius: 999px;
+        padding: 8px 14px;
+        height: auto;
+        line-height: 1;
+        background: var(--bg-seethroug);
+        color: var(--fg);
+        border: 1px solid var(--border);
+        font-weight: 800;
+      }
+      .tab-btn[aria-selected="true"] {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 2px rgba(122, 162, 247, 0.15) inset;
+      }
+
+      /* Card container borrowing your card feel */
+      .legal-card {
+        margin-top: 50px;
+        background: var(--bg);
+        border-radius: 14px;
+        padding: 18px;
+      }
+
+      .toolbar {
+        margin: 12px 0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+      }
+      .src {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 0.85rem;
+        color: var(--muted);
+        word-break: break-all;
+      }
+
+      /* Markdown presentation */
+      .md h1 {
+        color: var(--fg);
+        font-size: 1.8rem;
+        margin: 0.6em 0 0.35em;
+      }
+      .md h2 {
+        color: var(--fg);
+        font-size: 1.35rem;
+        margin: 1.2em 0 0.45em;
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 0.35em;
+      }
+      .md h3 {
+        color: var(--fg);
+        font-size: 1.1rem;
+        margin: 1em 0 0.3em;
+      }
+      .md p {
+        color: var(--muted);
+        line-height: 1.7;
+      }
+      .md ul,
+      .md ol {
+        color: var(--muted);
+        padding-left: 1.35em;
+      }
+      .md li {
+        margin: 0.25em 0;
+      }
+      .md a {
+        color: var(--fg);
+        text-decoration: underline;
+      }
+      .md code {
+        background: var(--bg-alt);
+        padding: 0.15em 0.35em;
+        border-radius: 6px;
+      }
+      .md pre {
+        background: var(--bg-alt);
+        padding: 14px;
+        border-radius: 12px;
+        overflow: auto;
+      }
+      .md table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 0.9em 0;
+      }
+      .md th,
+      .md td {
+        border: 1px solid var(--border);
+        padding: 0.5em;
+        text-align: left;
+      }
+
+      .loading {
+        display: none;
+        gap: 10px;
+        align-items: center;
+        color: var(--muted);
+      }
+      .loading.active {
+        display: inline-flex;
+      }
+      .spinner {
+        width: 14px;
+        height: 14px;
+        border: 2px solid var(--border);
+        border-top-color: var(--fg);
+        border-radius: 999px;
+        animation: spin 1s linear infinite;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      .err {
+        color: #ff9aa2;
+        margin-top: 8px;
+      }
+      footer {
+        max-width: var(--maxw);
+        margin: 40px auto 60px;
+        padding: 0 20px;
+        color: var(--muted);
+        text-align: center;
+      }
+      .legal-links a {
+        color: var(--fg);
+        text-decoration: none;
+        margin: 0 6px;
+      }
+    </style>
+
+    <style>
+      .section.contact-container {
+        width: 100vw;
+        height: fit-content;
+        /* background: red; */
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        opacity: 1;
+        padding-top: 50px;
+      }
+    </style>
+
+    <!-- Markdown + sanitizer -->
+    <script
+      defer
+      src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"
+    ></script>
+    <script
+      defer
+      src="https://cdn.jsdelivr.net/npm/dompurify@3.1.7/dist/purify.min.js"
+    ></script>
+  </head>
+  <body onload="loadPage()">
+    <main>
+      <nav id="nav-bar">
+        <section id="nav-bar-container">
+          <div id="logo-container" onclick="window.location = '../'">
+            <img id="logo-image" src="../assets/logo_no_bg.png" />
+            <span>BibleBoard</span>
+          </div>
+          <div id="nav-pills-container">
+            <button class="nav-pill" onclick="window.location = '../'">
+              Demo
+            </button>
+            <button class="nav-pill" onclick="window.location = '../'">
+              Features
+            </button>
+            <button
+              class="nav-pill"
+              onclick="window.location = '../'"
+              style="display: none"
+            >
+              Testimonials
+            </button>
+            <button class="nav-pill" style="display: none">Support Us</button>
+          </div>
+          <div id="action-buttons-container">
+            <button class="action-button">Get Started</button>
+          </div>
+        </section>
+      </nav>
+      <section
+        class="section main"
+        style="opacity: 1; left: 50%; transform: translate(-50%)"
+      >
+        <div id="main-section-img-container" style="height: calc(100% - 100px)">
+          <img
+            id="main-section-img"
+            style="opacity: 0.6"
+            src="../assets/Paper Airplane in Serene Meadow.png"
+          />
+          <div id="main-section-img-fader-top"></div>
+          <div id="main-section-img-fader-bottom"></div>
+          <div id="main-section-img-fader-right"></div>
+          <div id="main-section-img-fader-left"></div>
+        </div>
+      </section>
+
+      <section
+        class="section sub-main"
+        style="
+          opacity: 1;
+          position: absolute;
+          top: 0px;
+          left: 50%;
+          transform: translate(-50%);
+        "
+      >
+        <div id="text-container">
+          <h1 id="main-section-header-text" style="opacity: 1; transform: none">
+            Send Us a Message and Let’s Get in Touch.
+          </h1>
+          <h4 id="main-section-sub-text" style="opacity: 1; transform: none">
+            We open to hearing all feedback or suggestion you may have to better
+            improve BibleBoard.
+          </h4>
+        </div>
+      </section>
+    </main>
+    <section class="section contact-container">
+      <div class="wrap contact-wrapper">
+        <div id="contact-section-text">
+          <div id="features-section-text-header">Get in touch with us.</div>
+          <div id="features-section-subheader">
+            BibleBoard gives you a visual place to lay out Scripture, insights,
+            and worship ideas. Have a question or feature request? Drop us a
+            line below.
+          </div>
+
+          <!-- <div class="contact-methods">
+            <div class="method-item">
+              <span class="label">Email</span>
+              <span class="value">support@bibleboard.ca</span>
+            </div>
+          </div> -->
+        </div>
+
+        <div id="contact-section-form">
+          <form id="contactForm" action="https://api.web3forms.com/submit" method="POST" class="bibleboard-form">
+            <div class="form-group">
+              <label for="name">Name</label>
+              <input
+                type="text"
+                id="name"
+                name="name"
+                placeholder="Your Name"
+                required
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="email">Email</label>
+              <input
+                type="email"
+                id="email"
+                name="email"
+                placeholder="you@example.com"
+                required
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="message">Message</label>
+              <textarea
+                id="message"
+                name="message"
+                rows="5"
+                placeholder="How can we help you?"
+                required
+              ></textarea>
+            </div>
+
+            <button type="submit" class="submit-btn">
+              <span>Send Message</span>
+              <div class="spinner"></div>
+            </button>
+
+            <p id="form-status" class="form-status"></p>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <footer class="site-footer">
+      <div class="footer-container">
+        <div class="footer-grid">
+          <div class="footer-brand-col">
+            <div class="footer-logo">
+              <div class="logo-icon">
+                <img id="footer-logo-img" src="../assets/logo_no_bg.png" />
+              </div>
+              <span class="logo-text">BibleBoard</span>
+            </div>
+
+            <p class="footer-desc">Turn scattered study into living boards.</p>
+
+            <!-- <div class="footer-socials">
+                    <a href="#" class="social-link"><i class="fa-brands fa-facebook-f"></i></a>
+                    <a href="#" class="social-link"><i class="fa-brands fa-instagram"></i></a>
+                    <a href="#" class="social-link"><i class="fa-brands fa-x-twitter"></i></a>
+                    <a href="#" class="social-link"><i class="fa-brands fa-linkedin-in"></i></a>
+                </div> -->
+          </div>
+
+          <div class="footer-spacer"></div>
+
+          <div class="footer-links-col">
+            <div class="footer-link-group">
+              <h3>Company</h3>
+              <ul>
+                <li><a href="../">About us</a></li>
+                <li><a href="../">Contact us</a></li>
+              </ul>
+            </div>
+
+            <div class="footer-link-group">
+              <h3>Legal</h3>
+              <ul>
+                <li><a href="../legal/?doc=privacy">Privacy Policy</a></li>
+                <li><a href="../legal/?doc=terms">Terms of Service</a></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="footer-bottom">
+          <p class="copyright">© 2025 BibleBoard. All rights reserved.</p>
+
+          <div class="footer-bottom-links">
+            <a href="../legal/?doc=privacy">Privacy Policy</a>
+            <a href="../legal/?doc=terms">Terms of Service</a>
+          </div>
+        </div>
+        <div id="bible-board-bottom-img-container">
+          <img
+            id="bible-board-bottom-img"
+            src="../assets/bibleboardbottom.png"
+          />
+        </div>
+      </div>
+    </footer>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script type="module" src="../supabaseClient.js"></script>
+  </body>
+</html>
