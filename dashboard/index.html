@@ -82,7 +82,7 @@
       left: 15px;
     }
   </style>
-  <!-- <script src="https://cdn.jsdelivr.net/npm/@revenuecat/purchases-js@latest/dist/Purchases.umd.min.js"></script> -->
+  <script src="https://cdn.jsdelivr.net/npm/@revenuecat/purchases-js@latest/dist/Purchases.umd.min.js"></script>
 </head>
 
 <body class="light">
@@ -497,6 +497,22 @@
         
         <button onclick="closeDeleteModal()" class="modal-btn cancel">Cancel</button>
         <button type="button" id="confirm-delete-btn" class="modal-btn delete-solid">Delete</button>      </div>
+    </div>
+  </div>
+
+  <div id="subscription-modal" class="hidden">
+    <div class="paywall-card">
+      <img src="../assets/logo_no_bg.png" width="50" style="filter: brightness(1000%); margin-bottom:10px;">
+      <h1>Access BibleBoard</h1>
+      <p style="color:var(--muted); margin-bottom:20px;">Unlock unlimited boards and features.</p>
+      <div class="price-tag">$5</div>
+      <div class="price-sub">per month</div>
+      
+      <button id="paywall-sub-btn" class="cta-btn">Subscribe Now</button>
+      
+      <div style="margin-top:15px;">
+          <a id="paywall-out-btn" class="signout">Sign Out</a>
+      </div>
     </div>
   </div>
 

@@ -874,3 +874,185 @@ async function init() {
 }
 
 init();
+
+
+
+
+
+
+
+
+
+/* ==================== UNIFIED SELECTION FIX ==================== */
+
+// 1. Ensure Global Queues Exist
+window.pendingVerseAdds = window.pendingVerseAdds || new Map();
+window.pendingSongAdds = window.pendingSongAdds || new Map();
+window.pendingInterlinearAdds = window.pendingInterlinearAdds || new Map();
+
+// 2. Unified Verse Toggle (Fixes the split-brain issue)
+// This replaces the old 'toggleVerseSelection' that used verseSelectionQueue
+function toggleVerseSelection(verseData, btnElement) {
+  // Create a unique key including version to prevent collisions
+  const key = `${verseData.reference}::${verseData.version}`;
+
+  if (window.pendingVerseAdds.has(key)) {
+    // REMOVE
+    window.pendingVerseAdds.delete(key);
+    if (btnElement) btnElement.classList.remove("selected");
+    
+    // Also find the row and remove highlighting
+    const row = btnElement ? btnElement.closest('.search-query-verse-container') : null;
+    if (row) row.classList.remove("selected-for-add");
+    
+  } else {
+    // ADD
+    window.pendingVerseAdds.set(key, verseData);
+    if (btnElement) btnElement.classList.add("selected");
+    
+    const row = btnElement ? btnElement.closest('.search-query-verse-container') : null;
+    if (row) row.classList.add("selected-for-add");
+  }
+
+  // Trigger the master button update
+  updateFloatingAddButton();
+}
+
+// 3. Unified "Add to Board" Button Update
+// Counts items from ALL three maps (Verses + Songs + Interlinear)
+function updateFloatingAddButton() {
+  const floatBtn = document.getElementById("floating-add-to-board-btn");
+  if (!floatBtn) return;
+
+  const vCount = window.pendingVerseAdds.size;
+  const sCount = window.pendingSongAdds.size;
+  const iCount = window.pendingInterlinearAdds.size;
+  
+  const total = vCount + sCount + iCount;
+
+  if (total > 0) {
+    floatBtn.style.display = "inline-flex";
+    
+    // Clear and rebuild button content
+    floatBtn.replaceChildren ? floatBtn.replaceChildren() : (floatBtn.innerHTML = "");
+    
+    // Icon
+    const icon = document.createElement("span");
+    icon.className = "material-symbols-outlined";
+    icon.textContent = "add_circle";
+    icon.style.marginRight = "6px";
+    
+    // Text
+    const text = document.createElement("span");
+    text.textContent = `Add ${total} Item${total !== 1 ? "s" : ""}`;
+    
+    floatBtn.appendChild(icon);
+    floatBtn.appendChild(text);
+
+    // Rebind click to the master flush function (clone to strip old listeners)
+    const newBtn = floatBtn.cloneNode(true);
+    floatBtn.parentNode.replaceChild(newBtn, floatBtn);
+    newBtn.onclick = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      handleFloatingAddClick();
+    };
+  } else {
+    floatBtn.style.display = "none";
+  }
+}
+
+// 4. Master Flush Function
+// Takes items from all queues and adds them to the board
+function handleFloatingAddClick() {
+  // Hide UI
+  clearSelection();
+  closeInterlinearPanel();
+  closeSearchQuery();
+
+  const verses = Array.from(window.pendingVerseAdds.values());
+  const songs = Array.from(window.pendingSongAdds.values());
+  const interlinear = Array.from(window.pendingInterlinearAdds.values());
+
+  if (verses.length === 0 && songs.length === 0 && interlinear.length === 0) return;
+
+  // Clear Queues
+  window.pendingVerseAdds.clear();
+  window.pendingSongAdds.clear();
+  window.pendingInterlinearAdds.clear();
+  
+  updateFloatingAddButton(); // Hide button immediately
+
+  let delay = 0.05;
+
+  // --- PROCESS VERSES (Group continuous ranges) ---
+  if (verses.length > 0) {
+    // Sort
+    const parseRef = (ref) => {
+      const m = ref.match(/:(\d+)$/);
+      return m ? parseInt(m[1]) : 0;
+    };
+    verses.sort((a, b) => parseRef(a.reference) - parseRef(b.reference));
+
+    // Group
+    let groups = [[verses[0]]];
+    for (let i = 1; i < verses.length; i++) {
+        const prev = groups[groups.length-1][groups[groups.length-1].length-1];
+        const curr = verses[i];
+        const prevNum = parseRef(prev.reference);
+        const currNum = parseRef(curr.reference);
+        
+        // Check if same book/chapter and sequential verse
+        const prevBase = prev.reference.split(":")[0];
+        const currBase = curr.reference.split(":")[0];
+        
+        if (prevBase === currBase && currNum === prevNum + 1) {
+            groups[groups.length-1].push(curr);
+        } else {
+            groups.push([curr]);
+        }
+    }
+
+    // Add Groups
+    groups.forEach(group => {
+        if (group.length === 1) {
+            const v = group[0];
+            window.BoardAPI.addBibleVerse(v.reference, v.text, false, v.version, delay);
+        } else {
+            // Range
+            const first = group[0];
+            const last = group[group.length - 1];
+            const baseRef = first.reference.split(":")[0];
+            const startV = first.reference.split(":")[1];
+            const endV = last.reference.split(":")[1];
+            
+            // Combine text: Ensure [N] spacing
+            const combinedText = group.map(v => {
+                const vNum = v.reference.split(":")[1];
+                // Strip existing [N] to avoid double brackets
+                const clean = v.text.replace(/^\[\d+\]\s*/, "").replace(/^\d+\s+/, "");
+                return `[${vNum}] ${clean}`;
+            }).join(" ");
+            
+            window.BoardAPI.addBibleVerse(`${baseRef}:${startV}-${endV}`, combinedText, false, first.version, delay);
+        }
+        delay += 0.15;
+    });
+  }
+
+  // --- PROCESS SONGS ---
+  songs.forEach(song => {
+    window.BoardAPI.addSongElement(song, delay);
+    delay += 0.15;
+  });
+
+  // --- PROCESS INTERLINEAR ---
+  interlinear.forEach(item => {
+    window.BoardAPI.addInterlinearCard(item, delay);
+    delay += 0.15;
+  });
+
+  // Cleanup Visuals
+  document.querySelectorAll(".selected-for-add").forEach(el => el.classList.remove("selected-for-add"));
+  document.querySelectorAll(".search-query-verse-add-button.selected").forEach(el => el.classList.remove("selected"));
+}

@@ -988,113 +988,6 @@ async function fetchChapterText(book, chapter, signal, version = "KJV") {
   }
 }
 
-function renderChapter(container, verses, targetVerse, refString, book, version) {
-  if (!container || !verses || verses.length === 0) {
-    container.innerHTML = `<div class="search-query-no-verse-found-container" style="text-align:center; color:var(--muted); padding: 15px;">No matching verses found.</div>`;
-    return;
-  }
-
-  const verseList = document.createElement("div");
-  verseList.className = "verse-list-container";
-  const chapterNum = refString.match(/\d+$/)?.[0] || "";
-
-  verses.forEach(verse => {
-    const fullRef = `${book} ${chapterNum}:${verse.verse}`;
-    const rawText = verse.text.replace(/"/g, "&quot;"); 
-    const displayText = verse.text.replace(/^\[\d+\]\s*/, "");
-
-    const key = `${fullRef}::${version}`;
-    const isSelected = pendingVerseAdds.has(key);
-    const selectedClass = isSelected ? 'selected-for-add' : '';
-    const btnSelectedClass = isSelected ? 'selected' : '';
-
-    // Highlight target verse
-    let isTarget = verse.verse == targetVerse;
-
-    verseList.innerHTML += `
-      <div class="verse ${isTarget ? 'highlighted' : ''} ${selectedClass}" 
-           data-verse="${verse.verse}" 
-           data-ref="${fullRef}" 
-           data-version="${version}" 
-           data-text="${rawText}"> 
-        <span class="verse-number">${verse.verse}</span>
-        <span class="verse-text">${displayText}</span> 
-        <button class="search-query-verse-add-button ${btnSelectedClass}" 
-                aria-label="Add verse ${fullRef}">
-        </button>
-      </div>
-    `;
-  });
-
-  container.innerHTML = ""; 
-  container.appendChild(verseList);
-
-  // --- COPYRIGHT FOOTER LOGIC ---
-  const COPYRIGHT_NOTICES = {
-    NLT: `Scripture quotations are taken from the Holy Bible, New Living Translation, copyright © 1996, 2004, 2015 by Tyndale House Foundation. Used by permission of Tyndale House Publishers, Inc., Carol Stream, Illinois 60188. All rights reserved.`,
-    FBV: `The Free Bible Version is licensed under a <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank">Creative Commons Attribution-ShareAlike 4.0 International License</a>.`,
-    WEBUS: `The World English Bible is in the Public Domain.`,
-    KJV: `Public Domain.`,
-    ASV: `Public Domain.`
-  };
-
-  // Get the notice for the current version (or default to empty if unknown)
-  const noticeText = COPYRIGHT_NOTICES[version];
-
-  if (noticeText) {
-    const copyright = document.createElement("div");
-    copyright.className = "chapter-copyright"; // Uses new generic class
-    copyright.innerHTML = noticeText;
-    container.appendChild(copyright);
-  }
-}
-/**
- * Renders a list of individual verse results (Text Search).
- * UPDATED: Strips [N] from display text.
- */
-function renderVerseList(container, versesData, version) {
-  if (!container || !versesData || versesData.length === 0) {
-    container.innerHTML = `<div class="search-query-no-verse-found-container" style="text-align:center; color:var(--muted); padding: 15px;">No matching verses found.</div>`;
-    return;
-  }
-
-  const verseList = document.createElement("div");
-  verseList.className = "verse-list-container"; 
-
-  let html = "";
-
-  for (const verseData of versesData) {
-    const fullRef = verseData.ref;
-    const text = verseData.text.replace(/"/g, "&quot;"); // Raw text for data
-    const displayText = cleanDisplayVerse(verseData.text); // Clean for display
-
-    const key = `${fullRef}::${version}`;
-    const isSelected = pendingVerseAdds.has(key);
-    const selectedClass = isSelected ? 'selected-for-add' : '';
-    const btnSelectedClass = isSelected ? 'selected' : '';
-
-    html += `
-      <div class="verse verse-card-style ${selectedClass}" 
-           data-ref="${fullRef}" 
-           data-version="${version}" 
-           data-text="${text}">
-        
-        <span class="verse-number verse-ref-style">${fullRef}</span>
-        <span class="verse-text verse-text-style">${displayText}</span>
-        
-        <button class="search-query-verse-add-button ${btnSelectedClass}" 
-                aria-label="Add verse ${fullRef}">
-        </button>
-      </div>
-    `;
-  }
-
-  verseList.innerHTML = html;
-  container.innerHTML = ""; 
-  container.appendChild(verseList);
-}
-
-
 /**
  * NEW: Scrolls the search panel to a specific verse number.
  */
@@ -1204,48 +1097,6 @@ function setSearchMode(mode, opts = {}) {
 }
 
 /**
- * NEW: Updates the floating "Add to Board" button's visibility and text.
- * Updated to include Interlinear items.
- */
-function updateFloatingAddButton() {
-  if (!floatingAddBtn) return;
-
-  const vCount = pendingVerseAdds.size;
-  const sCount = window.pendingSongAdds ? window.pendingSongAdds.size : 0;
-  const iCount = window.pendingInterlinearAdds ? window.pendingInterlinearAdds.size : 0;
-
-  const count = vCount + sCount + iCount;
-
-  // If nothing is selected, hide and clear the button
-  if (count === 0) {
-    floatingAddBtn.style.display = "none";
-    floatingAddBtn.replaceChildren?.() || (floatingAddBtn.innerHTML = "");
-    return;
-  }
-
-  // Show the button
-  floatingAddBtn.style.display = "inline-flex"; 
-
-  // Clear any previous content
-  floatingAddBtn.replaceChildren?.() || (floatingAddBtn.innerHTML = "");
-
-  // Label text
-  const labelSpan = document.createElement("span");
-  labelSpan.textContent = `Add ${count} item${count > 1 ? "s" : ""}`;
-  floatingAddBtn.appendChild(labelSpan);
-
-  // SVG icon
-  const SVG_NS = "http://www.w3.org/2000/svg";
-  const iconElement = document.createElementNS(SVG_NS, "svg");
-  iconElement.setAttribute("class", "add-to-board-icon-open");
-  iconElement.setAttribute("viewBox", "0 -960 960 960");
-  const path = document.createElementNS(SVG_NS, "path");
-  path.setAttribute("d", "M212-86q-53 0-89.5-36.5T86-212v-536q0-53 36.5-89.5T212-874h268v126H212v536h536v-268h126v268q0 53-36.5 89.5T748-86H212Zm207-246-87-87 329-329H560v-126h314v314H748v-101L419-332Z");
-  iconElement.appendChild(path);
-  floatingAddBtn.appendChild(iconElement);
-}
-
-/**
  * 1. helper function to toggle selection in the global map
  * Paste this near the bottom of script.js
  */
@@ -1273,59 +1124,6 @@ function toggleInterlinearSelection(btn, row, data) {
     updateFloatingAddButton();
   }
 }
-
-/**
- * UPDATED: Adds all pending verses, songs, AND interlinear items with ANIMATION DELAYS.
- */
-function handleFloatingAddClick() {
-  clearSelection();
-  closeInterlinearPanel();
-  closeSearchQuery();
-
-  // Snapshot queues
-  const versesToAdd = Array.from(pendingVerseAdds.values());
-  const songsToAdd  = window.pendingSongAdds ? Array.from(window.pendingSongAdds.values()) : [];
-  const interlinearToAdd = window.pendingInterlinearAdds ? Array.from(window.pendingInterlinearAdds.values()) : [];
-
-  if (versesToAdd.length === 0 && songsToAdd.length === 0 && interlinearToAdd.length === 0) return;
-
-  // Clear queues immediately
-  pendingVerseAdds.clear();
-  if (window.pendingSongAdds) window.pendingSongAdds.clear();
-  if (window.pendingInterlinearAdds) window.pendingInterlinearAdds.clear();
-
-  let delay = 0.05; // Start with a tiny delay
-
-  // 1. Add Verses
-  for (const { ref, text, version } of versesToAdd) {
-    window.BoardAPI.addBibleVerse(ref, text, false, version, delay);
-    delay += 0.10; // Stagger effect
-    prefetchAdjacentVerses(ref, null, version);
-  }
-
-  // 2. Add Songs
-  for (const song of songsToAdd) {
-    if (typeof window.BoardAPI.addSongElement === "function") {
-      window.BoardAPI.addSongElement(song, delay);
-    }
-    delay += 0.10;
-  }
-
-  // 3. Add Interlinear Items (NOW WITH DELAY)
-  for (const item of interlinearToAdd) {
-    window.BoardAPI.addInterlinearCard(item, delay); 
-    delay += 0.10; 
-  }
-
-  // Clear visual selection states
-  document.querySelectorAll(".selected-for-add").forEach(el => {
-    el.classList.remove("selected-for-add");
-    el.querySelector('.search-query-verse-add-button')?.classList.remove('selected');
-  });
-
-  updateFloatingAddButton();
-}
-
 
 // --- NEW: Add global click listener for the floating button ---
 floatingAddBtn?.addEventListener("click", function() {
@@ -2667,33 +2465,85 @@ async function fetchVerseData(ref, signal, version) {
 /**
  * UPDATED: Creates a final, ready-to-add verse card element with clean text.
  */
-function buildVerseCard(ref, text, signal, version) {
-  const item = document.createElement("div");
-  item.classList.add("search-query-verse-container");
-  item.dataset.status = "ready";
+function buildSongCard(song) {
+  const title  = song.title  || song.trackName || song.name || '';
+  const artist = song.artist || song.artistName || song.author || '';
+  const lyrics = song.lyrics || '';
+  const cover  = song.cover  || song.artworkUrl100 || song.image || '';
 
-  item.dataset.ref = ref;
-  item.dataset.version = version;
-  item.dataset.text = text; // Keeps [1]
-
-  const key = `${ref}::${version}`;
-  if (pendingVerseAdds.has(key)) {
-    item.classList.add("selected-for-add");
-  }
-  const btnSelectedClass = pendingVerseAdds.has(key) ? 'selected' : '';
+  const row = document.createElement('div');
+  row.className = 'search-query-verse-container verse song-row';
   
-  // Clean display text
-  const displayText = cleanDisplayVerse(text);
+  // Data attributes for recreation
+  row.dataset.title  = title;
+  row.dataset.artist = artist;
+  row.dataset.lyrics = lyrics;
+  row.dataset.cover  = cover;
 
-  item.innerHTML = `
-    <div class="search-query-verse-text">${displayText}</div>
-    <div class="search-query-verse-reference">– ${ref} ${version.toUpperCase()}</div>
-    <button class="search-query-verse-add-button ${btnSelectedClass}" 
-            aria-label="Add verse ${ref}">
-    </button>
-  `;
+  // --- FIX: Check Global Queue for Initial State ---
+  // Note: Song keys are tricky if you don't have a unique ID. We use Title+Artist.
+  // The unified flush logic relies on `pendingSongAdds`.
+  const key = `song::${(title||'').trim()}::${(artist||'').trim()}`;
+  const isSelected = window.pendingSongAdds && window.pendingSongAdds.has(key);
+  
+  if (isSelected) {
+      row.classList.add('selected-for-add');
+  }
 
-  return item;
+  const img = document.createElement('img');
+  img.className = 'song-cover';
+  img.alt = title ? `Cover art for ${title}` : 'Cover art';
+  if (cover) img.src = cover;
+
+  const textWrap = document.createElement('div');
+  textWrap.className = 'song-meta';
+
+  const titleEl = document.createElement('div');
+  titleEl.className = 'song-title';
+  titleEl.textContent = title || 'Untitled';
+
+  const artistEl = document.createElement('div');
+  artistEl.className = 'song-artist';
+  artistEl.textContent = artist || 'Unknown';
+
+  textWrap.appendChild(titleEl);
+  textWrap.appendChild(artistEl);
+
+  const addBtn = document.createElement('button');
+  addBtn.className = 'search-query-verse-add-button';
+  addBtn.setAttribute('aria-label', `Add song ${title} by ${artist}`);
+  
+  if (isSelected) {
+      addBtn.classList.add('selected');
+  }
+
+  // Toggle Logic
+  function toggle() {
+    if (!window.pendingSongAdds) window.pendingSongAdds = new Map();
+    
+    if (window.pendingSongAdds.has(key)) {
+      window.pendingSongAdds.delete(key);
+      row.classList.remove('selected-for-add');
+      addBtn.classList.remove('selected');
+    } else {
+      window.pendingSongAdds.set(key, { title, artist, lyrics, cover });
+      row.classList.add('selected-for-add');
+      addBtn.classList.add('selected');
+    }
+    if (typeof updateFloatingAddButton === 'function') updateFloatingAddButton();
+  }
+
+  addBtn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); toggle(); });
+  row.addEventListener('click', (e) => {
+    if (e.target && e.target.closest('.search-query-verse-add-button')) return;
+    toggle();
+  });
+
+  row.appendChild(img);
+  row.appendChild(textWrap);
+  row.appendChild(addBtn);
+
+  return row;
 }
 
 /**
@@ -5945,28 +5795,6 @@ window.BoardAPI.addInterlinearCard = addInterlinearCard;
 const verseSelectionQueue = new Map();
 
 /**
- * Toggles a verse in the selection queue (Add/Remove).
- * Updates the button style and the floating "Add" button.
- */
-function toggleVerseSelection(verseData, btnElement) {
-  const key = verseData.reference; // Unique ID, e.g., "Genesis 1:1"
-
-  if (verseSelectionQueue.has(key)) {
-    // Deselect
-    verseSelectionQueue.delete(key);
-    btnElement.classList.remove("selected");
-    // CSS handles the icon switch back to '+' via ::before
-  } else {
-    // Select
-    verseSelectionQueue.set(key, verseData);
-    btnElement.classList.add("selected");
-    // CSS handles the icon switch to 'check' via ::before
-  }
-
-  updateFloatingButton();
-}
-
-/**
  * Updates the Floating "Add to Board" Button in the top right.
  */
 function updateFloatingButton() {
@@ -6168,4 +5996,348 @@ function renderVerses(verses) {
   
   // Ensure float button visibility matches current queue
   updateFloatingButton();
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* =============================================================================
+   UNIFIED SELECTION SYSTEM (Fixes Bible Search Separation)
+   Paste this at the bottom of script.js to overwrite separate logic.
+   ============================================================================= */
+
+// 1. GLOBAL SHARED STATE
+// All three modes will now write to these shared maps.
+window.pendingVerseAdds = window.pendingVerseAdds || new Map();
+window.pendingSongAdds = window.pendingSongAdds || new Map();
+window.pendingInterlinearAdds = window.pendingInterlinearAdds || new Map();
+
+// 2. UNIFIED VERSE TOGGLE
+// Handles logic for BOTH Chapter View (Ref Search) AND List View (Text Search)
+function toggleVerseSelection(verseData, btnElement) {
+  // Composite key ensures we track specific versions (e.g. "John 3:16::KJV")
+  const key = `${verseData.reference}::${verseData.version}`;
+
+  if (window.pendingVerseAdds.has(key)) {
+    // REMOVE
+    window.pendingVerseAdds.delete(key);
+    if (btnElement) btnElement.classList.remove("selected");
+    
+    // Visually unselect the row too
+    const row = btnElement ? btnElement.closest('.search-query-verse-container, .verse') : null;
+    if (row) row.classList.remove("selected-for-add");
+    
+  } else {
+    // ADD
+    window.pendingVerseAdds.set(key, verseData);
+    if (btnElement) btnElement.classList.add("selected");
+    
+    const row = btnElement ? btnElement.closest('.search-query-verse-container, .verse') : null;
+    if (row) row.classList.add("selected-for-add");
+  }
+
+  // Update the single floating button shared by all modes
+  updateFloatingAddButton();
+}
+
+// 3. UNIFIED FLOATING BUTTON UPDATE
+// Counts items from ALL maps to show the total.
+function updateFloatingAddButton() {
+  const floatBtn = document.getElementById("floating-add-to-board-btn");
+  if (!floatBtn) return;
+
+  const vCount = window.pendingVerseAdds.size;
+  const sCount = window.pendingSongAdds.size;
+  const iCount = window.pendingInterlinearAdds.size;
+  
+  const total = vCount + sCount + iCount;
+
+  if (total > 0) {
+    floatBtn.style.display = "inline-flex";
+    
+    // Rebuild button content
+    floatBtn.innerHTML = "";
+    
+    // Icon
+    const SVG_NS = "http://www.w3.org/2000/svg";
+    const icon = document.createElementNS(SVG_NS, "svg");
+    icon.setAttribute("class", "add-to-board-icon-open");
+    icon.setAttribute("viewBox", "0 -960 960 960");
+    const path = document.createElementNS(SVG_NS, "path");
+    path.setAttribute("d", "M212-86q-53 0-89.5-36.5T86-212v-536q0-53 36.5-89.5T212-874h268v126H212v536h536v-268h126v268q0 53-36.5 89.5T748-86H212Zm207-246-87-87 329-329H560v-126h314v314H748v-101L419-332Z");
+    icon.appendChild(path);
+    
+    // Text
+    const text = document.createElement("span");
+    text.textContent = `Add ${total} Item${total !== 1 ? "s" : ""}`;
+    
+    floatBtn.appendChild(icon);
+    floatBtn.appendChild(text);
+
+    // Remove old listeners and attach the unified handler
+    const newBtn = floatBtn.cloneNode(true);
+    floatBtn.parentNode.replaceChild(newBtn, floatBtn);
+    
+    newBtn.onclick = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      handleFloatingAddClick();
+    };
+  } else {
+    floatBtn.style.display = "none";
+  }
+}
+
+// 4. UNIFIED "ADD TO BOARD" ACTION
+// Flushes all three queues to the board at once.
+function handleFloatingAddClick() {
+  // Hide UI immediately
+  if (typeof clearSelection === 'function') clearSelection();
+  if (typeof closeInterlinearPanel === 'function') closeInterlinearPanel();
+  if (typeof closeSearchQuery === 'function') closeSearchQuery();
+
+  const verses = Array.from(window.pendingVerseAdds.values());
+  const songs = Array.from(window.pendingSongAdds.values());
+  const interlinear = Array.from(window.pendingInterlinearAdds.values());
+
+  if (verses.length === 0 && songs.length === 0 && interlinear.length === 0) return;
+
+  // Clear State
+  window.pendingVerseAdds.clear();
+  window.pendingSongAdds.clear();
+  window.pendingInterlinearAdds.clear();
+  updateFloatingAddButton(); // Hide button
+
+  let delay = 0.05;
+
+  // --- ADD VERSES (Grouped by Chapter & Version) ---
+  // This logic ensures verses like Gen 1:1 and 1:2 appear as "Genesis 1:1-2"
+  if (verses.length > 0) {
+    // Helper to extract number from ref
+    const parseRef = (ref) => {
+      const m = ref.match(/:(\d+)$/);
+      return m ? parseInt(m[1]) : 0;
+    };
+
+    // Sort by book/chapter/verse order roughly
+    verses.sort((a, b) => {
+        if (a.reference === b.reference) return 0;
+        // Use simple verse comparison for now, assumes same book/chapter in groups
+        return parseRef(a.reference) - parseRef(b.reference);
+    });
+
+    // Group continuous verses
+    let groups = [[verses[0]]];
+    for (let i = 1; i < verses.length; i++) {
+        const prev = groups[groups.length-1][groups[groups.length-1].length-1];
+        const curr = verses[i];
+        const prevNum = parseRef(prev.reference);
+        const currNum = parseRef(curr.reference);
+        
+        const prevBase = prev.reference.split(":")[0];
+        const currBase = curr.reference.split(":")[0];
+        
+        // Only group if: Same Book/Chapter AND Same Version AND Sequential
+        if (prevBase === currBase && prev.version === curr.version && currNum === prevNum + 1) {
+            groups[groups.length-1].push(curr);
+        } else {
+            groups.push([curr]);
+        }
+    }
+
+    // Add to board
+    groups.forEach(group => {
+        if (group.length === 1) {
+            const v = group[0];
+            window.BoardAPI.addBibleVerse(v.reference, v.text, false, v.version, delay);
+        } else {
+            const first = group[0];
+            const last = group[group.length - 1];
+            const baseRef = first.reference.split(":")[0];
+            const startV = first.reference.split(":")[1];
+            const endV = last.reference.split(":")[1];
+            
+            // Combine texts
+            const combinedText = group.map(v => {
+                const vNum = v.reference.split(":")[1];
+                // Strip existing numbering to be clean
+                const clean = v.text.replace(/^\[\d+\]\s*/, "").replace(/^\d+\s+/, "");
+                return `[${vNum}] ${clean}`;
+            }).join(" ");
+            
+            window.BoardAPI.addBibleVerse(`${baseRef}:${startV}-${endV}`, combinedText, false, first.version, delay);
+        }
+        delay += 0.15;
+    });
+  }
+
+  // --- ADD SONGS ---
+  songs.forEach(song => {
+    window.BoardAPI.addSongElement(song, delay);
+    delay += 0.15;
+  });
+
+  // --- ADD INTERLINEAR ---
+  interlinear.forEach(item => {
+    window.BoardAPI.addInterlinearCard(item, delay);
+    delay += 0.15;
+  });
+
+  // Cleanup Visuals in DOM (in case panel re-opens without refresh)
+  document.querySelectorAll(".selected-for-add").forEach(el => el.classList.remove("selected-for-add"));
+  document.querySelectorAll(".search-query-verse-add-button.selected").forEach(el => el.classList.remove("selected"));
+}
+
+/* =============================================================================
+   RENDERER FIXES: Ensure Lists Check the Shared Queue
+   Overwrite the existing renderVerseList to make Bible Search consistent.
+   ============================================================================= */
+
+function renderVerseList(container, versesData, version) {
+  if (!container || !versesData || versesData.length === 0) {
+    container.innerHTML = `<div class="search-query-no-verse-found-container" style="text-align:center; color:var(--muted); padding: 15px;">No matching verses found.</div>`;
+    return;
+  }
+
+  const verseList = document.createElement("div");
+  verseList.className = "verse-list-container"; 
+
+  let html = "";
+
+  for (const verseData of versesData) {
+    const fullRef = verseData.ref;
+    const text = verseData.text.replace(/"/g, "&quot;");
+    const displayText = cleanDisplayVerse(verseData.text);
+
+    // --- THE FIX: Check the SHARED queue, not the old isolated one ---
+    const key = `${fullRef}::${version}`;
+    const isSelected = window.pendingVerseAdds.has(key);
+    
+    const selectedClass = isSelected ? 'selected-for-add' : '';
+    const btnSelectedClass = isSelected ? 'selected' : '';
+
+    html += `
+      <div class="verse verse-card-style ${selectedClass}" 
+           data-ref="${fullRef}" 
+           data-version="${version}" 
+           data-text="${text}">
+        
+        <span class="verse-number verse-ref-style">${fullRef}</span>
+        <span class="verse-text verse-text-style">${displayText}</span>
+        
+        <button class="search-query-verse-add-button ${btnSelectedClass}" 
+                aria-label="Add verse ${fullRef}">
+        </button>
+      </div>
+    `;
+  }
+
+  verseList.innerHTML = html;
+  container.innerHTML = ""; 
+  container.appendChild(verseList);
+}
+
+// Also patch the Chapter Renderer (Reference Search) to be safe
+function renderChapter(container, verses, targetVerse, refString, book, version) {
+  if (!container || !verses || verses.length === 0) {
+    container.innerHTML = `<div class="search-query-no-verse-found-container" style="text-align:center; color:var(--muted); padding: 15px;">No matching verses found.</div>`;
+    return;
+  }
+
+  const verseList = document.createElement("div");
+  verseList.className = "verse-list-container";
+  const chapterNum = refString.match(/\d+$/)?.[0] || "";
+
+  verses.forEach(verse => {
+    const fullRef = `${book} ${chapterNum}:${verse.verse}`;
+    const rawText = verse.text.replace(/"/g, "&quot;"); 
+    const displayText = verse.text.replace(/^\[\d+\]\s*/, "");
+
+    // --- THE FIX: Check shared queue ---
+    const key = `${fullRef}::${version}`;
+    const isSelected = window.pendingVerseAdds.has(key);
+    
+    const selectedClass = isSelected ? 'selected-for-add' : '';
+    const btnSelectedClass = isSelected ? 'selected' : '';
+
+    let isTarget = verse.verse == targetVerse;
+
+    verseList.innerHTML += `
+      <div class="verse ${isTarget ? 'highlighted' : ''} ${selectedClass}" 
+           data-verse="${verse.verse}" 
+           data-ref="${fullRef}" 
+           data-version="${version}" 
+           data-text="${rawText}"> 
+        <span class="verse-number">${verse.verse}</span>
+        <span class="verse-text">${displayText}</span> 
+        <button class="search-query-verse-add-button ${btnSelectedClass}" 
+                aria-label="Add verse ${fullRef}">
+        </button>
+      </div>
+    `;
+  });
+
+  container.innerHTML = ""; 
+  container.appendChild(verseList);
+  
+  // Append copyright (reuse existing logic if available, or minimal fallback)
+  const noticeText = ({
+    NLT: `Scripture quotations are taken from the Holy Bible, New Living Translation, copyright © 1996, 2004, 2015 by Tyndale House Foundation. Used by permission of Tyndale House Publishers, Inc., Carol Stream, Illinois 60188. All rights reserved.`,
+    FBV: `The Free Bible Version is licensed under a Creative Commons Attribution-ShareAlike 4.0 International License.`,
+    WEBUS: `The World English Bible is in the Public Domain.`,
+    KJV: `Public Domain.`,
+    ASV: `Public Domain.`
+  })[version];
+
+  if (noticeText) {
+    const copyright = document.createElement("div");
+    copyright.className = "chapter-copyright";
+    copyright.innerHTML = noticeText;
+    container.appendChild(copyright);
+  }
 }

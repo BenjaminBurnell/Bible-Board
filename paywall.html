@@ -3,41 +3,373 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Access — BibleBoard</title>
+  <title>Choose Plan — BibleBoard</title>
   <link rel="stylesheet" href="style.css" />
+  <link rel="shortcut icon" href="assets/logo_with_bg.png" type="image/x-icon">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,400..700,0,0" />
+  <script src="https://cdn.jsdelivr.net/npm/@revenuecat/purchases-js@latest/dist/Purchases.umd.min.js"></script>
+  
   <style>
-    body { display: flex; align-items: center; justify-content: center; height: 100vh; background: var(--bg); color: var(--fg); text-align: center; }
-    .paywall-card { max-width: 380px; padding: 40px; background: var(--bg-dots); border: 1px solid var(--border); border-radius: 20px; }
-    .price-tag { font-size: 3.5rem; font-weight: 900; color: var(--accent); margin: 10px 0; }
-    .price-sub { font-size: 1.2rem; color: var(--muted); font-weight: 600; }
-    .features { text-align: left; margin: 30px 0; line-height: 2; color: var(--fg); opacity: 0.9; }
-    .features li { list-style: none; }
-    .cta-btn { background: var(--fg); color: var(--bg); border: none; padding: 16px 32px; border-radius: 100px; font-size: 1.1rem; font-weight: 800; cursor: pointer; width: 100%; transition: 0.2s; margin-top: 10px; }
-    .cta-btn:hover { transform: scale(1.03); opacity: 0.9; }
-    .signout { margin-top: 20px; display: block; color: var(--muted); font-size: 0.9rem; text-decoration: underline; cursor: pointer; }
+    body {
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: "Atkinson Hyperlegible", sans-serif;
+    }
+
+    /* --- Layout Container --- */
+    .paywall-container {
+      padding:50px;
+      width: 100%;
+      max-width: 520px; /* Slightly wider for the card layout */
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    /* --- Header (Logo) --- */
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+    .logo-img {
+      width: 32px;
+      height: 32px;
+      filter: saturate(100%) brightness(1000%);
+    }
+    .brand-name {
+      font-weight: 800;
+      font-size: 1.2rem;
+    }
+
+    /* --- Typography --- */
+    h1 {
+      font-size: 1.8rem;
+      font-weight: 800;
+      margin: 0;
+      line-height: 1.3;
+    }
+    .highlight {
+      color: var(--accent);
+    }
+    
+    .label {
+      font-size: 0.95rem;
+      color: var(--muted);
+      margin-top: 10px;
+      font-weight: 600;
+    }
+
+    /* --- Plan Cards --- */
+    .plans-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .plan-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 24px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--bg-dots);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      position: relative;
+    }
+
+    /* Hover & Selected States */
+    .plan-card:hover {
+      border-color: var(--muted);
+    }
+    .plan-card.selected {
+      border: 1px solid var(--accent);
+      background: var(--bg-seethroug);
+      box-shadow: 0 0 0 1px var(--accent) inset;
+      padding: 19px 23px; /* Adjust padding to prevent layout shift from border width change */
+    }
+
+    /* Radio Button Visual */
+    .radio-outer {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      border: 2px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 16px;
+    }
+    .plan-card.selected .radio-outer {
+      border-color: var(--accent);
+    }
+    .radio-inner {
+      width: 10px;
+      height: 10px;
+      background-color: var(--accent);
+      border-radius: 50%;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    .plan-card.selected .radio-inner {
+      opacity: 1;
+    }
+
+    /* Text Info */
+    .plan-details {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+    .plan-name {
+      font-weight: 700;
+      font-size: 1.05rem;
+    }
+    .plan-badge {
+      display: inline-block;
+      font-size: 0.75rem;
+      background: var(--accent);
+      color: var(--bg);
+      padding: 2px 6px;
+      border-radius: 4px;
+      margin-left: 8px;
+      font-weight: 800;
+      vertical-align: middle;
+    }
+
+    /* Pricing */
+    .plan-price {
+      text-align: right;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+    }
+    .price-amount {
+      font-size: 1.1rem;
+      font-weight: 800;
+    }
+    .price-period {
+      font-size: 0.8rem;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    /* --- Features List --- */
+    .features-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .feature-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--fg);
+    }
+    .check-icon {
+      color: var(--accent);
+      font-size: 20px;
+      font-weight: 700;
+    }
+
+    /* --- CTA Button --- */
+    .cta-btn {
+      background: var(--accent);
+      color: var(--bg);
+      border: none;
+      padding: 16px;
+      border-radius: 8px; /* Matches the slightly squared look of reference */
+      font-size: 1.05rem;
+      font-weight: 800;
+      cursor: pointer;
+      width: 100%;
+      margin-top: 10px;
+      transition: opacity 0.2s;
+    }
+    .cta-btn:hover {
+      opacity: 0.9;
+    }
+    .cta-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    /* --- Footer --- */
+    .footer {
+      margin-top: 20px;
+      font-size: 0.9rem;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+    .footer strong {
+      color: var(--fg);
+    }
+    .link {
+      color: var(--muted);
+      text-decoration: underline;
+      cursor: pointer;
+    }
+    .link:hover {
+      color: var(--fg);
+    }
   </style>
-    <script src="https://cdn.jsdelivr.net/npm/@revenuecat/purchases-js@latest/dist/Purchases.umd.min.js"></script>
+
+  <style>
+    #paywall-page-container {
+      position:absolute;
+      width:100vw;
+      height:100vh;
+      display:flex;
+      flex-direction: row;
+      justify-content:center;
+      align-items:center;
+    }
+
+    #Desktop-image-container {
+      width:100%;
+      height:100vh;
+      overflow: hidden;
+      position:relative;
+      opacity:0.6;
+    }
+
+    #paywall-image {
+      width:100%;
+      height:100%;
+      object-fit:cover;
+      object-position: center;
+      filter:blur(.1rem);
+    }
+
+    #fade-right {
+      width:600px;
+      height:100vh;
+      position:absolute;
+      left:0px;
+      background:linear-gradient(to right, var(--bg), var(--bg-transparent));
+      top:0px;
+      z-index: 100;
+    }
+
+    @media (max-width:1200px) {
+      #Desktop-image-container {
+        display:none;
+      }
+    }
+  </style>
 </head>
 <body>
-  <div class="paywall-card">
-    <img src="assets/logo_no_bg.png" width="50" style="filter: brightness(1000%); margin-bottom:10px;">
-    <h1>Access BibleBoard</h1>
-    <div class="price-tag">$5</div>
-    <div class="price-sub">per month</div>
-    <button id="sub-btn" class="cta-btn">Subscribe Now</button>
-    <a id="out-btn" class="signout">Sign Out</a>
-  </div>
+
+  <section id="paywall-page-container">
+    <div class="paywall-container">
+      
+      <div class="header">
+        <img src="assets/logo_no_bg.png" class="logo-img" alt="Logo">
+        <span class="brand-name">BibleBoard</span>
+      </div>
+
+      <h1>
+        Choose the plan to unlock
+        <span class="highlight">unlimited boards & verses</span>
+      </h1>
+
+      <div class="label">Select one plan:</div>
+
+      <div class="plans-grid">
+        <div class="plan-card selected" id="plan-monthly">
+          <div style="display:flex; align-items:center; flex:1;">
+            <div class="radio-outer"><div class="radio-inner"></div></div>
+            <div class="plan-details">
+              <span class="plan-name">Billed monthly</span>
+            </div>
+          </div>
+          <div class="plan-price">
+            <span class="price-amount">$5.00</span>
+            <span class="price-period">Per month</span>
+          </div>
+        </div>
+
+        </div>
+
+      <div class="features-list">
+        <div class="feature-item">
+          <span class="material-symbols-outlined check-icon">check_circle</span>
+          <span>Unlimited boards</span>
+        </div>
+        <div class="feature-item">
+          <span class="material-symbols-outlined check-icon">check_circle</span>
+          <span>Cancel anytime</span>
+        </div>
+      </div>
+
+      <button id="sub-btn" class="cta-btn">Start subscription</button>
+
+      <div class="footer">
+        You are signed in as <strong id="user-email">...</strong>.<br>
+        Not your account? <a id="out-btn" class="link">Sign in with another email</a>.
+      </div>
+
+    </div>
+    <div id="Desktop-image-container">
+      <div id="fade-right"></div>
+      <img id="paywall-image" src="assets/Paywall image.png">
+    </div>
+  </section>
 
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
   <script type="module" src="supabaseClient.js"></script>
   <script type="module">
+    import { sb } from './supabaseClient.js';
     import { SubscriptionService } from './subscriptionService.js';
     
-    // Init RC
-    SubscriptionService.initAndCheck();
+    async function init() {
+      // 1. Get User Info
+      const { data: { session } } = await sb.auth.getSession();
+      
+      if (!session) {
+        window.location.href = "index.html"; // Redirect if not logged in
+        return;
+      }
 
-    document.getElementById('sub-btn').onclick = () => SubscriptionService.subscribe();
-    document.getElementById('out-btn').onclick = () => SubscriptionService.logout();
+      // 2. Update UI with email
+      const emailEl = document.getElementById('user-email');
+      if (emailEl) emailEl.textContent = session.user.email;
+
+      // 3. Init RevenueCat
+      const hasAccess = await SubscriptionService.initAndCheck();
+      if (hasAccess) {
+        // Already paid? Go to dashboard
+        window.location.href = "dashboard/";
+      }
+
+      // 4. Wire up buttons
+      const subBtn = document.getElementById('sub-btn');
+      subBtn.onclick = async () => {
+        subBtn.textContent = "Processing...";
+        subBtn.disabled = true;
+        await SubscriptionService.subscribe();
+        subBtn.textContent = "Start subscription";
+        subBtn.disabled = false;
+      };
+
+      document.getElementById('out-btn').onclick = () => {
+        SubscriptionService.logout();
+      };
+    }
+
+    init();
   </script>
 </body>
 </html>
