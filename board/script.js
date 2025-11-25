@@ -56,13 +56,28 @@ function getShareUrl() {
 // ==================== Performance Helpers ====================
 
 // --- Z-ORDER HELPERS ---
-// Ensure newest or interacted items rise above others.
-// Uses existing `currentIndex` that already drives initial z-index.
 function bringToFront(el) {
   if (!el || window.__readOnly) return;
-  currentIndex += 1;
+
+  // 1. Scan all items to find the current highest Z-Index
+  const allItems = document.querySelectorAll(".board-item");
+  let maxZ = 0;
+  for (let i = 0; i < allItems.length; i++) {
+    const z = parseInt(allItems[i].style.zIndex) || 0;
+    if (z > maxZ) maxZ = z;
+  }
+
+  // 2. Force the global counter to be higher than the max
+  if (maxZ >= currentIndex) {
+    currentIndex = maxZ + 1;
+  } else {
+    currentIndex++;
+  }
+
+  // 3. Apply to element
   el.style.zIndex = currentIndex;
 }
+
 
 // Delegate: bump z-index on ANY pointerdown inside a .board-item,
 // even if the click is on an editable child and we don't start a drag.
@@ -1033,7 +1048,6 @@ function renderChapter(container, verses, targetVerse, refString, book, version)
     container.appendChild(copyright);
   }
 }
-
 /**
  * Renders a list of individual verse results (Text Search).
  * UPDATED: Strips [N] from display text.
@@ -1742,17 +1756,14 @@ window.addEventListener(
 
 // ==================== Drag helpers ====================
 function startDragMouse(item, eOrPoint, offX, offY) {
-  // --- NEW: READ-ONLY GUARD ---
+  // Guard: Read-only
   if (window.__readOnly) return;
-  // --- END NEW ---
 
   active = item;
-  // GUARD
-  if (window.__readOnly) return;
-
-  currentIndex += 1;
-  item.style.zIndex = currentIndex;
+  
+  // FIX: Ensure it jumps to front immediately
   bringToFront(item);
+  
   item.style.cursor = "grabbing";
   if (offX == null || offY == null) {
     const rect = item.getBoundingClientRect();
@@ -1788,18 +1799,16 @@ function dragMouseTo(clientX, clientY) {
 }
 
 function startDragTouch(item, touchPoint, offX, offY) {
-  // --- NEW: READ-ONLY GUARD ---
+  // Guard: Read-only
   if (window.__readOnly) return;
-  // --- END NEW ---
 
   touchDragElement = item;
-  // GUARD
-  if (window.__readOnly) return;
-
   touchMoved = false;
   isTouchPanning = false;
-  currentIndex += 1;
-  item.style.zIndex = currentIndex;
+  
+  // FIX: Ensure it jumps to front immediately
+  bringToFront(item);
+
   if (offX == null || offY == null) {
     const rect = item.getBoundingClientRect();
     touchDragOffset.x = (touchPoint.clientX - rect.left) / scale;
@@ -1809,6 +1818,7 @@ function startDragTouch(item, touchPoint, offX, offY) {
     touchDragOffset.y = offY;
   }
 }
+
 // ... (dragTouchTo unchanged) ...
 function dragTouchTo(touchPoint) {
   const vp = viewport.getBoundingClientRect();
@@ -2118,14 +2128,7 @@ function sanitizeVerseText(text) {
   return clean;
 }
 // ==================== Element Creation ====================
-function addBibleVerse(
-  reference,
-  text,
-  createdFromLoad = false,
-  version = null,
-  delay = 0,
-) {
-  currentIndex += 1;
+function addBibleVerse(reference, text, createdFromLoad = false, version = null, delay = 0) {
   if (window.__readOnly && !window.__RESTORING_FROM_SUPABASE) return;
 
   const el = document.createElement("div");
@@ -2137,13 +2140,12 @@ function addBibleVerse(
   }
   el.style.position = "absolute";
 
-  // 1. HEAL THE DATA
-  // This converts "1The..." to "[1] The..." permanently
+  // Heal text
   const robustText = sanitizeVerseText(text);
 
   el.dataset.type = "verse";
   el.dataset.reference = reference;
-  el.dataset.text = robustText; // Store the healed text
+  el.dataset.text = robustText; 
   if (version) el.dataset.version = version;
 
   const vpRect = viewport.getBoundingClientRect();
@@ -2153,12 +2155,19 @@ function addBibleVerse(
   const randY = visibleY + 0.5 * (visibleH - 200);
   el.style.left = `${randX + delay * 200}px`;
   el.style.top = `${randY + delay * 200}px`;
-  el.style.zIndex = currentIndex;
+  
+  // FIX: Z-Index handling
+  if (createdFromLoad) {
+      // During load, just increment blindly (sync happens at end of load)
+      currentIndex++;
+      el.style.zIndex = currentIndex;
+  } else {
+      // User action: force to front
+      bringToFront(el);
+  }
 
   const displayReference = createdFromLoad ? reference : `- ${reference}`;
   const versionLabel = version ? ` ${version.toUpperCase()}` : "";
-
-  // 2. FORMAT FOR DISPLAY
   const htmlContent = formatVerseContent(robustText);
 
   el.innerHTML = `
@@ -2177,13 +2186,9 @@ function addBibleVerse(
     startDragMouse(el, e);
   };
 
-  // 3. TRIGGER SAVE IF HEALED
   if (!createdFromLoad) {
     onBoardMutated("add_verse");
   } else if (robustText !== text) {
-    // If we modified the text during load (healed it), save the board
-    // so the next refresh loads the correct [1] format.
-    console.log("Healed legacy verse format:", reference);
     onBoardMutated("heal_legacy_verse");
   }
 
@@ -2282,9 +2287,8 @@ if (textBtn) {
   });
 }
 
-// REPLACES the existing addTextNote function
+// Updated addTextNote (Removed color, fixed Z-Index)
 function addTextNote(initial = "New note") {
-  currentIndex += 1;
   if (window.__readOnly && !window.__RESTORING_FROM_SUPABASE) return;
 
   const el = document.createElement("div");
@@ -2293,17 +2297,16 @@ function addTextNote(initial = "New note") {
   el.style.position = "absolute";
 
   const vpRect = viewport.getBoundingClientRect();
-  const visibleX = viewport.scrollLeft / scale,
-    visibleY = viewport.scrollTop / scale;
-  const visibleW = vpRect.width / scale,
-    visibleH = vpRect.height / scale;
+  const visibleX = viewport.scrollLeft / scale, visibleY = viewport.scrollTop / scale;
+  const visibleW = vpRect.width / scale, visibleH = vpRect.height / scale;
   const x = visibleX + (visibleW - 300) / 2;
   const y = visibleY + (visibleH - 50) / 2;
   el.style.left = `${x}px`;
   el.style.top = `${y}px`;
-  el.style.zIndex = currentIndex;
 
-  // UPDATED HTML: Includes the hidden .edit-btn
+  // FIX: Force to front
+  bringToFront(el);
+
   el.innerHTML = `
     <div class="note-content">
       <div class="verse-text note-label">NOTE</div>
@@ -2318,32 +2321,21 @@ function addTextNote(initial = "New note") {
   workspace.appendChild(el);
   el.dataset.vkey = itemKey(el);
 
-  // --- Logic ---
-  
-  // 1. Edit Button Logic: Opens the modal
   const editBtn = el.querySelector(".edit-btn");
   if (editBtn) {
     const openEdit = (e) => {
       e.preventDefault();
-      e.stopPropagation(); // Don't bubble to board (prevents deselect/drag)
+      e.stopPropagation();
       openNoteModal(el);
     };
-    // Use mousedown/touchstart to catch it before drag logic fires
     editBtn.addEventListener("mousedown", openEdit);
     editBtn.addEventListener("touchstart", openEdit, { passive: false });
     editBtn.addEventListener("click", (e) => { e.stopPropagation(); });
   }
 
-  // 2. Drag/Select Logic
-  // (Clicking the card body will bubble to workspace, triggering 'selectItem')
-  let startX = 0, startY = 0;
-
   el.onmousedown = (e) => {
-    if (e.target.closest(".edit-btn")) return; // Ignore edits
+    if (e.target.closest(".edit-btn")) return;
     if (isConnectMode) return;
-    
-    startX = e.clientX;
-    startY = e.clientY;
     startDragMouse(el, e);
   };
 
@@ -2366,7 +2358,6 @@ function addTextNote(initial = "New note") {
     if (touchDragElement) onBoardMutated("item_move_touch_end");
     touchDragElement = null;
     pendingTouchDrag = null;
-    setTimeout(() => { touchMoved = false; }, 0);
   };
 
   onBoardMutated("add_note");
@@ -3497,8 +3488,10 @@ function selectItem(el) {
   }
   selectedItem = el;
   el.classList.add("selected-connection");
-  el.style.zIndex = currentIndex;
-  currentIndex += 1
+  
+  // FIX: Ensure selection brings item to front
+  bringToFront(el);
+  
   updateActionButtonsEnabled();
 }
 
@@ -3972,34 +3965,23 @@ async function fetchSongs(query, limit = 5, signal = null) {
 }
 
 // ==================== Add song to whiteboard ====================
-// ... (addSongElement unchanged, but with read-only guard) ...
 function addSongElement({ title, artist, cover }, delay = 0) {
-  currentIndex += 1;
-  // --- NEW: READ-ONLY GUARD ---
   if (window.__readOnly && !window.__RESTORING_FROM_SUPABASE) return;
-  // --- END NEW ---
 
   const el = document.createElement("div");
   el.classList.add("board-item", "song-item");
   el.style.position = "absolute";
-
-  // Add robust data attributes for serialization
   el.dataset.type = "song";
   el.dataset.title = title || "";
   el.dataset.artist = artist || "";
   el.dataset.cover = cover || "";
 
   const vpRect = viewport.getBoundingClientRect();
-  const visibleX = viewport.scrollLeft / scale,
-        visibleY = viewport.scrollTop / scale;
-  const visibleW = vpRect.width / scale,
-        visibleH = vpRect.height / scale;
-
-  // Base position (centered, similar to verses)
+  const visibleX = viewport.scrollLeft / scale, visibleY = viewport.scrollTop / scale;
+  const visibleW = vpRect.width / scale, visibleH = vpRect.height / scale;
   const baseX = visibleX + (visibleW - 320) / 2;
   const baseY = visibleY + (visibleH - 90) / 2;
 
-  // Apply staggered offset and animation if delay is provided
   if (delay !== 0) {
     el.style.opacity = "0";
     el.style.animation = "loadItemToBoard 1s forwards " + delay + "s";
@@ -4010,10 +3992,12 @@ function addSongElement({ title, artist, cover }, delay = 0) {
     el.style.top  = `${baseY}px`;
   }
 
-  const safeCover = cover || "";
+  // FIX: Force to front
+  bringToFront(el);
+
   el.innerHTML = `
     <div class="song-left">
-      <img class="song-cover" src="${safeCover}" alt="" />
+      <img class="song-cover" src="${cover || ""}" alt="" />
       <div class="song-texts">
         <div class="song-name">${title}</div>
         <div class="song-artist">${artist}</div>
@@ -4022,15 +4006,13 @@ function addSongElement({ title, artist, cover }, delay = 0) {
   `;
 
   workspace.appendChild(el);
-  el.dataset.vkey =
-    el.dataset.vkey || "v_" + Math.random().toString(36).slice(2);
+  el.dataset.vkey = el.dataset.vkey || "v_" + Math.random().toString(36).slice(2);
 
-  // OPTIMIZATION: Use .onmousedown
   el.onmousedown = (e) => {
     if (typeof startDragMouse === "function") startDragMouse(el, e);
   };
 
-  onBoardMutated("add_song"); // AUTOSAVE (safe)
+  onBoardMutated("add_song");
   return el;
 }
 

@@ -255,6 +255,7 @@ function serializeBoard() {
   };
 }
 
+// supabase-sync.js - Replace deserializeBoard
 function deserializeBoard(payload) {
   if (!payload) return;
   const { clearBoard, addBibleVerse, addTextNote, addInterlinearCard, addSongElement, getElementByVKey, connectItems, setScale, viewport, updateAllConnections } = window.BoardAPI;
@@ -310,6 +311,11 @@ function deserializeBoard(payload) {
     console.error("Failed to deserialize board:", e);
   } finally {
     window.__RESTORING_FROM_SUPABASE = false;
+    
+    // FIX: Sync the Z-Index counter after loading
+    if (window.BoardAPI.syncZIndex) {
+        window.BoardAPI.syncZIndex();
+    }
   }
 }
 
