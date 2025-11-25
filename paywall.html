@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Access — BibleBoard</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    body { display: flex; align-items: center; justify-content: center; height: 100vh; background: var(--bg); color: var(--fg); text-align: center; }
+    .paywall-card { max-width: 380px; padding: 40px; background: var(--bg-dots); border: 1px solid var(--border); border-radius: 20px; }
+    .price-tag { font-size: 3.5rem; font-weight: 900; color: var(--accent); margin: 10px 0; }
+    .price-sub { font-size: 1.2rem; color: var(--muted); font-weight: 600; }
+    .features { text-align: left; margin: 30px 0; line-height: 2; color: var(--fg); opacity: 0.9; }
+    .features li { list-style: none; }
+    .cta-btn { background: var(--fg); color: var(--bg); border: none; padding: 16px 32px; border-radius: 100px; font-size: 1.1rem; font-weight: 800; cursor: pointer; width: 100%; transition: 0.2s; margin-top: 10px; }
+    .cta-btn:hover { transform: scale(1.03); opacity: 0.9; }
+    .signout { margin-top: 20px; display: block; color: var(--muted); font-size: 0.9rem; text-decoration: underline; cursor: pointer; }
+  </style>
+    <script src="https://cdn.jsdelivr.net/npm/@revenuecat/purchases-js@latest/dist/Purchases.umd.min.js"></script>
+</head>
+<body>
+  <div class="paywall-card">
+    <img src="assets/logo_no_bg.png" width="50" style="filter: brightness(1000%); margin-bottom:10px;">
+    <h1>Access BibleBoard</h1>
+    <div class="price-tag">$5</div>
+    <div class="price-sub">per month</div>
+    <button id="sub-btn" class="cta-btn">Subscribe Now</button>
+    <a id="out-btn" class="signout">Sign Out</a>
+  </div>
+
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script type="module" src="supabaseClient.js"></script>
+  <script type="module">
+    import { SubscriptionService } from './subscriptionService.js';
+    
+    // Init RC
+    SubscriptionService.initAndCheck();
+
+    document.getElementById('sub-btn').onclick = () => SubscriptionService.subscribe();
+    document.getElementById('out-btn').onclick = () => SubscriptionService.logout();
+  </script>
+</body>
+</html>

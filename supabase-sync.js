@@ -1,5 +1,6 @@
 // supabase-sync.js
 // Handles all auth, loading, saving, and ownership checks for the editor.
+import { SubscriptionService } from "./subscriptionService.js";
 import { sb } from "./supabaseClient.js";
 
 if (!window.BoardAPI) {
@@ -495,6 +496,21 @@ async function main() {
   const { data: { session } } = await sb.auth.getSession();
   const user = session?.user;
   lastKnownUser = user;
+
+  /* --- TEMPORARILY DISABLED FOR BETA TESTING ---
+  // =================================================
+  // PAYWALL CHECK
+  // =================================================
+  if (user) {
+    const hasAccess = await SubscriptionService.initAndCheck();
+    
+    if (!hasAccess) {
+      window.location.replace("/paywall.html"); 
+      return; 
+    }
+  }
+  --------------------------------------------- */
+
   await refreshAuthUI();
   applyOwnershipMode();
 

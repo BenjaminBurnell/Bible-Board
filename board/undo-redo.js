@@ -157,7 +157,8 @@ window.UndoRedoManager = {
         case "note":
           // Use the live text if available, fallback to dataset
           const noteText = snapshot.liveText || data.text || "";
-          el = this.originalAddTextNote(noteText);
+          // Pass data.color to the creator
+          el = this.originalAddTextNote(noteText, data.color);
           break;
         case "song":
           el = this.originalAddSongElement({
@@ -488,8 +489,6 @@ window.UndoRedoManager = {
       const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
       const metaKey = (isMac && e.metaKey) || (!isMac && e.ctrlKey);
       if (!metaKey) return;
-
-      console.log(e.key)
 
       if (e.key === "z" || e.key === "Z") {
         e.preventDefault();

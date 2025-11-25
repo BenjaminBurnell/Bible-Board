@@ -4,11 +4,11 @@
   "use strict";
 
   const PRESET_COLORS = [
-    "#594236", // Red (Default)
-    "#937666ff", // Yellow
-    "#93A3BC", // Blue
-    "#384a9dff",  // Purple
-    "#48ACF0", // Green 
+    "#FDE047", // Red (Default)
+    "#BEF264", // Yellow
+    "#67E8F9", // Blue
+    "#F9A8D4",  // Purple
+    "#FDBA74", // Green 
   ];
   const DEFAULT_COLOR = PRESET_COLORS[0];
   const STORAGE_KEY = "bb:connectionColor";

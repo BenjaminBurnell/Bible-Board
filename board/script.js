@@ -403,47 +403,71 @@ function setVersion(version) {
   });
 })();
 
-// ==================== Fetch Verse Text (KJV) ====================
-// ... (fetchVerseText unchanged) ...
-/**
- * (Existing logic, now uses LRU cache)
- */
+// ==================== Style Injection for Verse Numbers ====================
+(function injectVerseStyles() {
+  const style = document.createElement('style');
+  style.textContent = `
+    .verse-num {
+      font-size: 0.6em;
+      opacity: 0.7;
+      margin-right: 4px;
+      font-weight: 700;
+      vertical-align: super;
+      line-height: 0;
+    }
+  `;
+  document.head.appendChild(style);
+})();
+
+// ==================== 2. UPDATED: Fetch Single Verse ====================
 async function fetchVerseText(book, chapter, verse, signal, version = "KJV") {
+  // --- NLT HANDLER ---
+  if (version === "NLT") {
+    // Always fetch the whole chapter for NLT to ensure correct splitting
+    try {
+      const verses = await fetchChapterText(book, chapter, signal, "NLT");
+      const target = verses.find(v => v.verse == verse);
+      // Remove the [N] prefix if returning raw text for a single lookup
+      // (Optional: Your addBibleVerse adds it back, but this keeps it clean)
+      return target ? target.text : "Verse not found.";
+    } catch (e) {
+      return "NLT unavailable.";
+    }
+  }
+
+  // --- EXISTING LOGIC (KJV, ASV) ---
   const code = bibleBookCodes[book] || book;
   const apiUrl = `https://full-bible-api.onrender.com/verse/${encodeURIComponent(
     version
   )}/${encodeURIComponent(code)}/${chapter}/${verse}`;
 
-  // OPTIMIZATION: Use LRU cache
   const cacheKey = `${version}:${code}:${chapter}:${verse}`;
-  const cached = verseCache.get(cacheKey); // .get() updates recency
-  if (cached) {
-    return cached;
-  }
+  const cached = verseCache.get(cacheKey);
+  if (cached) return cached;
 
-  // OPTIMIZATION: Check signal before fetching
   if (signal?.aborted) throw new Error("Fetch aborted");
 
   try {
     const resp = await safeFetchWithFallbacks(apiUrl, signal);
     const data = await resp.json();
 
-    const text =
-      data.text ||
-      (data.verses
-        ? data.verses.map((v) => v.text).join(" ")
-        : "Verse not found.");
-    verseCache.set(cacheKey, text); // Store in cache
-    return text;
-  } catch (err) {
-    if (signal?.aborted) {
-      // console.log("Verse fetch aborted.");
-      // Re-throw abort so searchForQuery() can catch it and stop processing
-      throw err;
+    let finalText = "Verse not found.";
+
+    if (data.verses) {
+      finalText = data.verses.map((v) => {
+        const cleanText = v.text.replace(new RegExp(`^${v.verse}`), '').trim();
+        return `[${v.verse}] ${cleanText}`;
+      }).join(" ");
+    } else if (data.text) {
+      const cleanText = data.text.replace(new RegExp(`^${verse}`), '').trim();
+      finalText = `[${verse}] ${cleanText}`;
     }
 
-    // console.error("❌ Error fetching verse (all fallbacks failed):", err);
-    return "Verse temporarily unavailable."; // Graceful error
+    verseCache.set(cacheKey, finalText);
+    return finalText;
+  } catch (err) {
+    if (signal?.aborted) throw err;
+    return "Verse temporarily unavailable.";
   }
 }
 
@@ -792,59 +816,163 @@ function showDidYouMeanSuggestion(result) {
     };
   }
 }
+
 /**
- * NEW: Fetches an entire chapter from the API.
- * MODIFIED: Now uses `chapterCache`.
+ * Fetches an entire chapter.
+ * NLT: Uses official Tyndale API (HTML) and cleans it.
+ * Others: Uses default JSON API.
  */
 async function fetchChapterText(book, chapter, signal, version = "KJV") {
+
+  // ==================================================
+  // 1. OFFICIAL NLT (via api.nlt.to)
+  // ==================================================
+  if (version === "NLT") {
+    const NLT_KEY = "TEST"; // Use 'TEST' or your real key
+    
+    // --- BOOK MAPPING ---
+    let code = bibleBookCodes[book] || book; 
+
+    // 2. OVERRIDE: Map codes to NLT-friendly names
+    // We use full names (e.g. "1 Kings") to ensure maximum compatibility.
+    const nltMap = {
+      "SNG": "Song",  "PRO": "Prov",  "ECC": "Eccl",
+      // Numbered Books (Use spaces!)
+      "1KI": "1 Kings",       "2KI": "2 Kings",
+      "1SA": "1 Samuel",      "2SA": "2 Samuel",
+      "1PE": "1 Peter",       "2PE": "2 Peter",
+      "1JN": "1 John",        "2JN": "2 John",        
+      "3JN": "3 John",
+      // Other abbreviations that might fail
+      "PHP": "Phil",   "PHM": "Phlm",   "JHN": "John",
+      "EZK": "Ezek",   "JOS": "Josh",   "JDG": "Judg",
+      "EST": "Esth",   "NAM": "Nah",    "PSA": "Psalm",
+      "JOL": "Joel",   "AMO": "Amos",   "OBA": "Obadiah",
+      "ZEP": "Zephaniah", "ZEC": "Zechariah", "MAT": "Matthew",
+
+      "MRK": "Mark", "LUK": "Luke", "ACT": "Acts", 
+      "JUD": "Jude"
+    };
+
+    if (nltMap[code]) code = nltMap[code];
+
+    const ref = encodeURIComponent(`${code}.${chapter}`);
+    const url = `https://api.nlt.to/api/passages?ref=${ref}&version=NLT&key=${NLT_KEY}`;
+
+    const cacheKey = `NLT_CH:${book}:${chapter}`;
+    const cached = chapterCache.get(cacheKey);
+    if (cached) return cached;
+
+    try {
+      const resp = await fetch(url, { signal });
+      if (!resp.ok) throw new Error("NLT API Error");
+
+      const htmlText = await resp.text();
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(htmlText, "text/html");
+
+      // 1. Clean up junk elements
+      const junk = doc.querySelectorAll('.tn, .a-tn, .chapter-number, .subhead, .cw, .cw_ch');
+      junk.forEach(el => el.remove());
+
+      // 2. The Tokenizer
+      const container = doc.querySelector('body');
+      let currentVerseNum = null;
+      const versesMap = new Map();
+
+      function walk(node) {
+        if (node.nodeType === Node.ELEMENT_NODE) {
+          // If we hit a verse number, update tracking ID and STOP.
+          // We do not want the number "1" or "2" in the text body yet.
+          if (node.classList.contains('vn')) {
+            const num = parseInt(node.textContent.trim());
+            if (!isNaN(num)) {
+              currentVerseNum = num;
+              if (!versesMap.has(num)) versesMap.set(num, "");
+            }
+            return; 
+          }
+        }
+
+        if (node.nodeType === Node.TEXT_NODE && currentVerseNum !== null) {
+          const text = node.textContent.replace(/\s+/g, ' ');
+          const currentText = versesMap.get(currentVerseNum);
+          versesMap.set(currentVerseNum, currentText + text);
+        }
+
+        node.childNodes.forEach(walk);
+      }
+
+      walk(container);
+
+      // 3. Format Output
+      const verses = [];
+      for (const [vn, text] of versesMap.entries()) {
+        // Safety: Strip leading number if it somehow snuck into the text
+        // e.g., if text is "2 Then he said...", this makes it "Then he said..."
+        let cleanText = text.trim().replace(new RegExp(`^${vn}\\s*`), "");
+
+        if (cleanText) {
+          verses.push({
+            verse: vn,
+            text: `[${vn}] ${cleanText}` // Explicitly wrap in brackets
+          });
+        }
+      }
+
+      verses.sort((a, b) => a.verse - b.verse);
+      if (verses.length === 0) throw new Error("No verses parsed from NLT.");
+
+      chapterCache.set(cacheKey, verses);
+      return verses;
+
+    } catch (err) {
+      console.error("NLT Fetch Failed:", err);
+      if (signal?.aborted) throw err;
+      throw new Error("NLT content unavailable.");
+    }
+  }
+
+  // ==================================================
+  // 2. DEFAULT HANDLER (KJV, ASV, etc.)
+  // ==================================================
   const code = bibleBookCodes[book] || book;
-  const apiUrl = `https://full-bible-api.onrender.com/chapter/${encodeURIComponent(
-    version
-  )}/${encodeURIComponent(code)}/${chapter}`;
+  const apiUrl = `https://full-bible-api.onrender.com/chapter/${encodeURIComponent(version)}/${encodeURIComponent(code)}/${chapter}`;
   
-  // --- NEW: Check cache first ---
   const cacheKey = `${version}:${code}:${chapter}`;
   const cached = chapterCache.get(cacheKey);
-  if (cached) {
-    console.log(`[Cache] HIT: ${cacheKey}`);
-    return cached;
-  }
-  console.log(`[Cache] MISS: ${cacheKey}`);
-  // --- END NEW ---
+  if (cached) return cached;
 
-  // OPTIMIZATION: Check signal before fetching
   if (signal?.aborted) throw new Error("Fetch aborted");
 
   try {
-    // We can use the existing multi-proxy fetch helper
     const resp = await safeFetchWithFallbacks(apiUrl, signal);
     const data = await resp.json();
 
     if (!data || !Array.isArray(data.verses)) {
       throw new Error("Invalid chapter data received.");
     }
+
+    // Format default versions with brackets too
+    const verses = data.verses.map(v => {
+        // Strip existing leading numbers from raw text to avoid "1 1 In the..."
+        // Regex matches: Start of string (^), verse number, optional whitespace
+        const cleanText = v.text.replace(new RegExp(`^${v.verse}\\s*`), "");
+        
+        return {
+            verse: v.verse,
+            text: `[${v.verse}] ${cleanText}`
+        };
+    });
     
-    // --- NEW: Store in cache on success ---
-    if (data.verses.length > 0) {
-      chapterCache.set(cacheKey, data.verses);
-    }
-    // --- END NEW ---
-    
-    return data.verses; // e.g., [{ verse: 1, text: "..." }, ...]
+    chapterCache.set(cacheKey, verses);
+    return verses;
   } catch (err) {
-    if (signal?.aborted) {
-      // console.log("Chapter fetch aborted.");
-      throw err; // Re-throw abort
-    }
-    // console.error("❌ Error fetching chapter (all fallbacks failed):", err);
-    throw err; // Re-throw for searchForQuery to catch
+    if (signal?.aborted) throw err;
+    throw err;
   }
 }
 
-/**
- * NEW: Renders a list of verses into the search panel.
- * MODIFIED: Accepts book/version, adds data-attributes and add button.
- */
 function renderChapter(container, verses, targetVerse, refString, book, version) {
   if (!container || !verses || verses.length === 0) {
     container.innerHTML = `<div class="search-query-no-verse-found-container" style="text-align:center; color:var(--muted); padding: 15px;">No matching verses found.</div>`;
@@ -853,45 +981,45 @@ function renderChapter(container, verses, targetVerse, refString, book, version)
 
   const verseList = document.createElement("div");
   verseList.className = "verse-list-container";
-
-  // Get chapter number from refString (e.g., "John 3" -> "3")
   const chapterNum = refString.match(/\d+$/)?.[0] || "";
-  let html = "";
 
-  for (const verse of verses) {
-    const isTarget = verse.verse == targetVerse; // Use == for number/string comparison
+  verses.forEach(verse => {
     const fullRef = `${book} ${chapterNum}:${verse.verse}`;
-    const text = verse.text.replace(/"/g, "&quot;"); // Escape quotes for data-text
+    
+    // RAW TEXT (has [1]) -> Goes into dataset for the board
+    const rawText = verse.text.replace(/"/g, "&quot;"); 
 
-    // Check if this verse is already in the pending queue
+    // DISPLAY TEXT (no [1]) -> Goes into the visual list
+    const displayText = verse.text.replace(/^\[\d+\]\s*/, "");
+
     const key = `${fullRef}::${version}`;
     const isSelected = pendingVerseAdds.has(key);
     const selectedClass = isSelected ? 'selected-for-add' : '';
     const btnSelectedClass = isSelected ? 'selected' : '';
 
-    html += `
+    // Check for target highlight
+    let isTarget = verse.verse == targetVerse;
+
+    verseList.innerHTML += `
       <div class="verse ${isTarget ? 'highlighted' : ''} ${selectedClass}" 
            data-verse="${verse.verse}" 
            data-ref="${fullRef}" 
            data-version="${version}" 
-           data-text="${text}">
-        <span class="verse-number">${verse.verse}</span>
-        <span class="verse-text">${verse.text}</span>
-        <button class="search-query-verse-add-button ${btnSelectedClass}" 
+           data-text="${rawText}"> <span class="verse-number">${verse.verse}</span>
+        <span class="verse-text">${displayText}</span> <button class="search-query-verse-add-button ${btnSelectedClass}" 
                 aria-label="Add verse ${fullRef}">
         </button>
       </div>
     `;
-  }
+  });
 
-  verseList.innerHTML = html;
-  container.innerHTML = ""; // Clear loader/previous
+  container.innerHTML = ""; 
   container.appendChild(verseList);
 }
 
 /**
- * NEW: Renders a list of individual verse data (from text search)
- * using the same style as the chapter view.
+ * Renders a list of individual verse results (Text Search).
+ * UPDATED: Strips [N] from display text.
  */
 function renderVerseList(container, versesData, version) {
   if (!container || !versesData || versesData.length === 0) {
@@ -900,15 +1028,15 @@ function renderVerseList(container, versesData, version) {
   }
 
   const verseList = document.createElement("div");
-  verseList.className = "verse-list-container"; // Use same class as chapter view
+  verseList.className = "verse-list-container"; 
 
   let html = "";
 
   for (const verseData of versesData) {
     const fullRef = verseData.ref;
-    const text = verseData.text.replace(/"/g, "&quot;"); // Escape quotes
+    const text = verseData.text.replace(/"/g, "&quot;"); // Raw text for data
+    const displayText = cleanDisplayVerse(verseData.text); // Clean for display
 
-    // Check if this verse is already in the pending queue
     const key = `${fullRef}::${version}`;
     const isSelected = pendingVerseAdds.has(key);
     const selectedClass = isSelected ? 'selected-for-add' : '';
@@ -921,8 +1049,7 @@ function renderVerseList(container, versesData, version) {
            data-text="${text}">
         
         <span class="verse-number verse-ref-style">${fullRef}</span>
-        
-        <span class="verse-text verse-text-style">${verseData.text}</span>
+        <span class="verse-text verse-text-style">${displayText}</span>
         
         <button class="search-query-verse-add-button ${btnSelectedClass}" 
                 aria-label="Add verse ${fullRef}">
@@ -932,7 +1059,7 @@ function renderVerseList(container, versesData, version) {
   }
 
   verseList.innerHTML = html;
-  container.innerHTML = ""; // Clear loader/previous
+  container.innerHTML = ""; 
   container.appendChild(verseList);
 }
 
@@ -1085,39 +1212,6 @@ function updateFloatingAddButton() {
   path.setAttribute("d", "M212-86q-53 0-89.5-36.5T86-212v-536q0-53 36.5-89.5T212-874h268v126H212v536h536v-268h126v268q0 53-36.5 89.5T748-86H212Zm207-246-87-87 329-329H560v-126h314v314H748v-101L419-332Z");
   iconElement.appendChild(path);
   floatingAddBtn.appendChild(iconElement);
-}
-
-/**
- * NEW: Toggles a verse's selection in the pending queue.
- * @param {HTMLElement} cardEl The verse card element (.verse or .search-query-verse-container)
- */
-function toggleVerseSelection(cardEl) {
-  if (!cardEl) return;
-
-  const ref = cardEl.dataset.ref;
-  const version = cardEl.dataset.version;
-  const text = cardEl.dataset.text;
-  const key = `${ref}::${version}`;
-
-  const addBtn = cardEl.querySelector('.search-query-verse-add-button');
-
-  if (pendingVerseAdds.has(key)) {
-    // --- Remove from queue ---
-    pendingVerseAdds.delete(key);
-    cardEl.classList.remove("selected-for-add");
-    addBtn?.classList.remove("selected");
-  } else {
-    // --- Add to queue ---
-    if (!ref || !version || !text) {
-      console.warn("Could not add verse, missing data:", cardEl);
-      return;
-    }
-    pendingVerseAdds.set(key, { ref, text, version });
-    cardEl.classList.add("selected-for-add");
-    addBtn?.classList.add("selected");
-  }
-
-  updateFloatingAddButton();
 }
 
 /**
@@ -1963,59 +2057,97 @@ window.BoardAPI.toggleDisconnectMode = toggleDisconnectMode;
 window.BoardAPI.isDisconnectMode = isDisconnectMode;
 
 
+/**
+ * Formats raw verse text for DISPLAY (HTML).
+ * Converts "[1]" -> "<span class='verse-num'>1</span>"
+ */
+function formatVerseContent(text) {
+  if (!text) return "";
+  // Replaces [1], [1-3], or [1:1] with styled HTML span.
+  return text.replace(/\[(\d+(?:[-:a-z]\d+)*)\]/g, '<span class="verse-num">$1</span> ');
+}
 
+/**
+ * Helper to remove [N] from the start of text for clean display lists.
+ * Example: "[1] In the beginning" -> "In the beginning"
+ */
+function cleanDisplayVerse(text) {
+  if (!text) return "";
+  return text.replace(/^\[\d+\]\s*/, '');
+}
+
+/**
+ * HEALS raw text for STORAGE.
+ * Ensures EVERY verse number in the text is wrapped in brackets [ ]
+ * so it saves correctly to Supabase.
+ */
+function sanitizeVerseText(text) {
+  if (!text) return "";
+  let clean = text;
+
+  // 1. Fix Start of Line: "1 In..." -> "[1] In..."
+  clean = clean.replace(/^(\d+)(?=\s)/, '[$1]');
+
+  // 2. Fix Middle of Line (Multi-verse): 
+  //    Matches punctuation OR commas OR quotes, followed by space, digit, space.
+  //    "John, 2 who" -> "John, [2] who"
+  //    "said. 3 Then" -> "said. [3] Then"
+  //    "him: 4 The"   -> "him: [4] The"
+  clean = clean.replace(/([.,;?!:”—"’']\s+)(\d+)(?=\s)/g, '$1[$2]');
+
+  // 3. Cleanup: Fix double brackets if they happened (e.g. [[1]])
+  clean = clean.replace(/\[\[(\d+)\]\]/g, '[$1]');
+
+  return clean;
+}
 // ==================== Element Creation ====================
 function addBibleVerse(
   reference,
   text,
   createdFromLoad = false,
   version = null,
-  delay=0,
-
+  delay = 0,
 ) {
   currentIndex += 1;
-  // GUARD: Allow creation during load/restore, but not by user action
   if (window.__readOnly && !window.__RESTORING_FROM_SUPABASE) return;
 
   const el = document.createElement("div");
   el.classList.add("board-item", "bible-verse");
-  if(delay != 0) {
+  
+  if (delay != 0) {
     el.style.opacity = "0";
     el.style.animation = "loadItemToBoard 1s forwards " + delay + "s"
-  };
+  }
   el.style.position = "absolute";
 
-  // Add robust data attributes for serialization
+  // 1. HEAL THE DATA
+  // This converts "1The..." to "[1] The..." permanently
+  const robustText = sanitizeVerseText(text);
+
   el.dataset.type = "verse";
   el.dataset.reference = reference;
-  el.dataset.text = text;
-  if (version) {
-    el.dataset.version = version;
-  }
+  el.dataset.text = robustText; // Store the healed text
+  if (version) el.dataset.version = version;
 
   const vpRect = viewport.getBoundingClientRect();
-  const visibleX = viewport.scrollLeft / scale,
-    visibleY = viewport.scrollTop / scale;
-  const visibleW = vpRect.width / scale,
-    visibleH = vpRect.height / scale;
-  // const randX = visibleX + Math.random() * (visibleW - 300);
-  // const randY = visibleY + Math.random() * (visibleH - 200);
+  const visibleX = viewport.scrollLeft / scale, visibleY = viewport.scrollTop / scale;
+  const visibleW = vpRect.width / scale, visibleH = vpRect.height / scale;
   const randX = visibleX + 0.5 * (visibleW - 300);
   const randY = visibleY + 0.5 * (visibleH - 200);
   el.style.left = `${randX + delay * 200}px`;
   el.style.top = `${randY + delay * 200}px`;
   el.style.zIndex = currentIndex;
-  // console.log(currentIndex)
 
-  // Use createdFromLoad flag to determine reference format
   const displayReference = createdFromLoad ? reference : `- ${reference}`;
-  // ADDED: Version label
   const versionLabel = version ? ` ${version.toUpperCase()}` : "";
+
+  // 2. FORMAT FOR DISPLAY
+  const htmlContent = formatVerseContent(robustText);
 
   el.innerHTML = `
     <div id="bible-text-content">
       <div class="verse-text">VERSE</div>
-      <div class="verse-text-content">${text}</div>
+      <div class="verse-text-content">${htmlContent}</div>
       <div class="verse-text-reference">${displayReference}${versionLabel}</div>
     </div>
   `;
@@ -2023,28 +2155,124 @@ function addBibleVerse(
   workspace.appendChild(el);
   el.dataset.vkey = itemKey(el);
 
-  // OPTIMIZATION: Use .onmousedown
   el.onmousedown = (e) => {
-    if (
-      isConnectMode ||
-      e.target.closest('[contenteditable="true"], textarea.text-content')
-    )
-      return;
+    if (isConnectMode || e.target.closest('[contenteditable="true"]')) return;
     startDragMouse(el, e);
   };
 
-  onBoardMutated("add_verse"); // AUTOSAVE (safe due to onBoardMutated restore check)
+  // 3. TRIGGER SAVE IF HEALED
+  if (!createdFromLoad) {
+    onBoardMutated("add_verse");
+  } else if (robustText !== text) {
+    // If we modified the text during load (healed it), save the board
+    // so the next refresh loads the correct [1] format.
+    console.log("Healed legacy verse format:", reference);
+    onBoardMutated("heal_legacy_verse");
+  }
+
   return el;
 }
 
+
+// ==================== Note Modal Logic ====================
+const noteModal = document.getElementById("note-modal-backdrop");
+const noteInput = document.getElementById("note-modal-input");
+const noteSaveBtn = document.getElementById("note-modal-save-btn");
+const noteCancelBtn = document.getElementById("note-modal-cancel-btn");
+
+let currentEditingNote = null;
+
+function openNoteModal(noteEl = null) {
+  if (window.__readOnly) return;
+  
+  currentEditingNote = noteEl;
+  
+  if (noteEl) {
+    // Edit Mode
+    const contentEl = noteEl.querySelector(".text-content");
+    // Use innerHTML to preserve line breaks if any, or textContent if simple
+    // Replacing <br> with newlines for textarea
+    let text = contentEl.innerHTML.replace(/<br\s*\/?>/gi, "\n");
+    // Decode HTML entities if needed, but value usually handles it
+    const temp = document.createElement("div");
+    temp.innerHTML = text;
+    noteInput.value = temp.textContent || temp.innerText || "";
+  } else {
+    // Add Mode
+    noteInput.value = "";
+  }
+  
+  noteModal.classList.remove("hidden");
+  setTimeout(() => noteInput.focus(), 50); // Focus after render
+}
+
+function closeNoteModal() {
+  noteModal.classList.add("hidden");
+  currentEditingNote = null;
+}
+
+function saveNoteFromModal() {
+  const text = noteInput.value.trim(); // Allow empty?
+  
+  // Convert newlines to <br> for HTML display
+  const htmlContent = text.replace(/\n/g, "<br>");
+
+  if (currentEditingNote) {
+    // Update Existing
+    const contentEl = currentEditingNote.querySelector(".text-content");
+    contentEl.innerHTML = htmlContent || "Empty note";
+    onBoardMutated("edit_note_text");
+  } else {
+    // Create New
+    if (text) {
+      addTextNote(htmlContent);
+    }
+  }
+  closeNoteModal();
+}
+
+// Wire up Modal Buttons
+if (noteSaveBtn) {
+  noteSaveBtn.addEventListener("click", saveNoteFromModal);
+}
+if (noteCancelBtn) {
+  noteCancelBtn.addEventListener("click", closeNoteModal);
+}
+// Close on backdrop click
+if (noteModal) {
+  noteModal.addEventListener("click", (e) => {
+    if (e.target === noteModal) closeNoteModal();
+  });
+}
+
+// Update Main Action Button
+if (textBtn) {
+  // We need to replace the old clone to strip previous listeners if possible, 
+  // or just ensure this one runs and we preventDefault. 
+  // Since we can't easily remove anonymous listeners, ensuring this logic 
+  // supersedes or we modify the original function is key. 
+  // For now, I will attach a new listener and rely on the fact that 
+  // calling openNoteModal is the new desired behavior. 
+  
+  // To be clean, let's recreate the button to strip old listeners
+  const newTextBtn = textBtn.cloneNode(true);
+  textBtn.parentNode.replaceChild(newTextBtn, textBtn);
+  
+  newTextBtn.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    openNoteModal(null); // Open empty for new note
+  });
+}
+
+// REPLACES the existing addTextNote function
 function addTextNote(initial = "New note") {
   currentIndex += 1;
-  // GUARD: Allow creation during load/restore, but not by user action
   if (window.__readOnly && !window.__RESTORING_FROM_SUPABASE) return;
 
   const el = document.createElement("div");
   el.classList.add("board-item", "text-note");
-  el.dataset.type = "note"; // Add data attribute
+  el.dataset.type = "note";
   el.style.position = "absolute";
 
   const vpRect = viewport.getBoundingClientRect();
@@ -2058,49 +2286,56 @@ function addTextNote(initial = "New note") {
   el.style.top = `${y}px`;
   el.style.zIndex = currentIndex;
 
+  // UPDATED HTML: Includes the hidden .edit-btn
   el.innerHTML = `
-    <div class="note-content"><div class="verse-text note-label">NOTE</div><div class="text-content" contenteditable="${!window.__readOnly}" spellcheck="false">${initial}</div></div>
+    <div class="note-content">
+      <div class="verse-text note-label">NOTE</div>
+      <div class="text-content">${initial}</div>
+    </div>
+    <button class="edit-btn" aria-label="Edit Note" title="Edit Text">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" width="24px" fill="currentColor">
+        <path d="M200-200h57l391-391-57-57-391 391v57Zm-80 80v-170l528-527q12-11 26.5-17t30.5-6q16 0 31 6t26 18l55 56q12 11 17.5 26t5.5 30q0 16-5.5 30.5T817-647L290-120H120Zm640-584-56-56 56 56Zm-141 85-28-29 57 57-29-28Z"/>
+      </svg>
+    </button>
   `;
   workspace.appendChild(el);
   el.dataset.vkey = itemKey(el);
 
-  const header = el.querySelector(".note-label");
-  const body = el.querySelector(".text-content");
+  // --- Logic ---
+  
+  // 1. Edit Button Logic: Opens the modal
+  const editBtn = el.querySelector(".edit-btn");
+  if (editBtn) {
+    const openEdit = (e) => {
+      e.preventDefault();
+      e.stopPropagation(); // Don't bubble to board (prevents deselect/drag)
+      openNoteModal(el);
+    };
+    // Use mousedown/touchstart to catch it before drag logic fires
+    editBtn.addEventListener("mousedown", openEdit);
+    editBtn.addEventListener("touchstart", openEdit, { passive: false });
+    editBtn.addEventListener("click", (e) => { e.stopPropagation(); });
+  }
 
-  // AUTOSAVE on text edit
-  // OPTIMIZATION: Use .oninput
-  body.oninput = () => {
-    if (window.__readOnly) return;
-    onBoardMutated("edit_note_text");
-  };
+  // 2. Drag/Select Logic
+  // (Clicking the card body will bubble to workspace, triggering 'selectItem')
+  let startX = 0, startY = 0;
 
-  // OPTIMIZATION: Use .onmousedown
-  header.onmousedown = (e) => {
-    if (!isConnectMode) startDragMouse(el, e);
-  };
   el.onmousedown = (e) => {
+    if (e.target.closest(".edit-btn")) return; // Ignore edits
     if (isConnectMode) return;
-    if (e.target === body || e.target.closest(".text-content")) {
-      const rect = el.getBoundingClientRect();
-      pendingMouseDrag = {
-        item: el,
-        startX: e.clientX,
-        startY: e.clientY,
-        offX: (e.clientX - rect.left) / scale,
-        offY: (e.clientY - rect.top) / scale,
-      };
-      return;
-    }
+    
+    startX = e.clientX;
+    startY = e.clientY;
     startDragMouse(el, e);
   };
 
-  // OPTIMIZATION: Use .ontouch... properties
   el.ontouchstart = (e) => {
-    // --- NEW: READ-ONLY GUARD ---
+    if (e.target.closest(".edit-btn")) return;
     if (isConnectMode || window.__readOnly || e.touches.length !== 1) return;
-    // --- END NEW ---
     const t = e.touches[0];
     const rect = el.getBoundingClientRect();
+    
     pendingTouchDrag = {
       item: el,
       startX: t.clientX,
@@ -2110,51 +2345,14 @@ function addTextNote(initial = "New note") {
     };
   };
 
-  el.ontouchmove = (e) => {
-    if (isConnectMode) return;
-    const t = e.touches[0];
-    if (pendingTouchDrag && !touchDragElement) {
-      const dx = t.clientX - pendingTouchDrag.startX;
-      const dy = t.clientY - pendingTouchDrag.startY;
-      if (Math.hypot(dx, dy) > DRAG_SLOP) {
-        startDragTouch(
-          pendingTouchDrag.item,
-          t,
-          pendingTouchDrag.offX,
-          pendingTouchDrag.offY
-        );
-        pendingTouchDrag = null;
-      }
-    }
-    if (!touchDragElement) return;
-    e.preventDefault();
-    touchMoved = true;
-    dragTouchTo(t);
-  };
-
   el.ontouchend = () => {
-    if (touchDragElement) onBoardMutated("item_move_touch_end"); // AUTOSAVE
-    if (!touchDragElement) {
-      pendingTouchDrag = null;
-      return;
-    }
+    if (touchDragElement) onBoardMutated("item_move_touch_end");
     touchDragElement = null;
-    setTimeout(() => {
-      touchMoved = false;
-    }, 0);
+    pendingTouchDrag = null;
+    setTimeout(() => { touchMoved = false; }, 0);
   };
 
-  // selectItem(el);
-
-  // Only focus if this is a fresh add, not a restore
-  if (!window.__RESTORING_FROM_SUPABASE) {
-    setTimeout(() => {
-      body.focus();
-      document.getSelection()?.selectAllChildren(body);
-    }, 0);
-  }
-
-  onBoardMutated("add_note"); // AUTOSAVE (safe)
+  onBoardMutated("add_note");
   return el;
 }
 
@@ -2331,12 +2529,9 @@ async function fetchAndStreamVerseTexts(verseElements, signal) {
 }
 // ==================== NEW HELPERS FOR PAGINATED/PRIORITY VERSE LOADING ====================
 /**
- * OPTIMIZED: Fetches verse texts in PARALLEL instead of sequentially.
- * @param {Array<{ref: string, el: HTMLElement}>} verseBatch
- * @param {AbortSignal} signal
+ * UPDATED: Fetches verse texts in PARALLEL and cleans display.
  */
 async function fillVerseBatch(verseBatch, signal, version) {
-  // Map each verse element to a fetch promise
   const promises = verseBatch.map(async ({ ref, el }) => {
     if (signal?.aborted) return;
     if (el.dataset.status === "ready") return;
@@ -2359,20 +2554,19 @@ async function fillVerseBatch(verseBatch, signal, version) {
 
       if (signal?.aborted) return;
 
-      // If we received an error string, treat as not ready
       if (!text || /not\s*found|unavailable|error/i.test(String(text))) {
         el.dataset.status = "error";
         el.querySelector(".search-query-verse-text").textContent = "Verse not found.";
         return;
       }
 
-      // Populate real text and enable Add
       el.dataset.status = "ready";
       el.dataset.ref = ref;
       el.dataset.version = version;
-      el.dataset.text = text;
+      el.dataset.text = text; // Keeps brackets for drag
 
-      el.querySelector(".search-query-verse-text").textContent = text;
+      // Clean for display
+      el.querySelector(".search-query-verse-text").textContent = cleanDisplayVerse(text);
       el.querySelector(".search-query-verse-text").style.color = ""; 
       el.querySelector(".search-query-verse-text").style.textAlign = ""; 
 
@@ -2399,7 +2593,6 @@ async function fillVerseBatch(verseBatch, signal, version) {
     }
   });
 
-  // Wait for ALL fetches in this batch to finish (or fail) concurrently
   await Promise.all(promises);
 }
 
@@ -2464,39 +2657,34 @@ async function fetchVerseData(ref, signal, version) {
 }
 
 /**
- * Creates a final, ready-to-add verse card element.
- * @param {string} ref
- * @param {string} text
- * @param {AbortSignal} signal
- *G * @returns {HTMLElement}
+ * UPDATED: Creates a final, ready-to-add verse card element with clean text.
  */
 function buildVerseCard(ref, text, signal, version) {
   const item = document.createElement("div");
   item.classList.add("search-query-verse-container");
-  item.dataset.status = "ready"; // Mark as ready
+  item.dataset.status = "ready";
 
-  // --- NEW: Add data attributes ---
   item.dataset.ref = ref;
   item.dataset.version = version;
-  item.dataset.text = text;
-  // --- END NEW ---
+  item.dataset.text = text; // Keeps [1]
 
-  // Check if it should be selected
   const key = `${ref}::${version}`;
   if (pendingVerseAdds.has(key)) {
     item.classList.add("selected-for-add");
   }
   const btnSelectedClass = pendingVerseAdds.has(key) ? 'selected' : '';
+  
+  // Clean display text
+  const displayText = cleanDisplayVerse(text);
 
   item.innerHTML = `
-    <div class="search-query-verse-text">${text}</div>
+    <div class="search-query-verse-text">${displayText}</div>
     <div class="search-query-verse-reference">– ${ref} ${version.toUpperCase()}</div>
     <button class="search-query-verse-add-button ${btnSelectedClass}" 
             aria-label="Add verse ${ref}">
     </button>
   `;
 
-  // Click is handled by event delegation, no .onclick needed
   return item;
 }
 
@@ -3914,12 +4102,36 @@ function addSongElement({ title, artist, cover }, delay = 0) {
   if (!verseContainer) return;
 
   verseContainer.addEventListener("click", (e) => {
-    // 1. Find the closest verse card (row)
+    // 1. Identify targets
+    const btn = e.target.closest(".search-query-verse-add-button");
     const card = e.target.closest(".verse, .search-query-verse-container");
     
-    // 2. If we clicked inside a card, toggle it
-    if (card) {
-      toggleVerseSelection(card);
+    if (!card) return;
+
+    // 2. Extract Data
+    // Support both dataset.ref (new) and dataset.reference (legacy)
+    const reference = card.dataset.ref || card.dataset.reference;
+    const text = card.dataset.text;
+    const version = card.dataset.version;
+
+    if (!reference) return;
+
+    const verseData = {
+      reference: reference,
+      text: text,
+      version: version
+    };
+
+    // 3. Find the button (if we clicked the row, we still need the button element to update it)
+    const targetBtn = btn || card.querySelector(".search-query-verse-add-button");
+
+    if (verseData && targetBtn) {
+      // 4. Execute Toggle
+      // (Stop propagation if we clicked the button directly to prevent potential double-firing)
+      if (btn) {
+        e.stopPropagation(); 
+      }
+      toggleVerseSelection(verseData, targetBtn);
     }
   });
 })();
@@ -4430,10 +4642,11 @@ function deserializeBoard(data) {
         try {
           switch (item.type) {
             case "verse":
-              el = addBibleVerse(item.reference, item.text, true);
+              el = addBibleVerse(item.reference, item.text, true, item.version);
               break;
             case "note":
-              el = addTextNote(item.text);
+              // Updated to support color if present
+              el = addTextNote(item.text, item.color);
               break;
             case "song":
               el = addSongElement(item);
@@ -4447,7 +4660,8 @@ function deserializeBoard(data) {
           if (el) {
             el.style.left = item.left;
             el.style.top = item.top;
-            el.style.zIndex = item.zIndex || "10";
+            // Restore saved Z-Index
+            el.style.zIndex = item.zIndex || "10"; 
             el.dataset.vkey = item.vkey;
             itemEls[item.vkey] = el;
           }
@@ -4462,7 +4676,7 @@ function deserializeBoard(data) {
       data.connections.forEach((c) => {
         const elA = itemEls[c.a];
         const elB = itemEls[c.b];
-        if (elA && elB) connectItems(elA, elB);
+        if (elA && elB) connectItems(elA, elB, c.color);
       });
     }
 
@@ -4496,6 +4710,18 @@ function deserializeBoard(data) {
 
       window.__restoredBoard = true;
     }
+
+    // --- FIX: SYNC Z-INDEX COUNTER ---
+    // Find the highest z-index on the board and ensure new items appear above it
+    const allItems = document.querySelectorAll(".board-item");
+    let maxZ = 0;
+    allItems.forEach(el => {
+        const z = parseInt(el.style.zIndex) || 0;
+        if (z > maxZ) maxZ = z;
+    });
+    // Update the global counter so the next click/add is definitely on top
+    currentIndex = maxZ + 1;
+    // --------------------------------
 
     updateAllConnections(); // one full pass
   } catch (err) {
@@ -5711,3 +5937,236 @@ function addInterlinearCard(data, delay = 0) {
 // Attach to Global API
 if (!window.BoardAPI) window.BoardAPI = {};
 window.BoardAPI.addInterlinearCard = addInterlinearCard;
+
+
+
+/* ==================== MULTI-SELECT & VERSE GROUPING LOGIC ==================== */
+
+// 1. State: Tracks which verses are currently selected
+const verseSelectionQueue = new Map();
+
+/**
+ * Toggles a verse in the selection queue (Add/Remove).
+ * Updates the button style and the floating "Add" button.
+ */
+function toggleVerseSelection(verseData, btnElement) {
+  const key = verseData.reference; // Unique ID, e.g., "Genesis 1:1"
+
+  if (verseSelectionQueue.has(key)) {
+    // Deselect
+    verseSelectionQueue.delete(key);
+    btnElement.classList.remove("selected");
+    // CSS handles the icon switch back to '+' via ::before
+  } else {
+    // Select
+    verseSelectionQueue.set(key, verseData);
+    btnElement.classList.add("selected");
+    // CSS handles the icon switch to 'check' via ::before
+  }
+
+  updateFloatingButton();
+}
+
+/**
+ * Updates the Floating "Add to Board" Button in the top right.
+ */
+function updateFloatingButton() {
+  const floatBtn = document.getElementById("floating-add-to-board-btn");
+  if (!floatBtn) return;
+
+  const count = verseSelectionQueue.size;
+
+  if (count > 0) {
+    floatBtn.style.display = "flex";
+    floatBtn.innerHTML = `
+      <span class="material-symbols-outlined">add_circle</span>
+      Add ${count} Item${count !== 1 ? "s" : ""}
+    `;
+    
+    // Unbind old listeners to prevent duplicates, then rebind
+    const newBtn = floatBtn.cloneNode(true);
+    floatBtn.parentNode.replaceChild(newBtn, floatBtn);
+    
+    newBtn.onclick = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      flushVerseQueue();
+    };
+  } else {
+    floatBtn.style.display = "none";
+  }
+}
+
+/**
+ * LOGIC ENGINE: Groups continuous verses and adds them to the board.
+ */
+function flushVerseQueue() {
+  if (verseSelectionQueue.size === 0) return;
+
+  // 1. Convert Map to Array
+  const verses = Array.from(verseSelectionQueue.values());
+
+  // 2. Sort Verses
+  const parseRef = (ref) => {
+    const match = ref.match(/^((?:[1-3]\s)?[A-Za-z\s]+)\s+(\d+):(\d+)$/);
+    if (!match) return { book: ref, chapter: 0, verse: 0 };
+    return { 
+      book: match[1].trim(), 
+      chapter: parseInt(match[2]), 
+      verse: parseInt(match[3]) 
+    };
+  };
+
+  verses.sort((a, b) => {
+    const va = parseRef(a.reference);
+    const vb = parseRef(b.reference);
+    if (va.book !== vb.book) return va.book.localeCompare(vb.book);
+    if (va.chapter !== vb.chapter) return va.chapter - vb.chapter;
+    return va.verse - vb.verse;
+  });
+
+  // 3. Group Continuous Verses
+  const groups = [];
+  if (verses.length > 0) {
+    let currentGroup = [verses[0]];
+    for (let i = 1; i < verses.length; i++) {
+      const prev = currentGroup[currentGroup.length - 1];
+      const curr = verses[i];
+      const prevData = parseRef(prev.reference);
+      const currData = parseRef(curr.reference);
+
+      // Continuity Check
+      if (
+        currData.book === prevData.book &&
+        currData.chapter === prevData.chapter &&
+        currData.verse === prevData.verse + 1
+      ) {
+        currentGroup.push(curr);
+      } else {
+        groups.push(currentGroup);
+        currentGroup = [curr];
+      }
+    }
+    groups.push(currentGroup);
+  }
+
+  // 4. Create Elements
+  groups.forEach((group, index) => {
+    const delay = index * 0.1; 
+
+    if (group.length === 1) {
+      // --- Single Verse ---
+      const v = group[0];
+      window.BoardAPI.addBibleVerse(v.reference, v.text, false, v.version, delay);
+    } else {
+      // --- Verse Range (Section) ---
+      const first = group[0];
+      const last = group[group.length - 1];
+      
+      const parseRef = (ref) => {
+         // Simple parser for the queue logic
+         const m = ref.match(/:(\d+)$/);
+         return m ? parseInt(m[1]) : 0;
+      };
+
+      const firstMeta = parseReferenceToParts(first.reference) || { book: "", chapter: 0, verse: 0 };
+      const lastMeta = parseReferenceToParts(last.reference) || { verse: 0 };
+      
+      // Construct range reference: "Genesis 50:2-3"
+      const combinedRef = `${firstMeta.book} ${firstMeta.chapter}:${firstMeta.verse}-${lastMeta.verse}`;
+
+      // FIX: Force [N] formatting on every verse BEFORE joining
+      const combinedText = group.map(v => {
+        const vNum = parseRef(v.reference);
+        let cleanText = v.text;
+        
+        // 1. Remove existing [N] or leading numbers to start fresh
+        //    Removes "[2] " or "2 " or "<sup>2</sup>"
+        cleanText = cleanText.replace(/^\[\d+\]\s*/, "")
+                             .replace(/^\d+\s+/, "") 
+                             .replace(/<[^>]+>/g, ""); // Clean any stray HTML
+
+        // 2. Re-apply standard bracket format
+        return `[${vNum}] ${cleanText}`;
+      }).join(" ");
+
+      window.BoardAPI.addBibleVerse(combinedRef, combinedText, false, first.version, delay);
+    }
+  });
+
+  // 5. Cleanup
+  verseSelectionQueue.clear();
+  updateFloatingButton();
+  document.querySelectorAll('.search-query-verse-add-button.selected').forEach(btn => {
+    btn.classList.remove('selected');
+  });
+  
+  closeSearchQuery();
+}
+
+/* ==================== OVERWRITTEN RENDER FUNCTION ==================== */
+
+/**
+ * Renders the list of verses into the search drawer.
+ * Updated to support multi-select.
+ */
+function renderVerses(verses) {
+  const container = document.getElementById("search-query-verse-container");
+  const noResultContainer = document.querySelector(".search-query-no-verse-found-container");
+  
+  if (!container) return;
+  container.innerHTML = ""; // Clear previous results
+
+  if (!verses || verses.length === 0) {
+    if (noResultContainer) noResultContainer.style.display = "block";
+    return;
+  }
+  
+  if (noResultContainer) noResultContainer.style.display = "none";
+
+  verses.forEach((verse) => {
+    // 1. Create Row
+    const row = document.createElement("div");
+    row.className = "search-query-verse-container verse"; 
+    row.dataset.verse = verse.verse; 
+    row.dataset.status = "ready"; // Mark ready for CSS animations
+    
+    // NEW: Add dataset for click delegation
+    row.dataset.ref = verse.reference;
+    row.dataset.text = verse.text;
+    row.dataset.version = verse.version;
+
+    // 2. Text Container
+    const textDiv = document.createElement("div");
+    textDiv.className = "search-query-verse-text";
+    
+    // Check if this verse is currently in our selection queue
+    const isSelected = verseSelectionQueue.has(verse.reference);
+
+    textDiv.innerHTML = `
+      <div class="search-query-verse-reference">${verse.reference}</div>
+      <div class="verse-text-content">${verse.text}</div>
+    `;
+
+    // 3. Selection Button
+    const addBtn = document.createElement("button");
+    addBtn.className = "search-query-verse-add-button";
+    if (isSelected) addBtn.classList.add("selected");
+    
+    // REMOVED: addBtn.innerHTML = ... 
+    // The CSS ::before handles the icon content now.
+
+    // 4. Click Handler (Direct click on button)
+    addBtn.onclick = (e) => {
+      e.stopPropagation(); // Prevent triggering row clicks if any
+      toggleVerseSelection(verse, addBtn);
+    };
+
+    row.appendChild(textDiv);
+    row.appendChild(addBtn);
+    container.appendChild(row);
+  });
+  
+  // Ensure float button visibility matches current queue
+  updateFloatingButton();
+}

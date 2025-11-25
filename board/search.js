@@ -31,6 +31,8 @@ const bibleBooks = [
   ["2 Samuel", ["2sam", "ii sam"]],
   ["1 Kings", ["1kgs", "i kgs"]],
   ["2 Kings", ["2kgs", "ii kgs"]],
+  ["1 Chronicles", ["1CH", "i CH"]],
+  ["2 Chronicles", ["2CH", "ii CH"]],
   ["Ezra", ["ezr"]],
   ["Nehemiah", ["neh"]],
   ["Esther", ["est"]],

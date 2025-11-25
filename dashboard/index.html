@@ -82,6 +82,7 @@
       left: 15px;
     }
   </style>
+  <!-- <script src="https://cdn.jsdelivr.net/npm/@revenuecat/purchases-js@latest/dist/Purchases.umd.min.js"></script> -->
 </head>
 
 <body class="light">
@@ -150,11 +151,25 @@
       </nav>
 
       <div class="sidebar-footer">
-        <button id="signout-btn-sidebar" class="nav-item dash-btn" type="button">
-          <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="var(--fg)">
-            <path d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h280v80H200v560h280v80H200Zm440-160-55-58 102-102H360v-80h327L585-622l55-58 200 200-200 200Z"/>
-          </svg>
-          Sign out
+        <div id="user-profile-menu" class="profile-menu hidden">
+          <!-- <button id="manage-sub-btn" class="menu-item">
+            <span class="material-symbols-outlined">credit_card</span>
+            Manage Subscription
+          </button>
+          <div class="menu-divider"></div> -->
+          <button id="signout-btn-sidebar" class="menu-item delete">
+            <span class="material-symbols-outlined">logout</span>
+            Sign out
+          </button>
+        </div>
+
+        <button id="user-profile-btn" class="user-profile-btn" type="button" aria-label="User Menu">
+          <img id="user-avatar-img" class="user-avatar" src="../assets/logo_no_bg.png" alt="User" />
+          <div class="user-info">
+            <span id="user-profile-name" class="user-name">Loading...</span>
+            <span id="user-profile-email" class="user-email">...</span>
+          </div>
+          <span class="material-symbols-outlined menu-indicator">more_horiz</span>
         </button>
       </div>
     </div>
@@ -326,8 +341,10 @@
       <form id="search-container" onsubmit="return searchForQuery(event)">
         <input id="search-bar" type="text" placeholder="Search " autocomplete="off" />
         <select id="version-select" title="Version" aria-label="Bible version">
-          <option>ASV</option>
+          <option>NLT</option>
+          <!-- <option>NIV</option> -->
           <option>KJV</option>
+          <option>ASV</option>
           <option>FBV</option>
           <option>WEBUS</option>
         </select>
@@ -352,8 +369,8 @@
           <div id="did-you-mean-text">Did you mean ""?</div>
           <div class="search-mode-toggle">
             <button id="search-mode-bible" class="search-mode-pill active">Bible</button>
-            <button id="search-mode-songs" class="search-mode-pill">Music</button>
             <button id="search-mode-interlinear" class="search-mode-pill">Interlinear</button>
+            <button id="search-mode-songs" class="search-mode-pill">Music</button>
           </div>
         </div>
 
@@ -443,6 +460,21 @@
         </div>
 
       </div>
+  </div>
+
+  <div id="note-modal-backdrop" class="hidden">
+    <div class="modal-content">
+      <h3>Edit Note</h3>
+      <textarea id="note-modal-input" placeholder="Type your note here..."></textarea>
+      
+      <div id="note-modal-colors" class="note-color-picker">
+        </div>
+
+      <div class="modal-actions">
+        <button id="note-modal-cancel-btn" class="modal-btn cancel">Cancel</button>
+        <button id="note-modal-save-btn" class="modal-btn primary">Save</button>
+      </div>
+    </div>
   </div>
 
   <!-- ==================== DELETE MODAL ==================== -->

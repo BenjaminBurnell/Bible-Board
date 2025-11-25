@@ -120,8 +120,9 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  width: 100%;
-  padding-bottom: 10px; /* Space before the list starts */
+  width: calc(100% - 20px);
+  margin-left: 10px;
+  padding-top: 10px; /* Space before the list starts */
 }
 
 /* Style specifically for the new toggle button */
@@ -169,7 +170,7 @@ body {
   display: flex;
   flex-direction: column;
   height: 100%;
-  padding: 10px 10px;
+  /* padding: 10px 10px; */
   gap: 10px;
 }
 
@@ -266,6 +267,7 @@ body {
   flex: 1;              /* Take up remaining space in the nav */
   overflow-y: auto;     /* Enable vertical scrolling */
   min-height: 0;        /* standard flex scroll fix */
+  padding:0px 10px;
   
   /* Remove height: 100% if it exists, use flex instead */
   height: auto; 
@@ -300,7 +302,7 @@ body {
 }
 
 .nav-item {
-  width: 100%;
+  width: calc(100% - 20px);
   background: transparent;
   border: none;
   color: var(--fg);
@@ -309,6 +311,7 @@ body {
   gap: 12px;
   padding: 10px;
   cursor: pointer;
+  margin-left: 10px;
   border-radius: 10px;
   font-size: 0.95rem;
   font-weight: 300;
@@ -321,7 +324,6 @@ body {
 /* Sidebar footer (Updated for single full-width button) */
 .sidebar-footer {
   margin-top: auto;
-  margin-bottom: 10px;
   display: flex;
   flex-direction: column; /* Stacks items if you add more later */
   width: 100%;
@@ -440,19 +442,7 @@ body {
 
 @media (max-width:900px) {
   #bottom-sidebar-fade {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    height: 60px; /* Adjust height for how subtle/strong you want the fade */
-    z-index: 10;  /* Sits on top of the list */
-    
-    /* The Fade Effect */
-    background: linear-gradient(to top, var(--bg-dots), var(--bg-trasparent));
-    /* background:var(--bg-dots); */
-    
-    /* CRITICAL: Allows clicking buttons behind the fade */
-    pointer-events: none; 
+    display:none;
   }
 }
 
@@ -1129,4 +1119,243 @@ body {
   #sidebar-toggle-btn {
     display:none;
   }
+}
+
+
+
+
+/* =========================
+   ChatGPT-Style Profile Menu
+   ========================= */
+
+.sidebar-footer {
+  margin-top: auto;
+  padding: 10px;
+  border-top: 1px solid var(--border);
+  position: relative; /* Anchor for the popup menu */
+}
+
+/* --- Profile Button --- */
+.user-profile-btn {
+  width: calc(100% - 20px);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  color: var(--fg);
+  text-align: left;
+  transition: background 0.2s ease;
+}
+
+.user-profile-btn:hover,
+.user-profile-btn.active {
+  background: var(--bg-alt);
+}
+
+.user-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%; /* Circle */
+  object-fit: cover;
+  background: var(--bg-dots);
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+}
+
+.user-info {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  flex: 1; /* Take available space */
+  min-width: 0; /* Allow text truncation */
+}
+
+.user-name {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--fg);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.user-email {
+  font-size: 0.75rem;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.menu-indicator {
+  color: var(--muted);
+  font-size: 20px;
+}
+
+/* --- Pop-up Menu --- */
+.profile-menu {
+  position: absolute;
+  bottom: 100%; /* Sits on top of the footer */
+  left: 10px;
+  right: 30px; /* Stretch to width of footer padding */
+  margin-bottom: 8px;
+  background: var(--bg-dots);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 6px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  z-index: 200000;
+  
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  
+  /* Animation */
+  opacity: 0;
+  transform: translateY(10px) scale(0.95);
+  pointer-events: none;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.profile-menu.show {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+
+/* Hidden utility */
+.profile-menu.hidden {
+  display: none; /* Fallback hiding */
+}
+
+/* Menu Items */
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: var(--fg);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.2s;
+}
+
+.menu-item:hover {
+  background: var(--bg-alt);
+}
+
+.menu-item .material-symbols-outlined {
+  font-size: 20px;
+  color: var(--muted);
+}
+
+.menu-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 0;
+}
+
+/* --- Collapsed Sidebar State --- */
+.sidebar.collapsed .user-profile-btn {
+  justify-content: center;
+  padding: 10px 0;
+}
+
+.sidebar.collapsed .user-info, 
+.sidebar.collapsed .menu-indicator {
+  display: none;
+}
+
+/* When collapsed, show menu to the side instead of above */
+.sidebar.collapsed .profile-menu {
+  left: 100%; /* Push to right */
+  bottom: 10px;
+  margin-left: 10px;
+  width: 200px; /* Fixed width since parent is narrow */
+}
+
+
+/* =========================
+   Global Context Menu (Fixed Position)
+   ========================= */
+#board-context-menu {
+  position: fixed;
+  background: var(--bg-dots);
+  border: 1px solid var(--border);
+  border-radius: 12px; /* Match profile menu */
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5); /* Match profile menu */
+  z-index: 20000;
+  min-width: 160px; /* Slightly wider */
+  display: none; 
+  flex-direction: column;
+  padding: 6px; /* Match profile menu */
+  backdrop-filter: blur(1rem);
+  gap: 2px;
+}
+
+#board-context-menu.show {
+  display: flex;
+  animation: menuFadeIn 0.1s ease-out;
+}
+
+@keyframes menuFadeIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.menu-option {
+  background: transparent;
+  border: none;
+  color: var(--fg);
+  padding: 10px 12px; /* Match profile menu items */
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 10px; /* Match profile menu gap */
+  cursor: pointer;
+  font-size: 0.9rem; /* Match profile menu font */
+  font-weight: 600;
+  border-radius: 8px;
+  transition: background 0.2s;
+}
+
+.menu-option:hover {
+  background: var(--bg-alt);
+}
+
+.menu-option .material-symbols-outlined {
+  font-size: 20px; /* Match profile menu icons */
+  color: var(--muted);
+}
+
+.menu-option.delete {
+  color: #e55353;
+}
+
+.menu-option.delete .material-symbols-outlined {
+  color: #e55353; /* Make delete icon red too */
+}
+
+.menu-option.delete:hover {
+  background: rgba(229, 83, 83, 0.1);
+}
+
+/* Verse Number Styling */
+.verse-num {
+  font-size: 0.65em;       /* Smaller font */
+  vertical-align: super;   /* Raised up */
+  color: var(--muted);     /* Light gray */
+  font-weight: 700;
+  margin-right: 4px;       /* Small gap between number and text */
+  user-select: none;       /* Optional: prevents copying numbers if you just want text */
 }

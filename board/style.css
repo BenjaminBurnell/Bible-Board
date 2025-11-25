@@ -76,7 +76,6 @@ body.light {
     left:0;
     right:0;
     transition: width 0.25s ease;
-    background:yellow;
     /* smooth shrink/expand */
   }
   
@@ -223,6 +222,22 @@ body.light {
   z-index: 10001;
 }
 
+.action-button {
+  width: 30px;
+  height: 30px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 8px;
+  /* background: var(--bg-seethroug); */
+  background: none;
+  border-radius: 10px;
+  border: 1px solid var(--fg-seethrough);
+  backdrop-filter: blur(1rem);
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
 @media (max-width:900px) {
   #action-buttons-container {
     display: flex;
@@ -230,7 +245,7 @@ body.light {
     justify-content: space-evenly;
     gap: 8px;
     width:calc(100vw - 10px) !important;
-    height: 35px;
+    height: 40px;
     position: fixed !important;
     transform: none;
     left: 0px;
@@ -246,22 +261,29 @@ body.light {
     border-top-left-radius: 15px;
     z-index: 10001;
   }
-}
 
-.action-button {
-  width: 30px;
-  height: 30px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 8px;
-  /* background: var(--bg-seethroug); */
-  background: none;
-  border-radius: 10px;
-  border: 1px solid var(--fg-seethrough);
-  backdrop-filter: blur(1rem);
-  cursor: pointer;
-  transition: opacity 0.15s ease;
+  .action-button {
+    width: 35px;
+    height: 35px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 10px;
+    /* background: var(--bg-seethroug); */
+    background: none;
+    border-radius: 10px;
+    border: 1px solid var(--fg-seethrough);
+    backdrop-filter: blur(1rem);
+    cursor: pointer;
+    transition: opacity 0.15s ease;
+  }
+
+  
+  .action-button:hover {
+    background: none;
+    border: 1px solid var(--fg-seethrough);
+    backdrop-filter: blur(1rem);
+  }
 }
 
 .action-button:hover {
@@ -1964,4 +1986,190 @@ body.read-only .connection-handle {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+
+/* --- Note Modal Styles --- */
+#note-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 20000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#note-modal-backdrop.hidden {
+  display: none;
+}
+
+.modal-content {
+  background: var(--bg-dots);
+  border: 1px solid var(--border);
+  border-radius: 25px;
+  padding: 20px;
+  width: 90%;
+  max-width: 400px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.modal-content h3 {
+  margin: 0;
+  color: var(--fg);
+  font-size: 1.2rem;
+}
+
+#note-modal-input {
+  width: 100%;
+  height: 150px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--bg-alt);
+  color: var(--fg);
+  font-size: 1rem;
+  font-family: inherit;
+  resize: none;
+  box-sizing: border-box;
+  outline: none;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.modal-btn {
+  padding: 8px 20px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 0.9rem;
+  transition: background 0.2s;
+}
+
+.modal-btn.cancel {
+  background: transparent;
+  color: var(--fg);
+}
+
+.modal-btn.cancel:hover {
+  background: var(--bg-seethroug);
+}
+
+.modal-btn.primary {
+  background: var(--fg);
+  color: var(--bg);
+  border-color: var(--fg);
+}
+
+.modal-btn.primary:hover {
+  opacity: 0.9;
+}
+
+/* --- Edit Button on Board Item --- */
+.board-item .edit-btn {
+  position: absolute;
+  top: -25px;
+  right: -25px;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: var(--bg-alt);
+  color: var(--bg);
+  border: 1px solid var(--border);
+  display: none; /* Hidden by default */
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  z-index: 20;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  padding: 0;
+  transition: transform 0.1s;
+}
+
+.board-item .edit-btn svg {
+  width: 30px;
+  height: 30px;
+  fill: var(--fg);
+}
+
+/* Show button when the item is selected */
+.board-item.selected-connection .edit-btn {
+  display: flex;
+}
+
+@media (pointer:fine) {
+  /* Hover effect */
+  .board-item .edit-btn:hover {
+    transform: scale(1.05);
+  }
+}
+
+
+/* --- Note Color Picker --- */
+.note-color-picker {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  padding: 0 5px;
+}
+
+.note-color-swatch {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid var(--border);
+  transition: transform 0.15s, border-color 0.15s;
+  position: relative;
+}
+
+.note-color-swatch:hover {
+  transform: scale(1.1);
+}
+
+.note-color-swatch.selected {
+  transform: scale(1.15);
+  border-color: var(--fg);
+  box-shadow: 0 0 0 2px var(--bg);
+}
+
+/* "Default" swatch styling (diagonal line) */
+.note-color-swatch.default-swatch {
+  background: var(--bg-dots);
+  overflow: hidden;
+}
+.note-color-swatch.default-swatch::after {
+  content: "";
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 100%; height: 2px;
+  background: var(--muted);
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+/* --- Colored Notes Styles --- */
+.board-item.text-note {
+  transition: background-color 0.2s, color 0.2s;
+}
+
+/* When a specific color is applied (not default) */
+.board-item.text-note.has-color {
+  color: #171717 !important; /* Force dark text for readability on bright colors */
+  border-color: transparent;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+}
+
+/* Ensure the inner text edit/display inherits this color */
+.board-item.text-note.has-color .text-content,
+.board-item.text-note.has-color .verse-text {
+  color: inherit;
 }
