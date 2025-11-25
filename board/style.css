@@ -2265,3 +2265,30 @@ body.read-only .connection-handle {
 .signout:hover {
   color: var(--fg);
 }
+
+
+
+
+
+/* --- Grouping Mode Styles (Clean) --- */
+
+/* 1. Active state for the main toggle button */
+#grouping-mode-btn.active {
+  background: var(--accent);
+}
+#grouping-mode-btn.active .action-icon {
+  color: var(--bg);
+}
+
+/* 2. Visual cue when mode is active */
+body.grouping-mode .board-item {
+  cursor: alias; /* Indicates "Selection" mode */
+}
+
+/* 3. Selected State (Green Outline) */
+.board-item.group-selected {
+  box-shadow: 0 0 0 1px var(--accent) !important; 
+  border-color: var(--accent) !important;
+  transform: scale(1.01); /* Slight pop to confirm selection */
+  transition: transform 0.1s ease;
+}

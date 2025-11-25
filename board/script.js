@@ -754,6 +754,8 @@ function applyLayout(withTransition = true) {
 // ==================== State ====================
 // ... (All state variables unchanged) ...
 let isPanning = false;
+let hasMovedDuringDrag = false;
+let ignoreNextClick = false;
 let startX, startY, scrollLeft, scrollTop;
 let active = null;
 let offsetX, offsetY;
@@ -1146,13 +1148,21 @@ function onGlobalMouseUp() {
     try {
       active.style.cursor = "grab";
     } catch {}
-    onBoardMutated("item_move_end"); // AUTOSAVE
+    
+    // FIX: If we actually dragged, ignore the subsequent click event
+    if (hasMovedDuringDrag) {
+        ignoreNextClick = true;
+        // Reset the blocker after a tiny delay (enough to skip the click event)
+        setTimeout(() => { ignoreNextClick = false; }, 50);
+    }
+
+    onBoardMutated("item_move_end");
   }
   active = null;
   pendingMouseDrag = null;
   touchDragElement = null;
+  hasMovedDuringDrag = false;
 
-  // OPTIMIZATION: Trigger pan save on mouseup, not mousemove
   if (isPanning) {
     onBoardMutated("pan_end");
   }
@@ -1554,15 +1564,28 @@ window.addEventListener(
 
 // ==================== Drag helpers ====================
 function startDragMouse(item, eOrPoint, offX, offY) {
-  // Guard: Read-only
   if (window.__readOnly) return;
 
   active = item;
+  hasMovedDuringDrag = false; // Reset flag
   
-  // FIX: Ensure it jumps to front immediately
   bringToFront(item);
-  
   item.style.cursor = "grabbing";
+
+  // Group Drag Init
+  isGroupDrag = typeof isGroupingMode !== "undefined" && isGroupingMode && typeof selectedGroupItems !== "undefined" && selectedGroupItems.has(item);
+  
+  if (isGroupDrag) {
+    groupDragOffsets.clear();
+    selectedGroupItems.forEach(groupItem => {
+      const rect = groupItem.getBoundingClientRect();
+      groupDragOffsets.set(groupItem, {
+        offX: (eOrPoint.clientX - rect.left) / scale,
+        offY: (eOrPoint.clientY - rect.top) / scale
+      });
+    });
+  }
+
   if (offX == null || offY == null) {
     const rect = item.getBoundingClientRect();
     offsetX = (eOrPoint.clientX - rect.left) / scale;
@@ -1574,38 +1597,56 @@ function startDragMouse(item, eOrPoint, offX, offY) {
 }
 
 function dragMouseTo(clientX, clientY) {
-  // FIX: Get the viewport's position on the screen
+  hasMovedDuringDrag = true; // Mark that we moved
+
   const vpRect = viewport.getBoundingClientRect();
+  
+  const moveElement = (el, offX, offY) => {
+    const relX = clientX - vpRect.left;
+    const relY = clientY - vpRect.top;
+    const newLeft = (viewport.scrollLeft + relX) / scale - offX;
+    const newTop = (viewport.scrollTop + relY) / scale - offY;
+    
+    const maxLeft = workspace.offsetWidth - el.offsetWidth;
+    const maxTop = workspace.offsetHeight - el.offsetHeight;
+    
+    el.style.left = clamp(newLeft, 0, maxLeft) + "px";
+    el.style.top = clamp(newTop, 0, maxTop) + "px";
+  };
 
-  // Calculate mouse position relative to the viewport container
-  // (Screen Mouse X - Container Left Edge)
-  const relX = clientX - vpRect.left;
-  const relY = clientY - vpRect.top;
+  if (isGroupDrag) {
+    selectedGroupItems.forEach(item => {
+      const offsets = groupDragOffsets.get(item);
+      if (offsets) moveElement(item, offsets.offX, offsets.offY);
+    });
+  } else {
+    moveElement(active, offsetX, offsetY);
+  }
 
-  // Convert to workspace coordinates (World Space)
-  const newLeft = (viewport.scrollLeft + relX) / scale - offsetX;
-  const newTop = (viewport.scrollTop + relY) / scale - offsetY;
-
-  // Clamp to workspace boundaries
-  const maxLeft = workspace.offsetWidth - active.offsetWidth;
-  const maxTop = workspace.offsetHeight - active.offsetHeight;
-
-  active.style.left = clamp(newLeft, 0, maxLeft) + "px";
-  active.style.top = clamp(newTop, 0, maxTop) + "px";
-
-  throttledUpdateAllConnections(); // OPTIMIZATION: Use throttled version
+  throttledUpdateAllConnections();
 }
 
 function startDragTouch(item, touchPoint, offX, offY) {
-  // Guard: Read-only
   if (window.__readOnly) return;
 
   touchDragElement = item;
   touchMoved = false;
   isTouchPanning = false;
-  
-  // FIX: Ensure it jumps to front immediately
   bringToFront(item);
+
+  // --- GROUP DRAG INIT (Touch) ---
+  isGroupDrag = isGroupingMode && selectedGroupItems.has(item);
+  if (isGroupDrag) {
+    groupDragOffsets.clear();
+    selectedGroupItems.forEach(groupItem => {
+      const rect = groupItem.getBoundingClientRect();
+      groupDragOffsets.set(groupItem, {
+        offX: (touchPoint.clientX - rect.left) / scale,
+        offY: (touchPoint.clientY - rect.top) / scale
+      });
+    });
+  }
+  // -------------------------------
 
   if (offX == null || offY == null) {
     const rect = item.getBoundingClientRect();
@@ -1617,20 +1658,28 @@ function startDragTouch(item, touchPoint, offX, offY) {
   }
 }
 
-// ... (dragTouchTo unchanged) ...
 function dragTouchTo(touchPoint) {
   const vp = viewport.getBoundingClientRect();
-  const x =
-    (viewport.scrollLeft + (touchPoint.clientX - vp.left)) / scale -
-    touchDragOffset.x;
-  const y =
-    (viewport.scrollTop + (touchPoint.clientY - vp.top)) / scale -
-    touchDragOffset.y;
-  const maxLeft = workspace.offsetWidth - touchDragElement.offsetWidth;
-  const maxTop = workspace.offsetHeight - touchDragElement.offsetHeight;
-  touchDragElement.style.left = `${clamp(x, 0, maxLeft)}px`;
-  touchDragElement.style.top = `${clamp(y, 0, maxTop)}px`;
-  throttledUpdateAllConnections(); // OPTIMIZATION: Use throttled version
+
+  const moveElement = (el, offX, offY) => {
+     const x = (viewport.scrollLeft + (touchPoint.clientX - vp.left)) / scale - offX;
+     const y = (viewport.scrollTop + (touchPoint.clientY - vp.top)) / scale - offY;
+     const maxLeft = workspace.offsetWidth - el.offsetWidth;
+     const maxTop = workspace.offsetHeight - el.offsetHeight;
+     el.style.left = `${clamp(x, 0, maxLeft)}px`;
+     el.style.top = `${clamp(y, 0, maxTop)}px`;
+  };
+
+  if (isGroupDrag) {
+    selectedGroupItems.forEach(item => {
+      const offsets = groupDragOffsets.get(item);
+      if (offsets) moveElement(item, offsets.offX, offsets.offY);
+    });
+  } else {
+    moveElement(touchDragElement, touchDragOffset.x, touchDragOffset.y);
+  }
+  
+  throttledUpdateAllConnections();
 }
 
 // ==================== Connections ====================
@@ -2119,6 +2168,7 @@ function addTextNote(initial = "New note") {
   workspace.appendChild(el);
   el.dataset.vkey = itemKey(el);
 
+  // Edit Button Logic
   const editBtn = el.querySelector(".edit-btn");
   if (editBtn) {
     const openEdit = (e) => {
@@ -2131,11 +2181,31 @@ function addTextNote(initial = "New note") {
     editBtn.addEventListener("click", (e) => { e.stopPropagation(); });
   }
 
+  // Drag Logic
+  let startX = 0;
+  let startY = 0;
+
   el.onmousedown = (e) => {
     if (e.target.closest(".edit-btn")) return;
     if (isConnectMode) return;
+    startX = e.clientX;
+    startY = e.clientY;
     startDragMouse(el, e);
   };
+
+  // --- FIX: Check Grouping Mode before opening modal ---
+  el.addEventListener("click", (e) => {
+    // If in grouping mode, DO NOT stop propagation. 
+    // Let it bubble to workspace so it can be selected.
+    if (typeof isGroupingMode !== "undefined" && isGroupingMode) return;
+
+    if (isConnectMode) return;
+    const dist = Math.hypot(e.clientX - startX, e.clientY - startY);
+    if (dist < 5) {
+        e.stopPropagation();
+        openNoteModal(el);
+    }
+  });
 
   el.ontouchstart = (e) => {
     if (e.target.closest(".edit-btn")) return;
@@ -2154,8 +2224,17 @@ function addTextNote(initial = "New note") {
 
   el.ontouchend = () => {
     if (touchDragElement) onBoardMutated("item_move_touch_end");
+    
+    if (!touchDragElement && !touchMoved) {
+       // --- FIX: Check Grouping Mode here too ---
+       if (typeof isGroupingMode !== "undefined" && isGroupingMode) return;
+       
+       openNoteModal(el);
+    }
+    
     touchDragElement = null;
     pendingTouchDrag = null;
+    setTimeout(() => { touchMoved = false; }, 0);
   };
 
   onBoardMutated("add_note");
@@ -3353,12 +3432,18 @@ function clearSelection() {
 }
 
 workspace.addEventListener("click", (e) => {
-  // --- NEW: READ-ONLY GUARD ---
-  // If read-only, don't allow selection or connection
-  if (touchMoved || window.__readOnly) return;
-  // --- END NEW ---
+  // Check ignoreNextClick to skip toggling after a drag
+  if (touchMoved || window.__readOnly || ignoreNextClick) return;
 
   const item = e.target.closest(".board-item");
+  
+  if (typeof isGroupingMode !== "undefined" && isGroupingMode) {
+    if (item) {
+      toggleGroupSelection(item);
+    }
+    return;
+  }
+
   if (!item) {
     clearSelection();
     return;
@@ -3369,7 +3454,7 @@ workspace.addEventListener("click", (e) => {
   }
   if (selectedItem && item !== selectedItem) {
     window.BoardAPI.connectItems(selectedItem, item);
-    throttledUpdateAllConnections(); // OPTIMIZATION: Use throttled version
+    throttledUpdateAllConnections();
     clearSelection();
   }
 });
@@ -3434,18 +3519,27 @@ textBtn?.addEventListener("click", (e) => {
   window.BoardAPI.addTextNote("New note");
 });
 
+// [UPDATE] Inside deleteBtn event listener
 deleteBtn?.addEventListener("click", (e) => {
   e.preventDefault();
   e.stopPropagation();
+
+  // --- NEW: Group Delete ---
+  if (isGroupingMode && selectedGroupItems.size > 0) {
+    if (confirm(`Delete ${selectedGroupItems.size} items?`)) {
+      selectedGroupItems.forEach(el => {
+        window.BoardAPI.deleteItem(el);
+      });
+      selectedGroupItems.clear();
+      onBoardMutated("delete_group"); // Trigger save once
+    }
+    return;
+  }
+  // -------------------------
+
   if (!selectedItem) return;
-
-  // Call the new BoardAPI function
   window.BoardAPI.deleteItem(selectedItem);
-
-  // clearSelection is still handled here as it's UI state, not
-  // part of the core deletion action.
   clearSelection();
-  // NOTE: onBoardMutated is now called inside deleteBoardItem
 });
 
 // ==================== Interlinear integration ====================
@@ -6155,57 +6249,82 @@ function handleFloatingAddClick() {
 
   let delay = 0.05;
 
-  // --- ADD VERSES (Grouped by Chapter & Version) ---
-  // This logic ensures verses like Gen 1:1 and 1:2 appear as "Genesis 1:1-2"
+  // --- PROCESS VERSES (Group continuous ranges) ---
   if (verses.length > 0) {
-    // Helper to extract number from ref
-    const parseRef = (ref) => {
-      const m = ref.match(/:(\d+)$/);
-      return m ? parseInt(m[1]) : 0;
+    
+    // Helper to parse "Genesis 1:1" into parts for sorting
+    const parseFullRef = (ref) => {
+        // Matches "Book Chapter:Verse"
+        const parts = ref.match(/^(.+)\s+(\d+):(\d+)$/);
+        if (!parts) return { book: ref, chapter: 0, verse: 0 };
+        return { 
+            book: parts[1], 
+            chapter: parseInt(parts[2]), 
+            verse: parseInt(parts[3]) 
+        };
     };
 
-    // Sort by book/chapter/verse order roughly
+    // FIX: Sort by VERSION first, then by Book/Chapter/Verse
     verses.sort((a, b) => {
-        if (a.reference === b.reference) return 0;
-        // Use simple verse comparison for now, assumes same book/chapter in groups
-        return parseRef(a.reference) - parseRef(b.reference);
+        // 1. Primary Sort: Version (e.g. KJV before NLT)
+        if (a.version < b.version) return -1;
+        if (a.version > b.version) return 1;
+
+        // 2. Secondary Sort: Reference
+        const ra = parseFullRef(a.reference);
+        const rb = parseFullRef(b.reference);
+
+        // Sort by Book, then Chapter, then Verse
+        if (ra.book !== rb.book) return ra.book.localeCompare(rb.book);
+        if (ra.chapter !== rb.chapter) return ra.chapter - rb.chapter;
+        return ra.verse - rb.verse;
     });
 
     // Group continuous verses
     let groups = [[verses[0]]];
+    
     for (let i = 1; i < verses.length; i++) {
         const prev = groups[groups.length-1][groups[groups.length-1].length-1];
         const curr = verses[i];
-        const prevNum = parseRef(prev.reference);
-        const currNum = parseRef(curr.reference);
         
-        const prevBase = prev.reference.split(":")[0];
-        const currBase = curr.reference.split(":")[0];
+        const prevData = parseFullRef(prev.reference);
+        const currData = parseFullRef(curr.reference);
         
-        // Only group if: Same Book/Chapter AND Same Version AND Sequential
-        if (prevBase === currBase && prev.version === curr.version && currNum === prevNum + 1) {
+        // Check if: Same Version AND Same Book AND Same Chapter AND Sequential Verse
+        if (
+            prev.version === curr.version && 
+            prevData.book === currData.book && 
+            prevData.chapter === currData.chapter && 
+            currData.verse === prevData.verse + 1
+        ) {
             groups[groups.length-1].push(curr);
         } else {
             groups.push([curr]);
         }
     }
 
-    // Add to board
+    // Add Groups to Board
     groups.forEach(group => {
         if (group.length === 1) {
+            // Single Verse
             const v = group[0];
             window.BoardAPI.addBibleVerse(v.reference, v.text, false, v.version, delay);
         } else {
+            // Verse Range
             const first = group[0];
             const last = group[group.length - 1];
-            const baseRef = first.reference.split(":")[0];
+            
+            // Parse base reference (e.g., "Genesis 1")
+            const baseRefParts = first.reference.match(/^(.+\s+\d+):/);
+            const baseRef = baseRefParts ? baseRefParts[1] : first.reference.split(":")[0];
+            
             const startV = first.reference.split(":")[1];
             const endV = last.reference.split(":")[1];
             
-            // Combine texts
+            // Combine text with proper spacing
             const combinedText = group.map(v => {
                 const vNum = v.reference.split(":")[1];
-                // Strip existing numbering to be clean
+                // Clean existing numbering to prevent double brackets
                 const clean = v.text.replace(/^\[\d+\]\s*/, "").replace(/^\d+\s+/, "");
                 return `[${vNum}] ${clean}`;
             }).join(" ");
@@ -6228,7 +6347,7 @@ function handleFloatingAddClick() {
     delay += 0.15;
   });
 
-  // Cleanup Visuals in DOM (in case panel re-opens without refresh)
+  // Cleanup Visuals
   document.querySelectorAll(".selected-for-add").forEach(el => el.classList.remove("selected-for-add"));
   document.querySelectorAll(".search-query-verse-add-button.selected").forEach(el => el.classList.remove("selected"));
 }
@@ -6341,3 +6460,77 @@ function renderChapter(container, verses, targetVerse, refString, book, version)
     container.appendChild(copyright);
   }
 }
+
+
+
+/* ==================== GROUPING MODE LOGIC (UPDATED) ==================== */
+
+// State
+let isGroupingMode = false;
+let selectedGroupItems = new Set(); // Stores HTMLElements
+let isGroupDrag = false;
+let groupDragOffsets = new Map();
+
+// Helper: Inject checkbox if missing
+function ensureGroupCheckbox(el) {
+  if (el.querySelector(".group-checkbox")) return; // Already has one
+  const check = document.createElement("div");
+  check.className = "group-checkbox";
+  // Allow clicking the checkbox directly to toggle
+  check.addEventListener("mousedown", (e) => {
+    e.stopPropagation(); // Prevent drag start
+    toggleGroupSelection(el);
+  });
+  // Insert as first child
+  el.insertBefore(check, el.firstChild);
+}
+
+// 1. Toggle the Mode
+function toggleGroupingMode() {
+  isGroupingMode = !isGroupingMode;
+  document.body.classList.toggle("grouping-mode", isGroupingMode);
+  
+  const btn = document.getElementById("grouping-mode-btn");
+  if (btn) btn.classList.toggle("active", isGroupingMode);
+
+  if (isGroupingMode) {
+    // Clear single selection to avoid confusion
+    clearSelection();
+  } else {
+    // Turning off: clear group selection
+    clearGroupSelection();
+  }
+  
+  updateActionButtonsEnabled();
+}
+
+// 2. Toggle Item Selection
+function toggleGroupSelection(el) {
+  if (!el) return;
+  
+  if (selectedGroupItems.has(el)) {
+    // Deselect
+    selectedGroupItems.delete(el);
+    el.classList.remove("group-selected");
+  } else {
+    // Select
+    selectedGroupItems.add(el);
+    el.classList.add("group-selected");
+  }
+  
+  updateActionButtonsEnabled();
+}
+
+// 3. Clear All
+function clearGroupSelection() {
+  selectedGroupItems.forEach(el => el.classList.remove("group-selected"));
+  selectedGroupItems.clear();
+  updateActionButtonsEnabled();
+}
+
+// Hook up the button
+document.getElementById("grouping-mode-btn")?.addEventListener("click", (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  toggleGroupingMode();
+});
