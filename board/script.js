@@ -985,11 +985,7 @@ function renderChapter(container, verses, targetVerse, refString, book, version)
 
   verses.forEach(verse => {
     const fullRef = `${book} ${chapterNum}:${verse.verse}`;
-    
-    // RAW TEXT (has [1]) -> Goes into dataset for the board
     const rawText = verse.text.replace(/"/g, "&quot;"); 
-
-    // DISPLAY TEXT (no [1]) -> Goes into the visual list
     const displayText = verse.text.replace(/^\[\d+\]\s*/, "");
 
     const key = `${fullRef}::${version}`;
@@ -997,7 +993,7 @@ function renderChapter(container, verses, targetVerse, refString, book, version)
     const selectedClass = isSelected ? 'selected-for-add' : '';
     const btnSelectedClass = isSelected ? 'selected' : '';
 
-    // Check for target highlight
+    // Highlight target verse
     let isTarget = verse.verse == targetVerse;
 
     verseList.innerHTML += `
@@ -1005,8 +1001,10 @@ function renderChapter(container, verses, targetVerse, refString, book, version)
            data-verse="${verse.verse}" 
            data-ref="${fullRef}" 
            data-version="${version}" 
-           data-text="${rawText}"> <span class="verse-number">${verse.verse}</span>
-        <span class="verse-text">${displayText}</span> <button class="search-query-verse-add-button ${btnSelectedClass}" 
+           data-text="${rawText}"> 
+        <span class="verse-number">${verse.verse}</span>
+        <span class="verse-text">${displayText}</span> 
+        <button class="search-query-verse-add-button ${btnSelectedClass}" 
                 aria-label="Add verse ${fullRef}">
         </button>
       </div>
@@ -1015,6 +1013,25 @@ function renderChapter(container, verses, targetVerse, refString, book, version)
 
   container.innerHTML = ""; 
   container.appendChild(verseList);
+
+  // --- COPYRIGHT FOOTER LOGIC ---
+  const COPYRIGHT_NOTICES = {
+    NLT: `Scripture quotations are taken from the Holy Bible, New Living Translation, copyright © 1996, 2004, 2015 by Tyndale House Foundation. Used by permission of Tyndale House Publishers, Inc., Carol Stream, Illinois 60188. All rights reserved.`,
+    FBV: `The Free Bible Version is licensed under a <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank">Creative Commons Attribution-ShareAlike 4.0 International License</a>.`,
+    WEBUS: `The World English Bible is in the Public Domain.`,
+    KJV: `Public Domain.`,
+    ASV: `Public Domain.`
+  };
+
+  // Get the notice for the current version (or default to empty if unknown)
+  const noticeText = COPYRIGHT_NOTICES[version];
+
+  if (noticeText) {
+    const copyright = document.createElement("div");
+    copyright.className = "chapter-copyright"; // Uses new generic class
+    copyright.innerHTML = noticeText;
+    container.appendChild(copyright);
+  }
 }
 
 /**

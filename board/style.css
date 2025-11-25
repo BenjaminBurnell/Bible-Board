@@ -2173,3 +2173,20 @@ body.read-only .connection-handle {
 .board-item.text-note.has-color .verse-text {
   color: inherit;
 }
+
+/* --- Chapter Copyright Footer --- */
+.chapter-copyright {
+  font-size: 0.75rem;
+  color: var(--muted);
+  padding: 30px 15px 10px; /* Extra bottom padding */
+  text-align: center;
+  line-height: 1.4;
+  opacity: 0.8;
+  border-top: 1px solid var(--fg-seethrough);
+  margin-top: 20px;
+}
+
+.chapter-copyright a {
+  color: var(--fg);
+  text-decoration: underline;
+}
