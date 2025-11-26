@@ -456,6 +456,12 @@ body.light {
 
   #search-query-content {
     padding-bottom:25px !important;
+    height: fit-content;
+    width: calc(100% - 10px) !important;
+    max-width: 500px;
+    padding: 15px;
+    background: transparent;
+    box-sizing: border-box;
   }
 
   /* ADDED: Version Select Styling */

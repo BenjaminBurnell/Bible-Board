@@ -103,7 +103,7 @@
       width: 20px;
       height: 20px;
       border-radius: 50%;
-      border: 2px solid var(--border);
+      border: 1px solid var(--border);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -324,6 +324,19 @@
           </div>
         </div>
 
+        <div class="plan-card" id="plan-yearly" style="display:none;">
+          <div style="display:flex; align-items:center; flex:1;">
+            <div class="radio-outer"><div class="radio-inner"></div></div>
+            <div class="plan-details">
+              <span class="plan-name">Billed yearly</span>
+            </div>
+          </div>
+          <div class="plan-price">
+            <span class="price-amount">$4.99</span>
+            <span class="price-period">Per month</span>
+          </div>
+        </div>
+
         </div>
 
       <div class="features-list">
@@ -377,18 +390,40 @@
         window.location.href = "dashboard/";
       }
 
-      // 4. Wire up buttons
-      const subBtn = document.getElementById('sub-btn');
-      subBtn.onclick = async () => {
-        subBtn.textContent = "Processing...";
-        subBtn.disabled = true;
-        await SubscriptionService.subscribe();
-        subBtn.textContent = "Start subscription";
-        subBtn.disabled = false;
-      };
+      // 1. State to track selection (default to monthly)
+      let selectedPlan = 'monthly';
 
-      document.getElementById('out-btn').onclick = () => {
-        SubscriptionService.logout();
+      // 2. Function to handle the visual toggle
+      function selectPlan(plan) {
+        selectedPlan = plan;
+        
+        const monthlyCard = document.getElementById('plan-monthly');
+        const yearlyCard = document.getElementById('plan-yearly');
+
+        if (plan === 'monthly') {
+          monthlyCard.classList.add('selected');
+          yearlyCard.classList.remove('selected');
+        } else {
+          yearlyCard.classList.add('selected');
+          monthlyCard.classList.remove('selected');
+        }
+      }
+
+      // 3. Wire up the clicks
+      document.getElementById('plan-monthly').onclick = () => selectPlan('monthly');
+      document.getElementById('plan-yearly').onclick = () => selectPlan('yearly');
+
+      // 4. Update your Subscribe Button click handler
+      document.getElementById('sub-btn').onclick = async () => {
+        const btn = document.getElementById('sub-btn');
+        btn.textContent = "Processing...";
+        btn.disabled = true;
+        
+        // Pass the selected plan to your service
+        await SubscriptionService.subscribe(selectedPlan);
+        
+        btn.textContent = "Start subscription";
+        btn.disabled = false;
       };
     }
 

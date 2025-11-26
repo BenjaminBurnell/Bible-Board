@@ -410,7 +410,22 @@ function setVersion(version) {
 }
 
 (function initVersionPicker() {
-  document.getElementById("version-select")?.addEventListener("change", () => {
+  const el = document.getElementById("version-select");
+  if (!el) return;
+
+  // 1. Load from storage on init
+  const saved = localStorage.getItem("bb:lastVersion");
+  if (saved) {
+    // Verify the saved version actually exists in the dropdown options
+    // (Prevents errors if you remove a version later)
+    const optionExists = Array.from(el.options).some(o => o.value === saved);
+    if (optionExists) {
+      el.value = saved;
+    }
+  }
+
+  // 2. Listen for changes
+  el.addEventListener("change", () => {
     const newVersion = getSelectedVersion();
     localStorage.setItem("bb:lastVersion", newVersion);
     // Trigger a save to update board settings
@@ -836,13 +851,140 @@ function showDidYouMeanSuggestion(result) {
 
 /**
  * Fetches an entire chapter.
- * NLT: Uses official Tyndale API (HTML) and cleans it.
+ * NLT/ESV: Uses official APIs (HTML/JSON) and cleans it.
  * Others: Uses default JSON API.
  */
 async function fetchChapterText(book, chapter, signal, version = "KJV") {
+  const cacheKey = `${version}:${book}:${chapter}`;
+  const cached = chapterCache.get(cacheKey);
+  if (cached) return cached;
+
+  if (signal?.aborted) throw new Error("Fetch aborted");
+  
+  // ==================================================
+  // 1. OFFICIAL ESV HANDLER (DEFINITIVE FIX)
+  // ==================================================
+  if (version === "ESV") {
+    const ESV_API_KEY = "4fb585d0388365ed4f7273b1adcbcdad71575a37"
+    // NOTE: Requires ESV_API_KEY constant defined elsewhere in script.js
+    if (typeof ESV_API_KEY === 'undefined' || ESV_API_KEY === "YOUR_ESV_API_KEY_HERE") {
+      throw new Error("ESV API key not set.");
+    }
+
+    const ESV_MAP = {
+      "1 Kings": "1KI",       "2 Kings": "2KI",
+      "1 Samuel": "1SA",      "2 Samuel": "2SA",
+      "1 Corinthians": "1CO", "2 Corinthians": "2CO",
+      "1 Chronicles": "1CH",  "2 Chronicles": "2CH",
+      "1 Thessalonians": "1TH", "2 Thessalonians": "2TH",
+      "1 Timothy": "1TI",     "2 Timothy": "2TI",
+      "1 Peter": "1PE",       "2 Peter": "2PE",
+      "1 John": "1JN",        "2 John": "2JN",        
+      "3 John": "3JN",
+    };
+
+    if (ESV_MAP[book]) book = ESV_MAP[book];
+
+    console.log(book)
+    
+    // ESV API uses a slightly different book naming convention (e.g., '1 John' -> '1-John')
+    const ref = `${book} ${chapter}`.replace(/\s/g, '-');
+    
+    // Applying the correct API options to return full chapter content for parsing
+    const apiUrl = `https://api.esv.org/v3/passage/html/?q=${encodeURIComponent(ref)}&include-verse-numbers=true&include-heading=false&include-footnotes=false&include-passage-references=false&include-short-copyright=false`;
+    // const apiUrl = `https://api.esv.org/v3/passage/html/?q=1JN1&include-verse-numbers=true&include-heading=false&include-footnotes=false&include-passage-references=false&include-short-copyright=false`;
+
+    try {
+      const resp = await fetch(apiUrl, { 
+        signal, 
+        headers: { "Authorization": `Token ${ESV_API_KEY}` }
+      });
+      
+      if (!resp.ok) {
+          throw new Error(`ESV API Error: ${resp.status}`);
+      }
+      
+      const data = await resp.json();
+      if (!data.passages || data.passages.length === 0) {
+          throw new Error("No verses found for ESV.");
+      }
+      
+      const html = data.passages[0];
+      const parser = new DOMParser();
+      // Parse the HTML content returned by the ESV API
+      const doc = parser.parseFromString(html, 'text/html');
+      const textContainer = doc.querySelector('.passage-text') || doc.body;
+
+      // 1. Clean up junk elements/headings, including the overall chapter heading
+      textContainer.querySelectorAll('.esv-passage-heading, .footnotes, .p-end-paragraph, .chapter-num, .chapter-num-break, h3, .heading-paragraph').forEach(el => el.remove());
+      
+      console.log(textContainer)
+      let currentVerseNum = 1; 
+      const versesMap = new Map();
+      versesMap.set(1, ""); // Initialize Verse 1 to capture leading text
+
+      // 2. Walk the DOM and extract verses
+      function walk(node) {
+        if (node.nodeType === Node.ELEMENT_NODE) {
+          // Check for the ESV verse number marker
+          if (node.classList.contains('verse-num')) {
+            // Found a verse number, switch context
+            const num = parseInt(node.textContent.trim().replace(/[\[\]]/g, ''));
+            if (!isNaN(num)) {
+              currentVerseNum = num;
+              if (!versesMap.has(num)) versesMap.set(num, "");
+            }
+            // Do NOT recursively process children of the versenum span/bold tag
+          }
+          
+          // Continue recursive walk for all child elements
+          node.childNodes.forEach(walk);
+          
+        } else if (node.nodeType === Node.TEXT_NODE) {
+          // Aggregate text content
+          const text = node.textContent.replace(/\s+/g, ' ').trim();
+          
+          if (text && currentVerseNum !== null) {
+            let currentText = versesMap.get(currentVerseNum) || "";
+            
+            // Append text, ensuring a single space separator if needed
+            const prefix = currentText.length > 0 && !currentText.endsWith(' ') ? ' ' : '';
+            versesMap.set(currentVerseNum, currentText + prefix + text);
+          }
+        }
+      }
+
+      walk(textContainer);
+      
+      // 3. Final formatting and cleanup
+      const finalVerses = [];
+      for (const [vn, rawText] of versesMap.entries()) {
+          // Remove leading number if it snuck in and trim excess space
+          let cleanText = rawText.trim().replace(new RegExp(`^${vn}\\s*`), "");
+          if (cleanText) {
+              finalVerses.push({
+                  verse: vn,
+                  text: `[${vn}] ${cleanText}` // Explicitly wrap in brackets
+              });
+          }
+      }
+
+      finalVerses.sort((a, b) => a.verse - b.verse);
+      
+      if (finalVerses.length === 0) throw new Error("No verses parsed from ESV.");
+
+      chapterCache.set(cacheKey, finalVerses);
+      return finalVerses;
+      
+    } catch (err) {
+      if (signal?.aborted) throw err;
+      throw new Error(`ESV content unavailable: ${err.message}`);
+    }
+  }
+
 
   // ==================================================
-  // 1. OFFICIAL NLT (via api.nlt.to)
+  // 2. OFFICIAL NLT (via api.nlt.to) - Retaining original logic structure
   // ==================================================
   if (version === "NLT") {
     const NLT_KEY = "TEST"; // Use 'TEST' or your real key
@@ -851,7 +993,6 @@ async function fetchChapterText(book, chapter, signal, version = "KJV") {
     let code = bibleBookCodes[book] || book; 
 
     // 2. OVERRIDE: Map codes to NLT-friendly names
-    // We use full names (e.g. "1 Kings") to ensure maximum compatibility.
     const nltMap = {
       "SNG": "Song",  "PRO": "Prov",  "ECC": "Eccl",
       // Numbered Books (Use spaces!)
@@ -892,15 +1033,12 @@ async function fetchChapterText(book, chapter, signal, version = "KJV") {
       const junk = doc.querySelectorAll('.tn, .a-tn, .chapter-number, .subhead, .cw, .cw_ch');
       junk.forEach(el => el.remove());
 
-      // 2. The Tokenizer
       const container = doc.querySelector('body');
       let currentVerseNum = null;
       const versesMap = new Map();
 
       function walk(node) {
         if (node.nodeType === Node.ELEMENT_NODE) {
-          // If we hit a verse number, update tracking ID and STOP.
-          // We do not want the number "1" or "2" in the text body yet.
           if (node.classList.contains('vn')) {
             const num = parseInt(node.textContent.trim());
             if (!isNaN(num)) {
@@ -922,11 +1060,8 @@ async function fetchChapterText(book, chapter, signal, version = "KJV") {
 
       walk(container);
 
-      // 3. Format Output
       const verses = [];
       for (const [vn, text] of versesMap.entries()) {
-        // Safety: Strip leading number if it somehow snuck into the text
-        // e.g., if text is "2 Then he said...", this makes it "Then he said..."
         let cleanText = text.trim().replace(new RegExp(`^${vn}\\s*`), "");
 
         if (cleanText) {
@@ -950,14 +1085,13 @@ async function fetchChapterText(book, chapter, signal, version = "KJV") {
     }
   }
 
+
   // ==================================================
-  // 2. DEFAULT HANDLER (KJV, ASV, etc.)
+  // 3. DEFAULT HANDLER (KJV, ASV, etc.)
   // ==================================================
   const code = bibleBookCodes[book] || book;
   const apiUrl = `https://full-bible-api.onrender.com/chapter/${encodeURIComponent(version)}/${encodeURIComponent(code)}/${chapter}`;
   
-  const cacheKey = `${version}:${code}:${chapter}`;
-  const cached = chapterCache.get(cacheKey);
   if (cached) return cached;
 
   if (signal?.aborted) throw new Error("Fetch aborted");
@@ -972,8 +1106,6 @@ async function fetchChapterText(book, chapter, signal, version = "KJV") {
 
     // Format default versions with brackets too
     const verses = data.verses.map(v => {
-        // Strip existing leading numbers from raw text to avoid "1 1 In the..."
-        // Regex matches: Start of string (^), verse number, optional whitespace
         const cleanText = v.text.replace(new RegExp(`^${v.verse}\\s*`), "");
         
         return {
@@ -6434,7 +6566,8 @@ function renderChapter(container, verses, targetVerse, refString, book, version)
     FBV: `The Free Bible Version is licensed under a Creative Commons Attribution-ShareAlike 4.0 International License.`,
     WEBUS: `The World English Bible is in the Public Domain.`,
     KJV: `Public Domain.`,
-    ASV: `Public Domain.`
+    ASV: `Public Domain.`,
+    ESV: `Scripture quotations are from the ESV® Bible (The Holy Bible, English Standard Version®), copyright © 2001 by Crossway, a publishing ministry of Good News Publishers. Used by permission. All rights reserved.`
   })[version];
 
   if (noticeText) {

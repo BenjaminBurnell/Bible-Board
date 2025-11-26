@@ -742,7 +742,7 @@ body {
   inset: 0;
   background: rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(4px);
-  z-index: 20000;
+  z-index: 400000;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -945,7 +945,7 @@ body {
   inset: 0; /* Stretches to fill screen */
   background: rgba(0, 0, 0, 0.6); /* Dark background */
   backdrop-filter: blur(4px);
-  z-index: 20000; /* Sits on top of everything */
+  z-index: 400000; /* Sits on top of everything */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1395,7 +1395,7 @@ body {
   inset: 0; /* Stretches to fill viewport */
   background: rgba(0, 0, 0, 0.6); /* Dark semi-transparent background */
   backdrop-filter: blur(4px);
-  z-index: 20000; /* Must be high to cover the whole UI */
+  z-index: 400000; /* Must be high to cover the whole UI */
   display: flex;
   align-items: center;
   justify-content: center;
