@@ -2136,6 +2136,7 @@ if (textBtn) {
 
 // Updated addTextNote (Removed color, fixed Z-Index)
 function addTextNote(initial = "New note") {
+  currentIndex += 1;
   if (window.__readOnly && !window.__RESTORING_FROM_SUPABASE) return;
 
   const el = document.createElement("div");
@@ -2144,16 +2145,17 @@ function addTextNote(initial = "New note") {
   el.style.position = "absolute";
 
   const vpRect = viewport.getBoundingClientRect();
-  const visibleX = viewport.scrollLeft / scale, visibleY = viewport.scrollTop / scale;
-  const visibleW = vpRect.width / scale, visibleH = vpRect.height / scale;
+  const visibleX = viewport.scrollLeft / scale,
+    visibleY = viewport.scrollTop / scale;
+  const visibleW = vpRect.width / scale,
+    visibleH = vpRect.height / scale;
   const x = visibleX + (visibleW - 300) / 2;
   const y = visibleY + (visibleH - 50) / 2;
   el.style.left = `${x}px`;
   el.style.top = `${y}px`;
+  el.style.zIndex = currentIndex;
 
-  // FIX: Force to front
-  bringToFront(el);
-
+  // UPDATED HTML: Includes the hidden .edit-btn
   el.innerHTML = `
     <div class="note-content">
       <div class="verse-text note-label">NOTE</div>
@@ -2168,44 +2170,34 @@ function addTextNote(initial = "New note") {
   workspace.appendChild(el);
   el.dataset.vkey = itemKey(el);
 
-  // Edit Button Logic
+  // --- Logic ---
+  
+  // 1. Edit Button Logic: Opens the modal
   const editBtn = el.querySelector(".edit-btn");
   if (editBtn) {
     const openEdit = (e) => {
       e.preventDefault();
-      e.stopPropagation();
+      e.stopPropagation(); // Don't bubble to board (prevents deselect/drag)
       openNoteModal(el);
     };
+    // Use mousedown/touchstart to catch it before drag logic fires
     editBtn.addEventListener("mousedown", openEdit);
     editBtn.addEventListener("touchstart", openEdit, { passive: false });
     editBtn.addEventListener("click", (e) => { e.stopPropagation(); });
   }
 
-  // Drag Logic
-  let startX = 0;
-  let startY = 0;
+  // 2. Drag/Select Logic
+  // (Clicking the card body will bubble to workspace, triggering 'selectItem')
+  let startX = 0, startY = 0;
 
   el.onmousedown = (e) => {
-    if (e.target.closest(".edit-btn")) return;
+    if (e.target.closest(".edit-btn")) return; // Ignore edits
     if (isConnectMode) return;
+    
     startX = e.clientX;
     startY = e.clientY;
     startDragMouse(el, e);
   };
-
-  // --- FIX: Check Grouping Mode before opening modal ---
-  el.addEventListener("click", (e) => {
-    // If in grouping mode, DO NOT stop propagation. 
-    // Let it bubble to workspace so it can be selected.
-    if (typeof isGroupingMode !== "undefined" && isGroupingMode) return;
-
-    if (isConnectMode) return;
-    const dist = Math.hypot(e.clientX - startX, e.clientY - startY);
-    if (dist < 5) {
-        e.stopPropagation();
-        openNoteModal(el);
-    }
-  });
 
   el.ontouchstart = (e) => {
     if (e.target.closest(".edit-btn")) return;
@@ -2224,14 +2216,6 @@ function addTextNote(initial = "New note") {
 
   el.ontouchend = () => {
     if (touchDragElement) onBoardMutated("item_move_touch_end");
-    
-    if (!touchDragElement && !touchMoved) {
-       // --- FIX: Check Grouping Mode here too ---
-       if (typeof isGroupingMode !== "undefined" && isGroupingMode) return;
-       
-       openNoteModal(el);
-    }
-    
     touchDragElement = null;
     pendingTouchDrag = null;
     setTimeout(() => { touchMoved = false; }, 0);

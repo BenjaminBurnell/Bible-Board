@@ -1093,7 +1093,7 @@ body {
     align-items: center;
     justify-content: center;
     padding: 8px;
-    background: var(--bg-seethroug);
+    background: var(--bg-dots) !important;
     backdrop-filter: blur(4px);
     border: 1px solid var(--border);
     border-radius: 15px;
