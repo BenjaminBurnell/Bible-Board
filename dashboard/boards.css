@@ -171,6 +171,7 @@ body {
   flex-direction: column;
   height: 100%;
   /* padding: 10px 10px; */
+  background:var(--bg-dots);
   gap: 10px;
 }
 
@@ -716,7 +717,22 @@ body {
 .modal-btn.primary { background: var(--accent); color: var(--bg); border-color: var(--accent); }
 
 
-
+@media (max-width:900px) {
+  .modal-content {
+    background: var(--bg-dots);
+    border: 1px solid var(--border);
+    border-radius:0px !important;
+    border-top-right-radius: 25px !important;
+    border-top-left-radius: 25px !important;
+    padding:20px;
+    height:auto;
+    position:fixed;
+    bottom:0px;
+    width: 90%;
+    max-width: 400px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+  }
+}
 
 /* =========================
    Search Modal Styles - Updated for new design
