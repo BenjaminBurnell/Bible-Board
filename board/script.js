@@ -868,7 +868,7 @@ async function fetchChapterText(book, chapter, signal, version = "KJV") {
       "ZEP": "Zephaniah", "ZEC": "Zechariah", "MAT": "Matthew",
 
       "MRK": "Mark", "LUK": "Luke", "ACT": "Acts", 
-      "JUD": "Jude"
+      "JUD": "Jude", "EXO": "Exodus", "DEU": "Deuteronomy"
     };
 
     if (nltMap[code]) code = nltMap[code];
