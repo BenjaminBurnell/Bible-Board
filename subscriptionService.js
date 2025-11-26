@@ -1,8 +1,9 @@
+// subscriptionService.js
+
 import { sb } from "./supabaseClient.js";
 
 // --- CONFIGURATION ---
 const RC_API_KEY = "rcb_KCKetekybYnxljduUvbMWucwhJmN"; 
-// Ensure this matches your RevenueCat Entitlement identifier exactly
 const ENTITLEMENT_ID = "BibleBoard Pro"; 
 
 let rcInstance = null;
@@ -29,6 +30,9 @@ export const SubscriptionService = {
     return rcInstance;
   },
 
+  /**
+   * Performs the live RevenueCat check and returns the status.
+   */
   async initAndCheck() {
     const purchases = await this.getRcInstance();
     if (!purchases) return false;
@@ -36,42 +40,23 @@ export const SubscriptionService = {
     try {
       const customerInfo = await purchases.getCustomerInfo();
       
-      // --- DEBUG LOGGING ---
-      console.log("🔍 DEBUG: Checking Access...");
-      console.log("👤 User ID:", await purchases.getAppUserId());
-      console.log("📦 All Entitlements:", customerInfo.entitlements.all);
-      console.log("✅ Active Entitlements:", customerInfo.entitlements.active);
+      // FIX: Check for EITHER the Entitlement OR any active subscription product
+      const hasProEntitlement = customerInfo.entitlements.active[ENTITLEMENT_ID] !== undefined;
+      const hasActiveSubscription = Object.keys(customerInfo.activeSubscriptions).length > 0;
       
-      // 1. PRIMARY CHECK: Do they have the entitlement?
-      const hasAccess = customerInfo.entitlements.active[ENTITLEMENT_ID] !== undefined;
+      const hasAccess = hasProEntitlement || hasActiveSubscription;
 
       if (hasAccess) {
-        console.log("🎉 Access Granted via Entitlement");
-        localStorage.setItem("bb_sub_status", "active");
+        console.log("🎉 Access Granted (Pro/Subscription Active)");
         return true;
       } 
       
-      // 2. EMERGENCY FALLBACK (Debug Mode)
-      // Fix: Safely check for purchase dates to prevent crash
-      const allDates = customerInfo.allPurchaseDates || {};
-      const hasTransactions = Object.keys(allDates).length > 0;
-
-      if (hasTransactions && !hasAccess) {
-        console.warn("⚠️ User PAID but has NO entitlement. RevenueCat config issue.");
-        console.log("Purchase History:", allDates);
-        
-        // UNCOMMENT THE NEXT LINE TO FORCE ACCESS FOR DEBUGGING:
-        // return true; 
-      }
-
       console.log("❌ Access Denied.");
-      localStorage.removeItem("bb_sub_status");
       return false;
 
     } catch (e) {
       console.error("RC Check Error:", e);
-      // If check crashes, allow access if they were previously valid (offline mode)
-      return localStorage.getItem("bb_sub_status") === "active";
+      return false;
     }
   },
 
@@ -122,14 +107,13 @@ export const SubscriptionService = {
     const purchases = await this.getRcInstance();
     if (!purchases) return;
     const info = await purchases.getCustomerInfo();
-    if (info.managementURL) window.location.href = info.managementURL;
+    if (info.managementURL) open(info.managementURL);
     else alert("Manage via Stripe email.");
   },
 
   async logout() {
     await sb.auth.signOut();
     rcInstance = null;
-    localStorage.removeItem("bb_sub_status");
     window.location.href = "index.html";
   }
 };

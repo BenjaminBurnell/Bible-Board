@@ -4,23 +4,37 @@ import { sb } from "../supabaseClient.js";
 import { SubscriptionService } from "../subscriptionService.js";
 
 const BUCKET = "bible-boards";
+const FREE_BOARD_LIMIT = 3; // The maximum number of boards for a free user
 
 // --- State ---
 let currentUser = null;
-let currentModalBoard = null; // Stores {id, path, title} for the modal
-let activeMenu = null; // Stores the currently open three-dot menu
+let currentModalBoard = null;
+let activeMenu = null;
 let activeDropdown = null; 
 let loadedBoards = [];
 let boardToDelete = null; // Global variable for deletion
 
+// --- ASYNCHRONOUS PRO STATUS CHECK ---
+/**
+ * Checks the user's live subscription status using RevenueCat.
+ * @returns {Promise<boolean>} True if Pro, False if Free/Unsubscribed.
+ */
+async function isProUser() {
+    if (!currentUser) return false;
+    // Calls the SubscriptionService which performs the RevenueCat check
+    return await SubscriptionService.initAndCheck();
+}
+// --------------------------------------
+
 // --- DOM Refs ---
 const deleteModalBackdrop = document.getElementById("delete-modal-backdrop");
 const confirmDeleteBtn = document.getElementById("confirm-delete-btn");
-const boardGrid = document.getElementById("board-grid");
-const filterInput = document.getElementById("board-filter");
-const sortSelect = document.getElementById("board-sort");
 const sidebarBoardsContainer = document.getElementById("sidebar-boards-container");
 const hamburgerBtn = document.getElementById("hamburger-btn");
+
+// New DOM Refs for Upgrade Modal
+const upgradeModalBackdrop = document.getElementById("upgrade-modal-backdrop");
+const upgradeNowBtn = document.getElementById("upgrade-now-btn");
 
 // Fix: Ensure button exists before using
 const newBoardBtn = document.getElementById("new-board-btn") || document.getElementById("new-board-btn-sidebar");
@@ -170,7 +184,7 @@ async function handleRename() {
   try {
     const { id, path } = currentModalBoard;
     
-    const { data: blob } = await sb.storage.from("bible-boards").download(path);
+    const { data: blob } = await sb.storage.from(BUCKET).download(path);
     const text = await blob.text();
     const json = JSON.parse(text);
 
@@ -178,7 +192,7 @@ async function handleRename() {
     json.updatedAt = new Date().toISOString();
 
     const newBlob = new Blob([JSON.stringify(json, null, 2)], { type: "application/json" });
-    const { error } = await sb.storage.from("bible-boards").update(path, newBlob, {
+    const { error } = await sb.storage.from(BUCKET).update(path, newBlob, {
        contentType: "application/json", cacheControl: "0", upsert: true 
     });
 
@@ -244,8 +258,6 @@ async function performDelete() {
   }
 
   try {
-    console.log("Deleting board:", titleToDelete);
-
     // 1. Delete from Supabase Storage
     const { error } = await sb.storage.from(BUCKET).remove([pathToDelete]);
     if (error) throw error;
@@ -447,14 +459,17 @@ async function loadBoards() {
       return;
     }
 
-    if (!files || files.length === 0) {
+    // Only count files that are board JSONs
+    const boardFiles = files.filter(f => f.name.endsWith(".json"));
+
+    if (!boardFiles || boardFiles.length === 0) {
       renderStatus("Creating your first board...");
-      await handleNewBoard();
+      // This is the case where a user is starting fresh, so we allow creation.
+      await handleNewBoard(true); 
       return;
     }
 
-    const promises = files
-      .filter(f => f.name.endsWith(".json"))
+    const promises = boardFiles
       .map(file => fetchBoardDetails(user, file));
 
     const boardResults = await Promise.all(promises);
@@ -462,7 +477,8 @@ async function loadBoards() {
 
     if (boards.length === 0) {
       renderStatus("Creating your first board...");
-      await handleNewBoard();
+      // Should not happen, but if it does, allow initial creation.
+      await handleNewBoard(true); 
       return;
     }
 
@@ -487,60 +503,118 @@ async function loadBoards() {
 }
 
 // --- New Board Creation ---
-async function handleNewBoard() {
+
+/**
+ * Handles the user action to create a new board.
+ * @param {boolean} isInitialLoad If true, bypasses the limit check (used when creating the very first board).
+ */
+async function handleNewBoard(isInitialLoad = false) {
   if (!currentUser) {
     alert("Please sign in first.");
     return;
   }
-
-  let originalContent = "";
-  if (newBoardBtn) {
-    originalContent = newBoardBtn.innerHTML;
-    newBoardBtn.disabled = true;
-    newBoardBtn.textContent = "Creating...";
+  
+  const isPro = await isProUser();
+  const status = isPro ? 'PRO' : 'FREE';
+  const currentCount = loadedBoards.length;
+  console.log(`User Subscription Status: ${status} (Boards: ${currentCount})`);
+  
+  // 1. CRITICAL ENFORCEMENT CHECK
+  // If the user is NOT PRO (Free/misidentified) AND the current count is >= LIMIT (3)
+  if (!isPro && currentCount >= FREE_BOARD_LIMIT) {
+      // NOTE: The initial load bypass is essential for the 1st, 2nd, and 3rd boards to be created.
+      if (currentCount === 0 && isInitialLoad) {
+          // Allow the very first board creation.
+      } else {
+          // Block all other attempts (4th board onwards)
+          console.warn("LIMIT REACHED: Showing upgrade modal.");
+          openUpgradeModal(); // <--- THIS CALL MAKES THE MODAL VISIBLE
+          return; // STOP execution
+      }
   }
-
-  try {
-    const boardId = crypto.randomUUID();
-    const path = `${currentUser.id}/boards/${boardId}.json`;
-    const now = new Date().toISOString();
-
-    const defaultBoard = {
-      id: boardId,
-      title: "Untitled Board",
-      description: "",
-      createdAt: now,
-      updatedAt: now,
-      background: { type: "solid", color: "#020617" },
-      elements: [], 
-      connections: [],
-    };
-
-    const blob = new Blob([JSON.stringify(defaultBoard, null, 2)], {
-      type: "application/json",
-    });
-
-    const { error } = await sb.storage.from(BUCKET).upload(path, blob, {
-      contentType: "application/json",
-      cacheControl: "0",
-      upsert: false,
-    });
-    if (error) throw error;
-
-    await loadBoards();
-    switchBoard(boardId, currentUser.id);
-
-  } catch (error) {
-    console.error("Failed to create new board:", error);
-    alert(`Error creating board: ${error.message}`);
-  } finally {
-    if (newBoardBtn) {
-      newBoardBtn.disabled = false;
-      if (originalContent) newBoardBtn.innerHTML = originalContent;
-      else newBoardBtn.textContent = "New Board"; 
-    }
-  }
+  
+  // 2. Proceed with creation (if Pro or under the limit)
+  await createBoardFile(crypto.randomUUID());
 }
+
+
+/**
+ * Performs the actual Supabase Storage file creation.
+ * @param {string} boardId The ID for the new board.
+ */
+async function createBoardFile(boardId) {
+    let originalContent = "";
+    if (newBoardBtn) {
+        originalContent = newBoardBtn.innerHTML;
+        newBoardBtn.disabled = true;
+        newBoardBtn.textContent = "Creating...";
+    }
+    
+    try {
+        const path = `${currentUser.id}/boards/${boardId}.json`;
+        const now = new Date().toISOString();
+
+        const defaultBoard = {
+            id: boardId,
+            title: "Untitled Board",
+            description: "",
+            createdAt: now,
+            updatedAt: now,
+            background: { type: "solid", color: "#020617" },
+            elements: [], 
+            connections: [],
+        };
+
+        const blob = new Blob([JSON.stringify(defaultBoard, null, 2)], {
+            type: "application/json",
+        });
+
+        const { error } = await sb.storage.from(BUCKET).upload(path, blob, {
+            contentType: "application/json",
+            cacheControl: "0",
+            upsert: false,
+        });
+        if (error) throw error;
+        
+        await loadBoards();
+        switchBoard(boardId, currentUser.id);
+
+        return true;
+        
+    } catch (error) {
+        console.error("Failed to create new board file:", error);
+        throw error;
+    } finally {
+        if (newBoardBtn) {
+            newBoardBtn.disabled = false;
+            if (originalContent) newBoardBtn.innerHTML = originalContent;
+            else newBoardBtn.textContent = "New Board"; 
+        }
+    }
+}
+
+
+// --- Upgrade Modal Logic (NEW) ---
+function openUpgradeModal() {
+    if (upgradeModalBackdrop) {
+        upgradeModalBackdrop.classList.remove("hidden");
+        upgradeModalBackdrop.style.display = "flex";
+    }
+}
+
+window.closeUpgradeModal = function() {
+    if (upgradeModalBackdrop) {
+        upgradeModalBackdrop.classList.add("hidden");
+        setTimeout(() => { upgradeModalBackdrop.style.display = "none"; }, 200);
+    }
+}
+
+function handleUpgrade() {
+    closeUpgradeModal();
+    // Redirect to your paywall/checkout page
+    window.location.href = "../paywall.html";
+}
+
 
 // ==================== USER PROFILE LOGIC (ChatGPT Style) ====================
 
@@ -611,18 +685,11 @@ async function handleAuthChange(user, valid = false) {
     // 1. Update UI
     updateUserProfileUI(user);
 
-    /* --- TEMPORARILY DISABLED FOR BETA TESTING ---
-    // 2. CHECK SUBSCRIPTION ACCESS
-    const hasAccess = await SubscriptionService.initAndCheck();
+    // CRITICAL FIX: Run the check to update subscription status, but DO NOT block access to the dashboard.
+    // This is necessary for the isProUser() check to work in handleNewBoard.
+    await SubscriptionService.initAndCheck(); 
     
-    if (!hasAccess) {
-      // Redirect unpaid users
-      window.location.replace("/paywall.html");
-      return;
-    }
-    --------------------------------------------- */
-
-    // 3. Load boards if allowed
+    // 3. Load boards for all authenticated users (Free or Paid)
     loadBoards();
   } else if (valid) {
     // Not logged in
@@ -631,7 +698,6 @@ async function handleAuthChange(user, valid = false) {
 }
 
 // ==================== ADVANCED SEARCH LOGIC ====================
-
 const searchBackdrop = document.getElementById("search-modal-backdrop");
 const searchInput = document.getElementById("board-search-input");
 const searchResults = document.getElementById("board-search-results");
@@ -830,6 +896,7 @@ async function init() {
     manageBtn.onclick = (e) => {
         e.preventDefault();
         closeProfileMenu();
+        // console.log(SubscriptionService)
         SubscriptionService.manage();
     };
   }
@@ -845,6 +912,9 @@ async function init() {
 
   // 5. Buttons
   if (newBoardBtn) newBoardBtn.onclick = handleNewBoard;
+  
+  // Wire up new upgrade button
+  if (upgradeNowBtn) upgradeNowBtn.onclick = handleUpgrade;
   
   // --- FIX IS HERE ---
   const delConfirm = document.getElementById("confirm-delete-btn");
@@ -874,7 +944,6 @@ async function init() {
 }
 
 init();
-
 
 
 

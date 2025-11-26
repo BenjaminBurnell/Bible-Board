@@ -153,11 +153,11 @@
 
       <div class="sidebar-footer">
         <div id="user-profile-menu" class="profile-menu hidden">
-          <!-- <button id="manage-sub-btn" class="menu-item">
+          <button id="manage-sub-btn" class="menu-item">
             <span class="material-symbols-outlined">credit_card</span>
             Manage Subscription
           </button>
-          <div class="menu-divider"></div> -->
+          <div class="menu-divider"></div>
           <button id="signout-btn-sidebar" class="menu-item delete">
             <span class="material-symbols-outlined">logout</span>
             Sign out
@@ -507,18 +507,25 @@
     </div>
   </div>
 
-  <div id="subscription-modal" class="hidden">
-    <div class="paywall-card">
-      <img src="../assets/logo_no_bg.png" width="50" style="filter: brightness(1000%); margin-bottom:10px;">
-      <h1>Access BibleBoard</h1>
-      <p style="color:var(--muted); margin-bottom:20px;">Unlock unlimited boards and features.</p>
-      <div class="price-tag">$5</div>
-      <div class="price-sub">per month</div>
+  <div id="upgrade-modal-backdrop" class="hidden">
+    <div class="modal-content delete-modal-content">
+      <div id="upgrade-modal-image-container"> 
+        <img id="upgrade-modal-image" src="../assets/Paywall image.png">
+      </div>
+      <h2>Unlock Unlimited Boards</h2>
+      
+      <p class="delete-modal-text">
+        Upgrade to <strong id="upgrade-board-name">BibleBoard Pro</strong> to create unlimited study boards.
+      </p>
+      
+      <p class="delete-modal-subtext">
+        You have reached the limit of 3 boards for your free plan.
+      </p>
 
-      <button id="paywall-sub-btn" class="cta-btn">Subscribe Now</button>
-
-      <div style="margin-top:15px;">
-        <a id="paywall-out-btn" class="signout">Sign Out</a>
+      <div class="modal-actions">
+        <div style="flex:1"></div> 
+        <button onclick="closeUpgradeModal()" class="modal-btn cancel">Cancel</button>
+        <button type="button" id="upgrade-now-btn" class="modal-btn primary">Upgrade Now</button>
       </div>
     </div>
   </div>

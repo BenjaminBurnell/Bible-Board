@@ -250,7 +250,7 @@
       height:100%;
       object-fit:cover;
       object-position: center;
-      filter:blur(.1rem);
+      filter:blur(.3rem);
     }
 
     #fade-right {
@@ -268,11 +268,34 @@
         display:none;
       }
     }
+
+    @media (pointer: fine) {
+      #go-back-button:hover {
+        opacity:0.8;
+      }
+    }
+
+    #go-back-button {
+      width:fit-content;
+      height:fit-content;
+      position:absolute;
+      left:15px;
+      top:15px;
+      font-size: 15px;
+      font-weight: 800;
+      background:var(--bg-dots);
+      color:var(--fg);
+      border:2px solid var(--border);
+      border-radius: 15px;
+      padding:10px 20px;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
 
   <section id="paywall-page-container">
+    <button id="go-back-button" onclick="window.location='/dashboard'">Go Back</button>
     <div class="paywall-container">
       
       <div class="header">
@@ -296,7 +319,7 @@
             </div>
           </div>
           <div class="plan-price">
-            <span class="price-amount">$5.00</span>
+            <span class="price-amount">$6.99</span>
             <span class="price-period">Per month</span>
           </div>
         </div>
@@ -314,7 +337,7 @@
         </div>
       </div>
 
-      <button id="sub-btn" class="cta-btn">Start subscription</button>
+      <button id="sub-btn" class="cta-btn">Start your free trial</button>
 
       <div class="footer">
         You are signed in as <strong id="user-email">...</strong>.<br>

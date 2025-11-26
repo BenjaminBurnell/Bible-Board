@@ -507,14 +507,15 @@ async function main() {
   // =================================================
   // PAYWALL CHECK
   // =================================================
-  if (user) {
-    const hasAccess = await SubscriptionService.initAndCheck();
+  // THIS BLOCK MUST BE DISABLED IN A FREEMIUM MODEL TO PREVENT REDIRECTION/BLOCKING
+  // if (user) {
+  //   const hasAccess = await SubscriptionService.initAndCheck();
     
-    if (!hasAccess) {
-      window.location.replace("/paywall.html"); 
-      return; 
-    }
-  }
+  //   if (!hasAccess) {
+  //     window.location.replace("/paywall.html"); 
+  //     return; 
+  //   }
+  // }
   --------------------------------------------- */
 
   await refreshAuthUI();
