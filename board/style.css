@@ -244,7 +244,7 @@ body.light {
     flex-direction: row;
     justify-content: space-evenly;
     gap: 8px;
-    width:calc(100vw - 10px) !important;
+    width:calc(100vw - 5px) !important;
     height: 40px;
     position: fixed !important;
     transform: none;
@@ -345,7 +345,7 @@ body.light {
   transform: translateX(-50%);
   border-radius: 20px;
   border: 1px solid var(--fg-seethrough);
-  z-index: 20000;
+  z-index: 300000;
 }
 
 #search-bar {
@@ -407,17 +407,16 @@ body.light {
     max-width: 1000px;
     height: 50px;
     background: var(--bg-seethroug);
-    backdrop-filter: blur(6rem);
+    backdrop-filter: blur(1rem);
     position: fixed;
     display: flex;
-    bottom: 0px;
-    left: 50%;
-    transform: translateX(-50%);
+    bottom: 0px !important; /* CRITICAL FIX: Ensure no JS or other CSS pushes it up */
+    left: 0; /* FIX: Pin to the left edge */
+    transform: none; /* FIX: Disable horizontal centering transform */
     border-radius: 0px;
-    padding-bottom: 15px;
-    border: 1px solid var(--fg-seethrough);
-    border: none;
-    z-index: 20000;
+    border: none !important;
+    padding-bottom: 16px;
+    z-index: 300000 !important; /* CRITICAL: Force the highest stacking order */
   }
 
   #search-bar {
@@ -434,6 +433,29 @@ body.light {
     font-size: 17.5px;
     font-weight: 800;
     color: var(--fg);
+  }
+
+  /* FIX: Adjust Search Query Container (Drawer) height to sit above the fixed Search Bar */
+  #search-query-container {
+    width: calc(100%);
+    height: auto;
+    position: fixed;
+    top: 0px;
+    /* Drawer must stop 50px from the bottom (Search Bar height) */
+    bottom: 66px !important; 
+    right: 0px;
+    z-index: -1; /* This will be set to 10005 by JS when open, but the bar is higher */
+    /* border-left: 1px solid var(--border); */
+    background: var(--bg);
+    transition: width 0.25s ease;
+    display: flex;
+    justify-content: center;
+    opacity: 0;
+    overflow-y: scroll;
+  }
+
+  #search-query-content {
+    padding-bottom:25px !important;
   }
 
   /* ADDED: Version Select Styling */
@@ -470,6 +492,7 @@ body.light {
     color: var(--fg);
     font-weight: 700;
   }
+  
 }
 
 body.light #version-select {
@@ -641,9 +664,9 @@ body:not(.light) #sun-icon {
 #search-query-container {
   width: calc(100vw - var(--sidebar-width)); 
   
-  height: 100vh;
+  height: auto;
   position: fixed;
-  top: 50px; /* Changed from 20px to 0px to align with top */
+  top: 0px; /* Changed from 20px to 0px to align with top */
   bottom: 0px;
   right: 0px;
   z-index: -1;
