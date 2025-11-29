@@ -343,23 +343,38 @@ function closeContextMenu() {
 
 window.closeContextMenu = closeContextMenu; 
 
-function openContextMenu(e, board) {
-  e.preventDefault();
-  e.stopPropagation();
-  currentModalBoard = board; 
+function openContextMenu(boardId, anchorRect, eventTarget) {
+  if (!contextMenuEl || !anchorRect) return;
 
-  const rect = e.currentTarget.getBoundingClientRect();
-  let top = rect.bottom + 5;
-  let left = rect.right - 130; 
-
-  if (top + 100 > window.innerHeight) {
-    top = rect.top - 90; 
+  // Clear previous highlight
+  if (contextMenuTargetItem) {
+    contextMenuTargetItem.classList.remove("context-open");
+    contextMenuTargetItem = null;
   }
 
-  contextMenuEl.style.top = `${top}px`;
-  contextMenuEl.style.left = `${left}px`;
-  contextMenuEl.classList.add('show');
+  // Figure out which sidebar item this menu belongs to
+  const itemDiv = eventTarget
+    ? eventTarget.closest(".sidebar-board-item")
+    : document.querySelector(`.sidebar-board-item[data-board-id="${boardId}"]`);
+
+  if (itemDiv) {
+    itemDiv.classList.add("context-open");
+    contextMenuTargetItem = itemDiv;
+  }
+
+  contextMenuEl.dataset.boardId = boardId;
+
+  const { top, left } = anchorRect;
+  contextMenuEl.style.display = "block";
+  contextMenuEl.style.opacity = "1";
+
+  // Position menu near the trigger
+  contextMenuEl.style.top = `${top + 6}px`;
+  contextMenuEl.style.left = `${left + 6}px`;
+
+  document.addEventListener("click", onContextMenuOutsideClick);
 }
+
 
 // ==================== SIDEBAR RENDERING ====================
 

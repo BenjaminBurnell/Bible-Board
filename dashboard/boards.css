@@ -545,11 +545,11 @@ body {
 }
 
 .sidebar-board-item:hover,
-.sidebar-board-item.active {
-  background: var(--bg-alt);
-  backdrop-filter:blur(1rem);
-  transition:.1s;
+.sidebar-board-item.active,
+.sidebar-board-item.context-open {
+  background: var(--fg-seethrough);
 }
+
 
 #new-board-icon {
   font-weight: 600;

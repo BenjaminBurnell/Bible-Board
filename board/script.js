@@ -1057,34 +1057,60 @@ function updateViewportBars() {
 }
 
 function applyLayout(withTransition = true) {
-  // const offset = (searchDrawerOpen ? 340 : 0) + (interlinearOpen ? 340 : 0);
+  if (!searchQueryContainer) return;
 
-  // if (withTransition) mainContentContainer.style.transition = ".25s";
-  // mainContentContainer.style.width = offset
-  //   ? `calc(100% - ${offset}px)`
-  //   : "100%";
-
-  if (withTransition) searchQueryContainer.style.transition = ".25s";
-
-  searchQueryContainer.style.zIndex = searchDrawerOpen ? `10005` : "-1";
-
-  setTimeout(function () {
-    searchQueryContainer.style.top = searchDrawerOpen ? `0px` : "20px";
-
-    searchQueryContainer.style.opacity = searchDrawerOpen ? `1` : "0";
-  });
-
-  interPanel.classList.toggle("open", interlinearOpen);
-
+  // Enable smooth transitions when requested
   if (withTransition) {
-    setTimeout(() => {
-      mainContentContainer.style.transition = "0s";
-      searchQueryContainer.style.transition = "0s";
-    }, 500);
+    // Search drawer: fade + slight vertical motion
+    searchQueryContainer.style.transition =
+      "opacity 0.25s ease, top 0.25s ease";
+
+    // Viewport: fade + slide
+    if (viewport) {
+      viewport.style.transition =
+        "opacity 0.25s ease, transform 0.25s ease";
+    }
   }
-  throttledUpdateAllConnections(); // OPTIMIZATION: Use throttled version
-  throttledUpdateViewportBars();
+
+  if (searchDrawerOpen) {
+    // === Drawer OPEN: panel fades in & up ===
+    searchQueryContainer.style.zIndex = "10005";
+    searchQueryContainer.style.top = "0px";      // move up into place
+    searchQueryContainer.style.opacity = "1";    // fade in
+
+    // Viewport fades out & slides up a bit
+    if (viewport) {
+      viewport.style.opacity = "0";
+      viewport.style.transform = "translateY(-12px)";
+      viewport.style.pointerEvents = "none";
+    }
+  } else {
+    // === Drawer CLOSED: panel fades out & slightly down ===
+    searchQueryContainer.style.top = "20px";     // slide down
+    searchQueryContainer.style.opacity = "0";    // fade out
+
+    // After fade-out, drop zIndex so it's not clickable
+    setTimeout(() => {
+      if (!searchDrawerOpen) {
+        searchQueryContainer.style.zIndex = "-1";
+      }
+    }, 250);
+
+    // Viewport fades in & slides down into place
+    if (viewport) {
+      viewport.style.opacity = "1";
+      viewport.style.transform = "translateY(0)";
+      viewport.style.pointerEvents = "auto";
+    }
+  }
+
+  // Interlinear panel still controlled via .open class
+  if (interPanel) {
+    interPanel.classList.toggle("open", interlinearOpen);
+  }
 }
+
+
 
 // ==================== State ====================
 // ... (All state variables unchanged) ...
@@ -1096,6 +1122,7 @@ let active = null;
 let offsetX, offsetY;
 let scale = 1;
 let currentIndex = 1;
+let contextMenuTargetItem = null;
 const MIN_SCALE = 0.15,
   MAX_SCALE = 1.5,
   PINCH_SENS = 0.003,
@@ -4399,9 +4426,9 @@ function closeSearchQuery() {
   searchDrawerOpen = false;
 
   // Reset crossref mode back to bible so reopening works
-  if (window.currentSearchMode === "crossref") {
-    window.setSearchMode("bible", { openDrawer: false, suppressSave: true });
-  }
+  // if (window.currentSearchMode === "crossref") {
+  //   window.setSearchMode("bible", { openDrawer: false, suppressSave: true });
+  // }
 
   applyLayout(true);
   if (searchBar) searchQuery.textContent = `Search for "${searchBar.value}"`;
