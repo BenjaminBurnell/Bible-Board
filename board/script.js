@@ -1103,7 +1103,7 @@ const MIN_SCALE = 0.15,
 
 function syncHandleScaleVar() {
   const s =
-    (typeof scale === "number" && isFinite(scale) && scale > 0 ? scale : 1) / .45;
+    (typeof scale === "number" && isFinite(scale) && scale > 0 ? scale : 1) / .8;
   const inverse = 1 / s;
   document.documentElement.style.setProperty(
     "--bb-handle-scale",
