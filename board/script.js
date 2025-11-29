@@ -7826,9 +7826,52 @@ function updateFloatingAddButton() {
   }
 }
 
+// --- BOARD ITEM LIMIT HELPERS (FREE PLAN) ---
+
+// Count how many items are currently on the open board.
+// Assumes each card has the class .board-item
+function getCurrentBoardItemCount() {
+  const workspace = document.getElementById("workspace");
+  if (!workspace) return 0;
+  return workspace.querySelectorAll(".board-item").length;
+}
+
+// Enforce per-board item limit for FREE users.
+// - Pro users (window.BIBLEBOARD_IS_PRO) are unlimited.
+// - Free users are limited to 100 items per board.
+// - Existing items are NEVER removed.
+async function ensureCanAddBatch(batchSize) {
+  // Pro users: unlimited
+  if (window.BIBLEBOARD_IS_PRO) return true;
+
+  const FREE_BOARD_ITEM_LIMIT = 100;
+
+  const currentCount = getCurrentBoardItemCount();
+  const projected = currentCount + batchSize;
+
+  // If this batch would push them over → block
+  if (projected > FREE_BOARD_ITEM_LIMIT) {
+    if (typeof window.openUpgradeModal === "function") {
+      // Use your existing upgrade modal if available
+      window.openUpgradeModal("board-items-limit");
+    } else {
+      // Fallback: plain alert
+      alert(
+        `On the free plan you can have up to ${FREE_BOARD_ITEM_LIMIT} items per board.\n` +
+        `You currently have ${currentCount} item${currentCount !== 1 ? "s" : ""}, ` +
+        `and you are trying to add ${batchSize} more.`
+      );
+    }
+    return false;
+  }
+
+  return true;
+}
+
+
 // 4. UNIFIED "ADD TO BOARD" ACTION
 // Flushes all three queues to the board at once.
-function handleFloatingAddClick() {
+async function handleFloatingAddClick() {
   // Hide UI immediately
   if (typeof clearSelection === "function") clearSelection();
   if (typeof closeInterlinearPanel === "function") closeInterlinearPanel();
@@ -7838,10 +7881,18 @@ function handleFloatingAddClick() {
   const songs = Array.from(window.pendingSongAdds.values());
   const interlinear = Array.from(window.pendingInterlinearAdds.values());
 
-  if (verses.length === 0 && songs.length === 0 && interlinear.length === 0)
-    return;
+  const totalToAdd = verses.length + songs.length + interlinear.length;
+  if (totalToAdd === 0) return;
 
-  // Clear State
+  // 🔒 Enforce free-plan limit ONLY on this bulk add
+  const canAdd = await ensureCanAddBatch(totalToAdd);
+  if (!canAdd) {
+    // Important: do NOT clear the queues.
+    // User can upgrade and click the button again.
+    return;
+  }
+
+  // Clear State (we're definitely adding them now)
   window.pendingVerseAdds.clear();
   window.pendingSongAdds.clear();
   window.pendingInterlinearAdds.clear();
@@ -7863,23 +7914,20 @@ function handleFloatingAddClick() {
       };
     };
 
-    // FIX: Sort by VERSION first, then by Book/Chapter/Verse
+    // Sort by VERSION first, then by Book/Chapter/Verse
     verses.sort((a, b) => {
-      // 1. Primary Sort: Version (e.g. KJV before NLT)
       if (a.version < b.version) return -1;
       if (a.version > b.version) return 1;
 
-      // 2. Secondary Sort: Reference
       const ra = parseFullRef(a.reference);
       const rb = parseFullRef(b.reference);
 
-      // Sort by Book, then Chapter, then Verse
       if (ra.book !== rb.book) return ra.book.localeCompare(rb.book);
       if (ra.chapter !== rb.chapter) return ra.chapter - rb.chapter;
       return ra.verse - rb.verse;
     });
 
-    // Group continuous verses
+    // Group continuous verses (same version/book/chapter, sequential verse)
     let groups = [[verses[0]]];
 
     for (let i = 1; i < verses.length; i++) {
@@ -7890,7 +7938,6 @@ function handleFloatingAddClick() {
       const prevData = parseFullRef(prev.reference);
       const currData = parseFullRef(curr.reference);
 
-      // Check if: Same Version AND Same Book AND Same Chapter AND Sequential Verse
       if (
         prev.version === curr.version &&
         prevData.book === currData.book &&
@@ -7906,7 +7953,7 @@ function handleFloatingAddClick() {
     // Add Groups to Board
     groups.forEach((group) => {
       if (group.length === 1) {
-        // Single Verse
+        // Single verse
         const v = group[0];
         window.BoardAPI.addBibleVerse(
           v.reference,
@@ -7916,30 +7963,17 @@ function handleFloatingAddClick() {
           delay
         );
       } else {
-        // Verse Range
+        // Verse range
         const first = group[0];
         const last = group[group.length - 1];
 
-        // Parse base reference (e.g., "Genesis 1")
-        const baseRefParts = first.reference.match(/^(.+\s+\d+):/);
-        const baseRef = baseRefParts
-          ? baseRefParts[1]
-          : first.reference.split(":")[0];
+        const firstData = parseFullRef(first.reference);
+        const baseRef = `${firstData.book} ${firstData.chapter}`;
 
-        const startV = first.reference.split(":")[1];
-        const endV = last.reference.split(":")[1];
+        const startV = firstData.verse;
+        const endV = parseFullRef(last.reference).verse;
 
-        // Combine text with proper spacing
-        const combinedText = group
-          .map((v) => {
-            const vNum = v.reference.split(":")[1];
-            // Clean existing numbering to prevent double brackets
-            const clean = v.text
-              .replace(/^\[\d+\]\s*/, "")
-              .replace(/^\d+\s+/, "");
-            return `[${vNum}] ${clean}`;
-          })
-          .join(" ");
+        const combinedText = group.map((v) => v.text).join(" ");
 
         window.BoardAPI.addBibleVerse(
           `${baseRef}:${startV}-${endV}`,
@@ -7949,6 +7983,7 @@ function handleFloatingAddClick() {
           delay
         );
       }
+
       delay += 0.15;
     });
   }
@@ -7964,15 +7999,8 @@ function handleFloatingAddClick() {
     window.BoardAPI.addInterlinearCard(item, delay);
     delay += 0.15;
   });
-
-  // Cleanup Visuals
-  document
-    .querySelectorAll(".selected-for-add")
-    .forEach((el) => el.classList.remove("selected-for-add"));
-  document
-    .querySelectorAll(".search-query-verse-add-button.selected")
-    .forEach((el) => el.classList.remove("selected"));
 }
+
 
 /* =============================================================================
    RENDERER FIXES: Ensure Lists Check the Shared Queue

@@ -67,7 +67,7 @@ body {
   --sidebar-collapsed: 72px;
   --sidebar-transition: 240ms cubic-bezier(.2,.9,.25,1);
   --overlay-bg: rgba(0, 0, 0, 0.55);
-  --sidebar-z: 400000;
+  --sidebar-z: 5000000;
 }
 
 /* Base sidebar */
@@ -94,7 +94,7 @@ body {
   transform: translateX(0);
   transition: width var(--sidebar-transition), transform var(--sidebar-transition);
 
-  z-index: var(--sidebar-z);
+  z-index: var(--sidebar-z) !important;
 
   display: flex;
   flex-direction: column;
@@ -662,7 +662,7 @@ body {
   inset: 0;
   background: rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(4px);
-  z-index: 400000;
+  z-index: 6000000;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -959,7 +959,7 @@ body {
   inset: 0; /* Stretches to fill screen */
   background: rgba(0, 0, 0, 0.6); /* Dark background */
   backdrop-filter: blur(4px);
-  z-index: 400000; /* Sits on top of everything */
+  z-index: 6000000; /* Sits on top of everything */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1074,7 +1074,7 @@ body {
     width: 280px !important; 
     background-color: var(--bg); /* Ensure it's opaque */
     transform: translateX(-110%);
-    z-index: 2000;
+    z-index: var(--sidebar-z) !important;
     border-right: 1px solid var(--border);
     overflow: hidden; /* Hide scrollbars if content overflows */
   }
@@ -1413,7 +1413,7 @@ body {
   inset: 0;
   background: rgba(0, 0, 0, 0.65);
   backdrop-filter: blur(6px);
-  z-index: 400000;
+  z-index: 6000000 !important;
   display: flex;
   justify-content: center;
   align-items: center;

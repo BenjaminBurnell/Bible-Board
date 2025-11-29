@@ -421,7 +421,7 @@ body.light {
     border-radius: 0px;
     border: none !important;
     padding-bottom: 16px;
-    z-index: 300000 !important; /* CRITICAL: Force the highest stacking order */
+    z-index: 100 !important; /* CRITICAL: Force the highest stacking order */
   }
 
   #search-bar {

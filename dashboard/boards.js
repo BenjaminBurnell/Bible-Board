@@ -13,7 +13,10 @@ let currentModalBoard = null;
 let activeMenu = null;
 let activeDropdown = null; 
 let loadedBoards = [];
-let boardToDelete = null; // Global variable for deletion
+let boardToDelete = null;
+
+// Global: assume FREE until subscription check says otherwise
+window.BIBLEBOARD_IS_PRO = false;
 
 // Track the currently open context menu + its parent sidebar-board-item
 let openBoardContextMenu = null;
@@ -47,11 +50,35 @@ async function isProUser() {
     }
   }
 
-  // Calls the SubscriptionService which performs the RevenueCat check
-  return await SubscriptionService.initAndCheck();
-}
+  try {
+    // 1) Preferred: if your SubscriptionService exposes a direct boolean method
+    if (typeof SubscriptionService.hasActiveSubscription === "function") {
+      const active = await SubscriptionService.hasActiveSubscription();
+      return !!active;
+    }
 
-// --------------------------------------
+    // 2) Fallback: use initAndCheck but interpret its result
+    const result = await SubscriptionService.initAndCheck();
+
+    // If it literally returns a boolean, just use it.
+    if (typeof result === "boolean") {
+      return result;
+    }
+
+    // If it returns an object, look for common flags:
+    if (result && typeof result === "object") {
+      if (typeof result.isPro === "boolean") return result.isPro;
+      if (typeof result.hasActiveSubscription === "boolean") return result.hasActiveSubscription;
+      if (typeof result.active === "boolean") return result.active;
+    }
+
+    // If we reach here, we couldn't confidently say "Pro", so treat as free.
+    return false;
+  } catch (e) {
+    console.error("isProUser: SubscriptionService error", e);
+    return false;
+  }
+}
 
 // --- DOM Refs ---
 const deleteModalBackdrop = document.getElementById("delete-modal-backdrop");
@@ -831,6 +858,7 @@ async function handleAuthChange(user, valid = false) {
 
 
 
+
 // ==================== ADVANCED SEARCH LOGIC ====================
 const searchBackdrop = document.getElementById("search-modal-backdrop");
 const searchInput = document.getElementById("board-search-input");
@@ -1188,25 +1216,16 @@ async function ensureCanAddBatch(batchSize) {
     return true;
   }
 
-  // Max items on FREE plan
   const FREE_BOARD_ITEM_LIMIT = 100;
-
   const currentCount = getCurrentBoardItemCount();
   const projectedCount = currentCount + batchSize;
 
-  // Under or equal to limit → allow
   if (projectedCount <= FREE_BOARD_ITEM_LIMIT) {
     return true;
   }
 
-  // Over limit → block and show upgrade flow
-  console.warn(
-    `Free plan limit is ${FREE_BOARD_ITEM_LIMIT} items per board. ` +
-    `Current: ${currentCount}, trying to add: ${batchSize}`
-  );
-
+  // Over limit → show modal / block
   if (typeof window.openUpgradeModal === "function") {
-    // You already wired this modal in boards.js
     window.openUpgradeModal("board-items-limit");
   } else {
     // Fallback in case modal isn't available for some reason
