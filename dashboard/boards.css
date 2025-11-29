@@ -123,6 +123,7 @@ body {
   width: calc(100% - 20px);
   margin-left: 10px;
   padding-top: 10px; /* Space before the list starts */
+  margin-bottom: 10px;
 }
 
 /* Style specifically for the new toggle button */
@@ -130,7 +131,7 @@ body {
   background: transparent;
   border: none;
   color: var(--muted);
-  cursor: pointer;
+  cursor: w-resize;
   padding: 8px;
   border-radius: 6px;
   display: flex;
@@ -141,7 +142,7 @@ body {
 
 #sidebar-toggle-btn:hover {
   color: var(--fg);
-  background: var(--bg-alt);
+  background: var(--fg-seethrough);
 }
 
 /* Hide the toggle button when sidebar is collapsed (too narrow) */
@@ -158,6 +159,7 @@ body {
 /* Collapsed sidebar (desktop) */
 .sidebar.collapsed {
   width: var(--sidebar-collapsed);
+  background:var(--bg) !important;
   overflow: visible;
 }
 
@@ -173,7 +175,7 @@ body {
   height: 100%;
   /* padding: 10px 10px; */
   background:var(--bg-dots);
-  gap: 10px;
+  gap: 0px;
 }
 
 /* Sidebar logo button */
@@ -185,8 +187,9 @@ body {
   align-items: center;
   gap: 12px;
   padding: 4px;
-  cursor: pointer;
+  cursor: w-resize;
   border-radius: 10px;
+  margin-left: 1px;
 }
 
 .sidebar-logo img {
@@ -210,7 +213,6 @@ body {
 /* 1. Hide extra elements */
 .sidebar.collapsed #sidebar-boards-container,
 .sidebar.collapsed #sidebar-status,
-.sidebar.collapsed .sidebar-divider,
 .sidebar.collapsed #bottom-sidebar-fade,
 .sidebar.collapsed #sidebar-toggle-btn {
   display: none !important;
@@ -246,6 +248,14 @@ body {
   margin: 4px 0px;
 }
 
+.nav-item > span {
+  word-break: nowrap;
+  position:absolute;
+  left:52.5px;
+  width:200px;
+  text-align: left;
+}
+
 /* =========================
    Fix for Sidebar Scrolling
    Paste this into boards.css
@@ -270,11 +280,12 @@ body {
   overflow-y: auto;     /* Enable vertical scrolling */
   min-height: 0;        /* standard flex scroll fix */
   padding:0px 10px;
+  position: relative;   /* 🔹 anchor #board-context-menu here */
   
   /* Remove height: 100% if it exists, use flex instead */
   height: auto; 
   
-  padding-bottom: 1000px;
+  padding-bottom: 100px;
   position: relative;
   
   /* Optional: Smooth scrolling */
@@ -304,23 +315,25 @@ body {
 }
 
 .nav-item {
-  width: calc(100% - 20px);
+  width: calc(100% - 25px);
   background: transparent;
   border: none;
   color: var(--fg);
   display: flex;
+  flex-direction: row !important;
   align-items: center;
   gap: 12px;
-  padding: 10px;
+  padding: 11px 10px;
   cursor: pointer;
-  margin-left: 10px;
+  overflow: hidden;
+  margin-left: 12.5px;
   border-radius: 10px;
   font-size: 0.95rem;
   font-weight: 300;
 }
 
 .nav-item:hover {
-  background: var(--bg-alt);
+  background: var(--fg-seethrough);
 }
 
 /* Sidebar footer (Updated for single full-width button) */
@@ -449,7 +462,7 @@ body {
 }
 
 .sidebar-group-label {
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   opacity: 0.6;
   margin: 12px 4px;
   text-transform: uppercase;
@@ -483,7 +496,7 @@ body {
 .sidebar-divider {
   border: none;
   border-bottom: 1px solid var(--border);
-  margin: 8px 0;
+  margin: 1px 0;
 }
 
 #sidebar-status {
@@ -541,14 +554,21 @@ body {
   border-radius: 8px;
   margin-bottom: 2px;
   position: relative; /* Anchor for dropdown */
-  transition: background 0.2s;
+  transition: background 0.2s, color 0.2s;
 }
 
-.sidebar-board-item:hover,
+/* Hover state */
+.sidebar-board-item:hover {
+  background: var(--fg-seethrough);
+}
+
+/* Active board + board with open context menu */
 .sidebar-board-item.active,
 .sidebar-board-item.context-open {
   background: var(--fg-seethrough);
+  color: var(--fg);
 }
+
 
 
 #new-board-icon {
@@ -587,11 +607,19 @@ body {
   justify-content: center;
 }
 
+/* Show menu button on hover, when explicitly active, or when its item has an open menu */
 .sidebar-board-item:hover .sidebar-menu-btn,
-/* .sidebar-board-item.active .sidebar-menu-btn, */
+.sidebar-board-item.context-open .sidebar-menu-btn,
 .sidebar-menu-btn.active {
-  display: flex; /* Show on hover or active */
+  display: flex; /* Show on hover, when context menu is open, or if manually active */
 }
+
+.sidebar-board-item.context-open .sidebar-menu-btn{
+  display: flex !important;
+}
+
+
+
 
 .sidebar-menu-btn:hover {
   background: rgb(0, 0, 0, 0.1);
@@ -599,24 +627,10 @@ body {
   color: var(--fg);
 }
 
-/* --- Global Context Menu (Fixed Position) --- */
-#board-context-menu {
-  position: fixed; /* Breaking out of the sidebar */
-  background: var(--bg-dots);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-  z-index: 1000000; /* Very high to sit on top */
-  min-width: 130px;
-  display: none; 
-  flex-direction: column;
-  padding: 4px;
-  backdrop-filter: blur(10px); /* Glass effect */
-}
-
-#board-context-menu.show {
-  display: flex;
-  animation: menuFadeIn 0.1s ease-out;
+@media (pointer:coarse) {
+  .sidebar-menu-btn {
+    display: flex !important;
+  }
 }
 
 @keyframes menuFadeIn {
@@ -1149,6 +1163,10 @@ body {
   }
 }
 
+#search-board-btn-sidebar {
+  margin-bottom: 10px;
+}
+
 
 
 
@@ -1181,12 +1199,12 @@ body {
 
 .user-profile-btn:hover,
 .user-profile-btn.active {
-  background: var(--bg-alt);
+  background: var(--fg-seethrough);
 }
 
 .user-avatar {
-  width: 36px;
-  height: 36px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%; /* Circle */
   object-fit: cover;
   background: var(--bg-dots);
@@ -1235,7 +1253,7 @@ body {
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 6px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  box-shadow: 0 5px 30px rgba(0,0,0,0.2); /* Match profile menu */
   z-index: 400000;
   
   display: flex;
@@ -1317,19 +1335,19 @@ body {
    Global Context Menu (Fixed Position)
    ========================= */
 #board-context-menu {
-  position: fixed;
+  position: absolute;   /* 🔹 now relative to #sidebar-boards-container */
   background: var(--bg-dots);
   border: 1px solid var(--border);
-  border-radius: 12px; /* Match profile menu */
-  box-shadow: 0 10px 30px rgba(0,0,0,0.5); /* Match profile menu */
-  z-index: var(--sidebar-z);
-  min-width: 160px; /* Slightly wider */
-  display: none; 
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  z-index: 100000;      /* still on top of sidebar content */
+  min-width: 130px;
+  display: none;
   flex-direction: column;
-  padding: 6px; /* Match profile menu */
-  backdrop-filter: blur(1rem);
-  gap: 2px;
+  padding: 4px;
+  backdrop-filter: blur(10px);
 }
+
 
 #board-context-menu.show {
   display: flex;
@@ -1354,11 +1372,12 @@ body {
   font-size: 0.9rem; /* Match profile menu font */
   font-weight: 600;
   border-radius: 8px;
+  font-size: 13px;
   transition: background 0.2s;
 }
 
 .menu-option:hover {
-  background: var(--bg-alt);
+  background: var(--fg-seethrough);
 }
 
 .menu-option .material-symbols-outlined {
@@ -1455,4 +1474,11 @@ h2 {
   object-fit:cover;
   object-position: center;
   filter: blur(.05rem);
+}
+
+#sidebar-logo-img {
+  width:32px;
+  height:32px;
+  object-fit: cover;
+  object-position: center;
 }

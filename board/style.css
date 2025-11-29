@@ -35,6 +35,7 @@ body.light {
   --bg-alt: #dadada;
   --fg: #343434;
   --fg-seethrough: #29292920;
+  /* --fg-seethrough-solid:#f1f1f1; */
   --border: #dfdfdf;
   --accent: #2ea043;
   --muted: #57606a;
@@ -2442,6 +2443,14 @@ body.read-only .connection-handle {
 }
 #grouping-mode-btn.active .action-icon {
   color: var(--bg);
+}
+
+#grouping-mode-btn.active > .action-icon > .action-icon-sub {
+  fill: var(--accent);
+}
+
+#grouping-mode-btn.active > .action-icon > .action-icon-sub-1 {
+  fill: var(--bg);
 }
 
 /* 2. Visual cue when mode is active */

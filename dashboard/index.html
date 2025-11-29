@@ -98,10 +98,11 @@
         </button>
 
         <button id="sidebar-toggle-btn" class="icon-btn toggle-icon" title="Close Sidebar">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-            <line x1="9" y1="3" x2="9" y2="21"></line>
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-layout-sidebar-left-collapse">
+            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+            <path d="M4 4m0 2a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2z"/>
+            <path d="M9 4v16"/>
+            <path d="M15 10l-2 2l2 2"/>
           </svg>
         </button>
 
@@ -112,33 +113,37 @@
           <li>
             <button id="new-board-btn-sidebar" class="nav-item dash-btn primary" type="button">
               <!-- Changed fill to var(--fg) -->
-              <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px"
-                fill="var(--fg)" class="icon" aria-hidden="true">
-                <path
-                  d="M460-360q69 0 120-45t60-113l-320 90q26 32 62 50t78 18ZM294-510l106-30q4-28-14-49t-46-21q-25 0-42.5 17.5T280-550q0 11 4 21t10 19Zm240-70 106-30q5-28-13.5-49T580-680q-25 0-42.5 17.5T520-620q0 11 4 21t10 19Zm-54 100ZM200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h400v80H200v560h400v-80q0-33 23.5-56.5T680-360h80v-240h80v280L640-120H200Zm400-80Zm160-480v-80h-80v-80h80v-80h80v80h80v80h-80v80h-80Z" />
+               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" class="icon icon-tabler icons-tabler-filled icon-tabler-square-rounded-plus">
+                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                <path d="M12 2l.324 .001l.318 .004l.616 .017l.299 .013l.579 .034l.553 .046c4.785 .464 6.732 2.411 7.196 7.196l.046 .553l.034 .579c.005 .098 .01 .198 .013 .299l.017 .616l.005 .642l-.005 .642l-.017 .616l-.013 .299l-.034 .579l-.046 .553c-.464 4.785 -2.411 6.732 -7.196 7.196l-.553 .046l-.579 .034c-.098 .005 -.198 .01 -.299 .013l-.616 .017l-.642 .005l-.642 -.005l-.616 -.017l-.299 -.013l-.579 -.034l-.553 -.046c-4.785 -.464 -6.732 -2.411 -7.196 -7.196l-.046 -.553l-.034 -.579a28.058 28.058 0 0 1 -.013 -.299l-.017 -.616c-.003 -.21 -.005 -.424 -.005 -.642l.001 -.324l.004 -.318l.017 -.616l.013 -.299l.034 -.579l.046 -.553c.464 -4.785 2.411 -6.732 7.196 -7.196l.553 -.046l.579 -.034c.098 -.005 .198 -.01 .299 -.013l.616 -.017c.21 -.003 .424 -.005 .642 -.005zm0 6a1 1 0 0 0 -1 1v2h-2l-.117 .007a1 1 0 0 0 .117 1.993h2v2l.007 .117a1 1 0 0 0 1.993 -.117v-2h2l.117 -.007a1 1 0 0 0 -.117 -1.993h-2v-2l-.007 -.117a1 1 0 0 0 -.993 -.883z" fill="currentColor" stroke-width="0"/>
               </svg>
-              New Board
+              <span>New Board</span>
             </button>
           </li>
           <li>
             <!-- Fixed ID to be unique -->
             <button id="search-board-btn-sidebar" class="nav-item dash-btn primary" type="button">
               <!-- Changed fill to var(--fg) -->
-              <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px"
+              <!-- <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px"
                 fill="var(--fg)" class="icon" aria-hidden="true">
                 <path
                   d="M784-120 532-372q-30 24-69 38t-83 14q-109 0-184.5-75.5T120-580q0-109 75.5-184.5T380-840q109 0 184.5 75.5T640-580q0 44-14 83t-38 69l252 252-56 56ZM380-400q75 0 127.5-52.5T560-580q0-75-52.5-127.5T380-760q-75 0-127.5 52.5T200-580q0 75 52.5 127.5T380-400Z" />
+              </svg> -->
+
+              <svg style="margin-left: 2px;" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-search">
+                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                <path d="M10 10m-7 0a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"/>
+                <path d="M21 21l-6 -6"/>
               </svg>
-              Search Boards
+              <span>Search Boards</span>
             </button>
           </li>
 
           <!-- <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="var(--bg-alt)">
                 <path d="M784-120 532-372q-30 24-69 38t-83 14q-109 0-184.5-75.5T120-580q0-109 75.5-184.5T380-840q109 0 184.5 75.5T640-580q0 44-14 83t-38 69l252 252-56 56ZM380-400q75 0 127.5-52.5T560-580q0-75-52.5-127.5T380-760q-75 0-127.5 52.5T200-580q0 75 52.5 127.5T380-400Z"></path>
               </svg> -->
+          <hr class="sidebar-divider" />
         </ul>
-
-        <hr class="sidebar-divider" />
 
         <div id="sidebar-status"></div>
 
@@ -155,12 +160,23 @@
       <div class="sidebar-footer">
         <div id="user-profile-menu" class="profile-menu hidden">
           <button id="manage-sub-btn" class="menu-item">
-            <span class="material-symbols-outlined">credit_card</span>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-credit-card">
+              <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+              <path d="M3 5m0 3a3 3 0 0 1 3 -3h12a3 3 0 0 1 3 3v8a3 3 0 0 1 -3 3h-12a3 3 0 0 1 -3 -3z"/>
+              <path d="M3 10l18 0"/>
+              <path d="M7 15l.01 0"/>
+              <path d="M11 15l2 0"/>
+            </svg>
             Manage Subscription
           </button>
           <div class="menu-divider"></div>
           <button id="signout-btn-sidebar" class="menu-item delete">
-            <span class="material-symbols-outlined">logout</span>
+            <svg style="margin-right: 2px;" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-logout-2">
+              <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+              <path d="M10 8v-2a2 2 0 0 1 2 -2h7a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-7a2 2 0 0 1 -2 -2v-2"/>
+              <path d="M15 12h-12l3 -3"/>
+              <path d="M6 15l-3 -3"/>
+            </svg>
             Sign out
           </button>
         </div>
@@ -171,7 +187,7 @@
             <span id="user-profile-name" class="user-name">loading...</span>
             <span id="user-profile-email" class="user-email">loading@example.com</span>
           </div>
-          <span class="material-symbols-outlined menu-indicator">more_horiz</span>
+          <span class="material-symbols-outlined menu-indicator" style="font-size: 20px !important;">more_horiz</span>
         </button>
       </div>
     </div>
@@ -290,22 +306,51 @@
 
     <div id="action-buttons-container" title="Actions">
       <button id="undo-btn" class="action-button" title="Undo (Ctrl+Z)" disabled>
-        <svg  class="action-icon" xmlns="http://www.w3.org/2000/svg" height="25px" viewBox="0 -960 960 960" width="25px">
+
+
+        <!-- <svg class="action-icon" xmlns="http://www.w3.org/2000/svg" width="25" height="25" viewBox="0 0 25 25" fill="none" stroke="currentColor"  class="icon icon-tabler icons-tabler-outline icon-tabler-arrow-back-up">
+          <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+          <path d="M9 14l-4 -4l4 -4"/>
+          <path d="M5 10h11a4 4 0 1 1 0 8h-1"/>
+        </svg> -->
+
+        <svg class="action-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+          <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+          <path d="M9 14l-4 -4l4 -4" fill="none"/>
+          <path d="M5 10h11a4 4 0 1 1 0 8h-1" fill="none"/>
+        </svg>
+        <!-- <svg  xmlns="http://www.w3.org/2000/svg" height="25px" viewBox="0 -960 960 960" width="25px">
           <path
             d="M292-166v-126h293q51 0 87-35.5t36-86.5q0-51-36-87t-87-36H366l83 83-88 88-235-234 235-234 88 88-83 83h219q103 0 176 72.5T834-415q0 103-73 176t-176 73H292Z" />
-        </svg>
+        </svg> -->
       </button>
       <button id="redo-btn" class="action-button" title="Redo (Ctrl+Shift+Z)" disabled>
+
+
+        <svg class="action-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-arrow-forward-up">
+          <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+          <path d="M15 14l4 -4l-4 -4" fill="none"/>
+          <path d="M19 10h-11a4 4 0 1 0 0 8h1" fill="none"/>
+        </svg>
+<!--         
         <svg  class="action-icon" xmlns="http://www.w3.org/2000/svg" height="25px" viewBox="0 -960 960 960" width="25px">
           <path
             d="M375-166q-103 0-176-72.5T126-414q0-103 73-176t176-73h219l-83-83 88-88 235 234-235 234-88-88 83-83H375q-51 0-87 35.5T252-415q0 51 36 87t87 36h293v126H375Z" />
-        </svg>
+        </svg> -->
       </button>
       <button id="grouping-mode-btn" class="action-button" aria-label="Grouping Mode" title="Toggle Group Selection">
-        <svg  class="action-icon" xmlns="http://www.w3.org/2000/svg" height="25px" viewBox="0 -960 960 960" width="25px">
-          <path
-            d="M424.87-60.78q-44.3 0-75.15-30.85-30.85-30.85-30.85-75.15v-152.09H166.22q-44.31 0-75.16-30.85-30.84-30.85-30.84-75.15v-368.35q0-44.3 30.84-75.15 30.85-30.85 75.16-30.85h368.34q44.31 0 75.16 30.85 30.85 30.85 30.85 75.15v152.09h152.65q44.3 0 75.15 30.85 30.85 30.85 30.85 75.15v368.35q0 44.3-30.85 75.15-30.85 30.85-75.15 30.85H424.87Zm-5.65-100.35h379.65v-379.65H540.22v-258.09H160.57v379.65h258.65v258.09ZM480-480Z" />
+
+        <!-- <svg class="action-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-box-multiple">
+          <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+          <path class="action-icon-sub" d="M17 17v2a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2v-10a2 2 0 0 1 2 -2h2" fill="none"/>
+          <path class="action-icon-sub-1" d="M7 3m0 2a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v10a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2z" fill="none"/>
+        </svg> -->
+
+        <svg class="action-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-category-plus">
+          <path class="action-icon-sub" stroke="none" d="M0 0h24v24H0z" fill="none"/>
+          <path class="action-icon-sub-1" d="M4 4h6v6h-6zm10 0h6v6h-6zm-10 10h6v6h-6zm10 3h6m-3 -3v6"fill="none"/>
         </svg>
+        
       </button>
       <button id="mobile-action-button" class="action-button" aria-label="Connect" disabled style="display: none!important;">
         <svg class="action-icon" xmlns="http://www.w3.org/2000/svg" height="25px" viewBox="0 -960 960 960" width="25px">
@@ -315,8 +360,10 @@
       </button>
 
       <button id="disconnect-mode-btn" class="action-button" aria-label="Toggle disconnect mode"
-        title="Disconnect mode: click lines to remove">
-
+        title="Disconnect mode: click lines to remove" 
+        >
+        <!-- style="display: none;" -->
+        
         <svg class="action-icon" xmlns="http://www.w3.org/2000/svg" height="25px" viewBox="0 -960 960 960" width="25px">
           <path
             d="m791-283-93-93q35-10 63-38.5t28-65.93q0-44.57-31.21-76.07Q726.58-588 682-588H526v-126h155q97.11 0 165.55 68.45Q915-577.11 915-480q0 62-35 115t-89 82ZM641-432l-94-96h107v96h-13ZM770-56 45-781l67-67 725 725-67 67ZM424-246H279q-97.11 0-165.56-68.45Q45-382.89 45-480q0-71 38.5-129.5T188-696l108 108h-17q-45 0-76.5 31.5T171-480q0 45 31.63 76.5 31.62 31.5 76.8 31.5H424v126ZM306-432v-96h61l95 96H306Z" />
@@ -324,9 +371,18 @@
       </button>
 
       <button id="text-action-button" class="action-button" aria-label="Add text">
-        <svg  class="action-icon" xmlns="http://www.w3.org/2000/svg" height="25px" viewBox="0 -960 960 960" width="25px">
-          <path d="M280-160v-520H80v-120h520v120H400v520H280Zm360 0v-320H520v-120h360v120H760v320H640Z" />
+        <svg class="action-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-text-recognition">
+          <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+          <path d="M4 8v-2a2 2 0 0 1 2 -2h2"/>
+          <path d="M4 16v2a2 2 0 0 0 2 2h2"/>
+          <path d="M16 4h2a2 2 0 0 1 2 2v2"/>
+          <path d="M16 20h2a2 2 0 0 0 2 -2v-2"/>
+          <path d="M12 16v-7"/>
+          <path d="M9 9h6"/>
         </svg>
+        <!-- <svg  class="action-icon" xmlns="http://www.w3.org/2000/svg" height="25px" viewBox="0 -960 960 960" width="25px">
+          <path d="M280-160v-520H80v-120h520v120H400v520H280Zm360 0v-320H520v-120h360v120H760v320H640Z" />
+        </svg> -->
       </button>
 
       <button id="interlinear-action-button" class="action-button" aria-label="Interlinear (original → English)"
@@ -338,10 +394,18 @@
       </button>
 
       <button id="delete-action-button" class="action-button" aria-label="Delete selected" disabled>
-        <svg class="action-icon" xmlns="http://www.w3.org/2000/svg" height="25px" viewBox="0 -960 960 960" width="25px">
+        <svg class="action-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-trash">
+          <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+          <path d="M4 7l16 0" fill="none"/>
+          <path d="M10 11l0 6" fill="none"/>
+          <path d="M14 11l0 6" fill="none"/>
+          <path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12" fill="none"/>
+          <path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3" fill="none"/>
+        </svg>
+        <!-- <svg class="action-icon" xmlns="http://www.w3.org/2000/svg" height="25px" viewBox="0 -960 960 960" width="25px">
           <path
             d="M269-86q-53 0-89.5-36.5T143-212v-497H80v-126h257v-63h284v63h259v126h-63v497q0 53-36.5 89.5T691-86H269Zm422-623H269v497h422v-497ZM342-281h103v-360H342v360Zm173 0h103v-360H515v360ZM269-709v497-497Z" />
-        </svg>
+        </svg> -->
       </button>
     </div>
     <form id="search-container" onsubmit="return searchForQuery(event)">
@@ -355,10 +419,11 @@
           <!-- <option>SBLG</option> -->
       </select>
       <button id="search-button" type="submit">
-        <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px"
-          fill="var(--bg-alt)">
-          <path
-            d="M784-120 532-372q-30 24-69 38t-83 14q-109 0-184.5-75.5T120-580q0-109 75.5-184.5T380-840q109 0 184.5 75.5T640-580q0 44-14 83t-38 69l252 252-56 56ZM380-400q75 0 127.5-52.5T560-580q0-75-52.5-127.5T380-760q-75 0-127.5 52.5T200-580q0 75 52.5 127.5T380-400Z" />
+
+        <svg style="margin-top:2px;margin-right:2px;" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="var(--fg)" stroke="var(--bg)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-search">
+          <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+          <path d="M10 10m-7 0a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"/>
+          <path d="M21 21l-6 -6" fill="none"/>
         </svg>
       </button>
     </form>

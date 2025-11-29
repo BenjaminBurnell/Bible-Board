@@ -14,6 +14,10 @@ let activeDropdown = null;
 let loadedBoards = [];
 let boardToDelete = null; // Global variable for deletion
 
+// Track the currently open context menu + its parent sidebar-board-item
+let openBoardContextMenu = null;
+let openBoardContextItem = null;
+
 // ✅ NEW: tracks whether we've finished a Pro check
 let hasProCheckCompleted = false;
 
@@ -316,11 +320,24 @@ const contextMenuEl = document.createElement('div');
 contextMenuEl.id = 'board-context-menu';
 contextMenuEl.innerHTML = `
   <button id="ctx-rename" class="menu-option">
-    <span class="material-symbols-outlined">edit</span> Rename
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-pencil">
+        <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+        <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4"/>
+        <path d="M13.5 6.5l4 4"/>
+      </svg>
+    Rename
   </button>
   <div class="menu-divider"></div>
   <button id="ctx-delete" class="menu-option delete">
-    <span class="material-symbols-outlined">delete</span> Delete
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="#AD1C1C" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-trash">
+        <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+        <path d="M4 7l16 0" fill="none"/>
+        <path d="M10 11l0 6" fill="none"/>
+        <path d="M14 11l0 6" fill="none"/>
+        <path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12" fill="none"/>
+        <path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3" fill="none"/>
+      </svg>
+      Delete
   </button>
 `;
 document.body.appendChild(contextMenuEl);
@@ -338,41 +355,59 @@ document.getElementById('ctx-delete').addEventListener('click', (e) => {
 });
 
 function closeContextMenu() {
-  contextMenuEl.classList.remove('show');
+  if (contextMenuEl) {
+    contextMenuEl.classList.remove('show');
+  }
+
+  // remove highlight from whichever sidebar-board-item had the menu
+  if (openBoardContextItem) {
+    openBoardContextItem.classList.remove('context-open');
+    openBoardContextItem = null;
+  }
 }
+
+
 
 window.closeContextMenu = closeContextMenu; 
 
-function openContextMenu(boardId, anchorRect, eventTarget) {
-  if (!contextMenuEl || !anchorRect) return;
+function openContextMenu(e, board) {
+  e.preventDefault();
+  e.stopPropagation();
+  currentModalBoard = board;
 
-  // Clear previous highlight
-  if (contextMenuTargetItem) {
-    contextMenuTargetItem.classList.remove("context-open");
-    contextMenuTargetItem = null;
+  const itemDiv = e.currentTarget.closest(".sidebar-board-item");
+  if (!itemDiv) return;
+
+  const container = document.getElementById("sidebar-boards-container");
+  if (!container) return;
+
+  // 🔹 move the menu into the scrollable container so it scrolls with the list
+  if (contextMenuEl.parentElement !== container) {
+    container.appendChild(contextMenuEl);
   }
 
-  // Figure out which sidebar item this menu belongs to
-  const itemDiv = eventTarget
-    ? eventTarget.closest(".sidebar-board-item")
-    : document.querySelector(`.sidebar-board-item[data-board-id="${boardId}"]`);
-
-  if (itemDiv) {
-    itemDiv.classList.add("context-open");
-    contextMenuTargetItem = itemDiv;
+  // 🔹 highlight the item that owns this menu
+  if (openBoardContextItem && openBoardContextItem !== itemDiv) {
+    openBoardContextItem.classList.remove("context-open");
   }
+  openBoardContextItem = itemDiv;
+  itemDiv.classList.add("context-open");
 
-  contextMenuEl.dataset.boardId = boardId;
+  const itemRect = itemDiv.getBoundingClientRect();
+  const containerRect = container.getBoundingClientRect();
 
-  const { top, left } = anchorRect;
-  contextMenuEl.style.display = "block";
-  contextMenuEl.style.opacity = "1";
+  // vertical: just below the row, relative to the container
+  let top = itemRect.top - containerRect.top + itemDiv.offsetHeight + 6;
 
-  // Position menu near the trigger
-  contextMenuEl.style.top = `${top + 6}px`;
-  contextMenuEl.style.left = `${left + 6}px`;
+  // horizontal: align to right side of the container
+  const menuWidth = contextMenuEl.offsetWidth || 160;
+  let left = 10;
+  // if (left < 8) left = 8;
 
-  document.addEventListener("click", onContextMenuOutsideClick);
+  contextMenuEl.style.top = `${top}px`;
+  contextMenuEl.style.right = `${left}px`;
+
+  contextMenuEl.classList.add("show");
 }
 
 
@@ -544,12 +579,13 @@ async function loadBoards() {
 
 /**
  * Handles the user action to create a new board.
- * @param {boolean} isInitialLoad If true, used when auto-creating the very first board.
+ * @param {boolean} isInitialLoad (kept for compatibility; logic no longer relies on it)
  */
 async function handleNewBoard(isInitialLoad = false) {
   // 1. Robust auth check: try cached user first
   let user = currentUser;
 
+  // If our cache is empty, ask Supabase directly
   if (!user) {
     try {
       const { data, error } = await sb.auth.getSession();
@@ -558,6 +594,7 @@ async function handleNewBoard(isInitialLoad = false) {
       }
       user = data?.session?.user || null;
 
+      // If we found a user, update the cache + UI
       if (user) {
         currentUser = user;
         try {
@@ -571,6 +608,7 @@ async function handleNewBoard(isInitialLoad = false) {
     }
   }
 
+  // If we *still* don't have a user, they are genuinely not signed in
   if (!user) {
     alert("Please sign in first.");
     return;
@@ -579,38 +617,15 @@ async function handleNewBoard(isInitialLoad = false) {
   // 2. Subscription status
   const isPro = await isProUser();
   const status = isPro ? "PRO" : "FREE";
-
-  // 3. Authoritative board count: ask Supabase, not just loadedBoards
-  let currentCount = loadedBoards.length; // fallback
-
-  if (!isPro) {
-    try {
-      const { data: files, error: listErr } = await sb.storage
-        .from(BUCKET)
-        .list(`${user.id}/boards`, { limit: 200, offset: 0 });
-
-      if (listErr) {
-        console.error("handleNewBoard: list error while counting boards:", listErr);
-      } else if (Array.isArray(files)) {
-        const boardFiles = files.filter((f) => f.name.endsWith(".json"));
-        currentCount = boardFiles.length;
-      }
-    } catch (err) {
-      console.error(
-        "handleNewBoard: unexpected error while counting boards:",
-        err
-      );
-    }
-  }
-
+  const currentCount = loadedBoards.length;
   console.log(
-    `User Subscription Status: ${status} (Boards: ${currentCount}), isInitialLoad=${isInitialLoad}`
+    `User Subscription Status: ${status} (Boards: ${currentCount})`
   );
 
-  // 4. Enforce FREE limit, but still allow initial bootstrap if you want
+  // 3. Enforce FREE limit using your existing logic
   if (!isPro && currentCount >= FREE_BOARD_LIMIT) {
-    if (isInitialLoad && currentCount === 0) {
-      // edge-case safety: you can leave this if you want a special "first board" escape hatch
+    if (currentCount === 0 && isInitialLoad) {
+      // Allow very first board on initial bootstrap if you still want this special case
     } else {
       console.warn("LIMIT REACHED: Showing upgrade modal.");
       openUpgradeModal();
@@ -618,9 +633,10 @@ async function handleNewBoard(isInitialLoad = false) {
     }
   }
 
-  // 5. Proceed with creation
+  // 4. Proceed with creation
   await createBoardFile(crypto.randomUUID());
 }
+
 
 
 
