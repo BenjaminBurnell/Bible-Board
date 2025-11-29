@@ -12,6 +12,7 @@
 
   <!-- Dashboard styles (your uploaded file) -->
   <link rel="stylesheet" href="boards.css" />
+  <link rel="stylesheet" href="crossrefs.css" />
 
   <link rel="shortcut icon" href="../assets/logo_with_bg.png" type="image/x-icon" />
 
@@ -165,10 +166,10 @@
         </div>
 
         <button id="user-profile-btn" class="user-profile-btn" type="button" aria-label="User Menu">
-          <img id="user-avatar-img" class="user-avatar" src="../assets/logo_no_bg.png" alt="User" />
+          <img id="user-avatar-img" class="user-avatar" src="../assets/logo_with_bg.png" alt="User" />
           <div class="user-info">
-            <span id="user-profile-name" class="user-name">Loading...</span>
-            <span id="user-profile-email" class="user-email">...</span>
+            <span id="user-profile-name" class="user-name">loading...</span>
+            <span id="user-profile-email" class="user-email">loading@example.com</span>
           </div>
           <span class="material-symbols-outlined menu-indicator">more_horiz</span>
         </button>
@@ -306,7 +307,7 @@
             d="M424.87-60.78q-44.3 0-75.15-30.85-30.85-30.85-30.85-75.15v-152.09H166.22q-44.31 0-75.16-30.85-30.84-30.85-30.84-75.15v-368.35q0-44.3 30.84-75.15 30.85-30.85 75.16-30.85h368.34q44.31 0 75.16 30.85 30.85 30.85 30.85 75.15v152.09h152.65q44.3 0 75.15 30.85 30.85 30.85 30.85 75.15v368.35q0 44.3-30.85 75.15-30.85 30.85-75.15 30.85H424.87Zm-5.65-100.35h379.65v-379.65H540.22v-258.09H160.57v379.65h258.65v258.09ZM480-480Z" />
         </svg>
       </button>
-      <button id="mobile-action-button" class="action-button" aria-label="Connect" disabled>
+      <button id="mobile-action-button" class="action-button" aria-label="Connect" disabled style="display: none!important;">
         <svg class="action-icon" xmlns="http://www.w3.org/2000/svg" height="25px" viewBox="0 -960 960 960" width="25px">
           <path
             d="M425-246H280q-97.11 0-165.56-68.42Q46-382.84 46-479.92t68.44-165.58Q182.89-714 280-714h145v126H280.43q-45.18 0-76.8 31.5Q172-525 172-480t31.63 76.5q31.62 31.5 76.8 31.5H425v126ZM297-432v-96h366v96H297Zm238 186v-126h144.57q45.18 0 76.81-31.5Q788-435 788-480t-31.62-76.5Q724.75-588 679.57-588H535v-126h145q97.11 0 165.55 68.42Q914-577.16 914-480.08T845.55-314.5Q777.11-246 680-246H535Z" />
@@ -373,11 +374,23 @@
         <div id="search-query">Search for ""</div>
 
         <div id="did-you-mean-text">Did you mean ""?</div>
+
         <div class="search-mode-toggle">
           <button id="search-mode-bible" class="search-mode-pill active">Bible</button>
+          <button
+            id="search-mode-cross-reference"
+            class="search-mode-pill"
+            type="button"
+            onclick="setSearchMode('crossref', { openDrawer: true })"
+          >
+            Cross Reference
+          </button>
           <button id="search-mode-interlinear" class="search-mode-pill">Interlinear</button>
           <button id="search-mode-songs" class="search-mode-pill">Music</button>
+
         </div>
+
+
       </div>
 
       <div id="esc-btn" onclick="closeSearchQuery()">
@@ -398,6 +411,15 @@
         <div id="search-query-verse-container"></div>
         <div id="search-query-songs-text">Songs</div>
         <div id="search-query-song-container" aria-live="polite"></div>
+        <div id="search-query-crossref" class="search-query-section" style="display:none;">
+          <div id="crossref-loader" class="loader" style="display:none;"></div>
+          <div id="search-query-crossref-text" style="display: none;">Cross References</div>
+          <div id="search-query-crossref-container" class="search-query-crossref-container"></div>
+          <button id="crossref-load-more" class="crossref-load-more" style="display:none;">
+            Load more
+          </button>
+        </div>
+
       </div>
 
       <div id="bottom-Fade-element"></div>
@@ -440,19 +462,6 @@
   </div>
   </div>
 
-  <div id="modal-backdrop" class="hidden">
-    <div class="modal-content">
-      <h3>Edit Board</h3>
-      <label>Board Title</label>
-      <input type="text" id="modal-title-input" placeholder="Enter board title" />
-
-      <div class="modal-actions">
-        <div style="flex: 1;"></div> <button onclick="closeModal()" class="modal-btn cancel">Cancel</button>
-        <button id="modal-save-btn" class="modal-btn primary">Save</button>
-      </div>
-    </div>
-  </div>
-
   <div id="search-modal-backdrop" class="hidden" style="display: none;">
     <div class="modal-content search-modal-content">
 
@@ -479,6 +488,19 @@
       <div class="modal-actions">
         <button id="note-modal-cancel-btn" class="modal-btn cancel">Cancel</button>
         <button id="note-modal-save-btn" class="modal-btn primary">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="modal-backdrop" class="hidden">
+    <div class="modal-content">
+      <h3>Edit Board</h3>
+      <label>Board Title</label>
+      <input type="text" id="modal-title-input" placeholder="Enter board title" />
+
+      <div class="modal-actions">
+        <div style="flex: 1;"></div> <button onclick="closeModal()" class="modal-btn cancel">Cancel</button>
+        <button id="modal-save-btn" class="modal-btn primary">Save</button>
       </div>
     </div>
   </div>
@@ -526,6 +548,18 @@
         <div style="flex:1"></div> 
         <button onclick="closeUpgradeModal()" class="modal-btn cancel">Cancel</button>
         <button type="button" id="upgrade-now-btn" class="modal-btn primary">Upgrade Now</button>
+        <!-- <div class="plan-card selected" id="plan-monthly">
+          <div style="display:flex; align-items:center; flex:1;">
+            <div class="radio-outer"><div class="radio-inner"></div></div>
+            <div class="plan-details">
+              <span class="plan-name">Billed monthly</span>
+            </div>
+          </div>
+          <div class="plan-price">
+            <span class="price-amount">$2.49</span>
+            <span class="price-period">Per month</span>
+          </div>
+        </div> -->
       </div>
     </div>
   </div>
@@ -583,6 +617,7 @@
   <script type="module" src="../supabaseClient.js"></script>
 
   <!-- Missing script (this is the fix!) -->
+  <!-- <script src="./crossrefs.js"></script> -->
   <script type="module" src="boards.js"></script>
 </body>
 

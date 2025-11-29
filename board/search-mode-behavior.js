@@ -49,11 +49,38 @@
 
   function setModeWithoutOpeningDrawer(mode) {
     const m = mode || "bible";
-    pillBible?.classList.toggle("active", m === "bible");
-    pillSongs?.classList.toggle("active", m === "songs");
-    pillInter?.classList.toggle("active", m === "interlinear");
+
+    const pills = {
+      bible: pillBible,
+      songs: pillSongs,
+      interlinear: pillInter,
+      crossref: document.getElementById("search-mode-cross-reference"),
+    };
+
+    // Reset all pills
+    Object.values(pills).forEach(p => p?.classList.remove("active"));
+
+    // Activate correct one
+    pills[m]?.classList.add("active");
+
     window.currentSearchMode = m;
+
+    // Containers for each mode
+    const containers = {
+      bible: document.getElementById("search-query-bible"),
+      songs: document.getElementById("search-query-songs"),
+      interlinear: document.getElementById("search-query-interlinear"),
+      crossref: document.getElementById("search-query-crossref"),
+    };
+
+    // Hide everything
+    Object.values(containers).forEach(c => c && (c.style.display = "none"));
+
+    // Show the correct one
+    if (containers[m]) containers[m].style.display = "block";
   }
+
+
 
   function updateHeader() {
     if (!searchQueryEl) return;
@@ -111,14 +138,6 @@
     }
   }
 
-  function openDrawerUI() {
-    if (!window.searchDrawerOpen) {
-      window.searchDrawerOpen = true;
-      try { window.applyLayout?.(true); } catch {}
-    }
-    try { window.setSearchMode?.("interlinear", { openDrawer: true }); } catch {}
-  }
-
   // --- Wire up events --------------------------------------------------------
 
   // Capture query when user presses Enter in the search bar
@@ -165,25 +184,25 @@
   });
 
   // Patch applyLayout to default Bible when drawer closes
-  const _applyLayout = window.applyLayout;
-  window.applyLayout = function patchedApplyLayout(withTransition) {
-    const res = _applyLayout?.call(this, withTransition);
-    try {
-      const isOpen = !!window.searchDrawerOpen;
-      if (isOpen !== lastKnownDrawerOpen) {
-        lastKnownDrawerOpen = isOpen;
-        if (!isOpen) {
-          setModeWithoutOpeningDrawer("bible");
-        }
-      }
-      updateHeader();
-      // Don't auto-fetch interlinear just on layout change unless visible
-      if (getMode() === "interlinear" && isOpen) {
-         updateInterlinearForCurrentQuery(false);
-      }
-    } catch (_) {}
-    return res;
-  };
+  // const _applyLayout = window.applyLayout;
+  // window.applyLayout = function patchedApplyLayout(withTransition) {
+  //   const res = _applyLayout?.call(this, withTransition);
+  //   try {
+  //     const isOpen = !!window.searchDrawerOpen;
+  //     if (isOpen !== lastKnownDrawerOpen) {
+  //       lastKnownDrawerOpen = isOpen;
+  //       if (!isOpen) {
+  //         setModeWithoutOpeningDrawer("bible");
+  //       }
+  //     }
+  //     updateHeader();
+  //     // Don't auto-fetch interlinear just on layout change unless visible
+  //     if (getMode() === "interlinear" && isOpen) {
+  //        updateInterlinearForCurrentQuery(false);
+  //     }
+  //   } catch (_) {}
+  //   return res;
+  // };
 
   // Initial load
   updateHeader();

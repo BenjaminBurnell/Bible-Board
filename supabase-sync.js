@@ -1,6 +1,5 @@
 // supabase-sync.js
 // Handles all auth, loading, saving, and ownership checks for the editor.
-import { SubscriptionService } from "./subscriptionService.js";
 import { sb } from "./supabaseClient.js";
 
 if (!window.BoardAPI) {
@@ -255,7 +254,6 @@ function serializeBoard() {
   };
 }
 
-// supabase-sync.js - Replace deserializeBoard
 function deserializeBoard(payload) {
   if (!payload) return;
   const { clearBoard, addBibleVerse, addTextNote, addInterlinearCard, addSongElement, getElementByVKey, connectItems, setScale, viewport, updateAllConnections } = window.BoardAPI;
@@ -311,11 +309,6 @@ function deserializeBoard(payload) {
     console.error("Failed to deserialize board:", e);
   } finally {
     window.__RESTORING_FROM_SUPABASE = false;
-    
-    // FIX: Sync the Z-Index counter after loading
-    if (window.BoardAPI.syncZIndex) {
-        window.BoardAPI.syncZIndex();
-    }
   }
 }
 
@@ -502,22 +495,6 @@ async function main() {
   const { data: { session } } = await sb.auth.getSession();
   const user = session?.user;
   lastKnownUser = user;
-
-  /* --- TEMPORARILY DISABLED FOR BETA TESTING ---
-  // =================================================
-  // PAYWALL CHECK
-  // =================================================
-  // THIS BLOCK MUST BE DISABLED IN A FREEMIUM MODEL TO PREVENT REDIRECTION/BLOCKING
-  // if (user) {
-  //   const hasAccess = await SubscriptionService.initAndCheck();
-    
-  //   if (!hasAccess) {
-  //     window.location.replace("/paywall.html"); 
-  //     return; 
-  //   }
-  // }
-  --------------------------------------------- */
-
   await refreshAuthUI();
   applyOwnershipMode();
 

@@ -36,6 +36,12 @@ const INITIAL_VISIBLE_COUNT = 5; // show up to 3 fully-loaded verses/songs
 const SEARCH_RESULT_LIMIT = 100; // Items to fetch for virt... (was 5)
 const LOAD_MORE_CHUNK = 5; // How many verses/songs per "load more" click
 
+// Try to reuse global constants if they exist, otherwise fall back to 5.
+const CROSSREF_INITIAL_VISIBLE_COUNT =
+  typeof INITIAL_VISIBLE_COUNT === "number" ? INITIAL_VISIBLE_COUNT : 5;
+const CROSSREF_LOAD_MORE_CHUNK =
+  typeof LOAD_MORE_CHUNK === "number" ? LOAD_MORE_CHUNK : 5;
+
 // Disable all type-ahead behavior
 const TYPE_AHEAD_ENABLED = true; // <-- MODIFIED: Enabled as requested
 
@@ -78,15 +84,18 @@ function bringToFront(el) {
   el.style.zIndex = currentIndex;
 }
 
-
 // Delegate: bump z-index on ANY pointerdown inside a .board-item,
 // even if the click is on an editable child and we don't start a drag.
-document.addEventListener('pointerdown', (ev) => {
-  const card = ev.target && ev.target.closest && ev.target.closest('.board-item');
-  if (!card) return;
-  bringToFront(card);
-}, { capture: true });
-
+document.addEventListener(
+  "pointerdown",
+  (ev) => {
+    const card =
+      ev.target && ev.target.closest && ev.target.closest(".board-item");
+    if (!card) return;
+    bringToFront(card);
+  },
+  { capture: true }
+);
 
 /**
  * Performance instrumentation helper.
@@ -109,7 +118,7 @@ class LruCache {
     this.maxSize = maxSize;
     this.storageKey = storageKey;
     this.cache = new Map();
-    
+
     // Load from storage on init
     if (this.storageKey) {
       try {
@@ -118,7 +127,9 @@ class LruCache {
           const entries = JSON.parse(stored);
           this.cache = new Map(entries);
         }
-      } catch (e) { console.warn("Cache load failed", e); }
+      } catch (e) {
+        console.warn("Cache load failed", e);
+      }
     }
   }
 
@@ -126,11 +137,14 @@ class LruCache {
     if (!this.storageKey) return;
     try {
       // Save as array of entries
-      localStorage.setItem(this.storageKey, JSON.stringify(Array.from(this.cache.entries())));
-    } catch (e) { 
+      localStorage.setItem(
+        this.storageKey,
+        JSON.stringify(Array.from(this.cache.entries()))
+      );
+    } catch (e) {
       // Storage full? Clear it.
-      console.warn("Cache save failed", e); 
-      this.cache.clear(); 
+      console.warn("Cache save failed", e);
+      this.cache.clear();
     }
   }
 
@@ -152,8 +166,10 @@ class LruCache {
     this.cache.set(key, value);
     this._persist();
   }
-  
-  has(key) { return this.cache.has(key); }
+
+  has(key) {
+    return this.cache.has(key);
+  }
 }
 
 // ==================== Bible Book API Codes ====================
@@ -226,6 +242,261 @@ const bibleBookCodes = {
   Jude: "JUD",
   Revelation: "REV",
 };
+
+// Reverse bibleBookCodes mapping:
+const codeToFullBook = {};
+for (const [full, code] of Object.entries(bibleBookCodes)) {
+  codeToFullBook[code] = full.toUpperCase();
+}
+
+function normalizeQueryRefForCrossrefAPI(str) {
+  if (!str) return "";
+
+  str = str.trim().toLowerCase();
+  str = str.replace(/\s+/g, " ");
+
+  // Numbered NT books (OpenBible format)
+  str = str.replace(/1\s*p(et|e|ter)?/g, "1pet");
+  str = str.replace(/2\s*p(et|e|ter)?/g, "2pet");
+
+  str = str.replace(/1\s*j(ohn)?/g, "1jn");
+  str = str.replace(/2\s*j(ohn)?/g, "2jn");
+  str = str.replace(/3\s*j(ohn)?/g, "3jn");
+
+  // Numbered OT books
+  str = str.replace(/\b1\s*c(hr(on(icles)?)?)?/g, "1ch");
+  str = str.replace(/\b2\s*c(hr(on(icles)?)?)?/g, "2ch");
+
+  str = str.replace(/\b1\s*k(ings?)?/g, "1ki");
+  str = str.replace(/\b2\s*k(ings?)?/g, "2ki");
+
+  // Other common OpenBible abbreviations
+  str = str.replace(/\bgenesis\b/g, "gen");
+  str = str.replace(/\bexodus\b/g, "exod");
+  str = str.replace(/\bpsalms?\b/g, "ps");
+  str = str.replace(/\bproverbs?\b/g, "prov");
+  str = str.replace(/\bisaiah\b/g, "isa");
+  str = str.replace(/\bromans\b/g, "rom");
+  str = str.replace(/\bhebrews\b/g, "heb");
+
+  return str;
+}
+
+// Expand cross-reference like "Isa 45:18"
+function expandReferenceAbbrev(ref) {
+  if (!ref) return ref;
+
+  // Handle ranges: "Col 1 16-Col 1:17"
+  if (ref.includes("-")) {
+    return ref
+      .split("-")
+      .map((part) => expandReferenceAbbrev(part.trim()))
+      .join(" - ");
+  }
+
+  // Extract book + chapter:verse
+  const match = ref.match(/^([1-3]?\s?[A-Za-z]+)\s+(\d+):(\d+)$/);
+  if (!match) return ref;
+
+  let [, bookAbbrev, ch, vs] = match;
+
+  // Normalize abbreviation like "Ps", "Psa", "Psalm", "Psalms"
+  const normalized = bookAbbrev.trim().toLowerCase();
+
+  const abbrevMap = {
+    // Old Testament
+    gen: "Genesis",
+    ge: "Genesis",
+    gn: "Genesis",
+
+    ex: "Exodus",
+    exo: "Exodus",
+    exod: "Exodus",
+
+    lev: "Leviticus",
+    lv: "Leviticus",
+
+    num: "Numbers",
+    nu: "Numbers",
+    nm: "Numbers",
+
+    deut: "Deuteronomy",
+    dt: "Deuteronomy",
+    deu: "Deuteronomy",
+
+    jos: "Joshua",
+    josh: "Joshua",
+
+    jdg: "Judges",
+    judg: "Judges",
+
+    rut: "Ruth",
+
+    "1sam": "1 Samuel",
+    "2sam": "2 Samuel",
+    "1sa": "1 Samuel",
+    "2sa": "2 Samuel",
+
+    "1kgs": "1 Kings",
+    "2kgs": "2 Kings",
+    "1ki": "1 Kings",
+    "2ki": "2 Kings",
+
+    "1chr": "1 Chronicles",
+    "2chr": "2 Chronicles",
+
+    ezr: "Ezra",
+    neh: "Nehemiah",
+    est: "Esther",
+
+    job: "Job",
+
+    ps: "Psalms",
+    psa: "Psalms",
+    psm: "Psalms",
+    pss: "Psalms",
+
+    prov: "Proverbs",
+    pr: "Proverbs",
+    pv: "Proverbs",
+
+    eccl: "Ecclesiastes",
+    ecc: "Ecclesiastes",
+
+    song: "Song of Solomon",
+    sos: "Song of Solomon",
+
+    isa: "Isaiah",
+    is: "Isaiah",
+
+    jer: "Jeremiah",
+    je: "Jeremiah",
+
+    lam: "Lamentations",
+
+    ezek: "Ezekiel",
+    eze: "Ezekiel",
+
+    dan: "Daniel",
+    dn: "Daniel",
+
+    hos: "Hosea",
+    ho: "Hosea",
+
+    joel: "Joel",
+    jl: "Joel",
+
+    amos: "Amos",
+    am: "Amos",
+
+    obad: "Obadiah",
+    ob: "Obadiah",
+
+    jon: "Jonah",
+    jna: "Jonah",
+
+    mic: "Micah",
+    mi: "Micah",
+
+    nah: "Nahum",
+    na: "Nahum",
+
+    hab: "Habakkuk",
+    hb: "Habakkuk",
+
+    zeph: "Zephaniah",
+    zep: "Zephaniah",
+
+    hag: "Haggai",
+    hg: "Haggai",
+
+    zech: "Zechariah",
+    zec: "Zechariah",
+
+    mal: "Malachi",
+
+    // New Testament
+    matt: "Matthew",
+    mt: "Matthew",
+
+    mark: "Mark",
+    mk: "Mark",
+
+    luke: "Luke",
+    lk: "Luke",
+
+    john: "John",
+    jn: "John",
+
+    acts: "Acts",
+    ac: "Acts",
+
+    rom: "Romans",
+    ro: "Romans",
+
+    "1cor": "1 Corinthians",
+    "2cor": "2 Corinthians",
+    "1co": "1 Corinthians",
+    "2co": "2 Corinthians",
+
+    gal: "Galatians",
+
+    eph: "Ephesians",
+
+    phil: "Philippians",
+    php: "Philippians",
+
+    col: "Colossians",
+    cl: "Colossians",
+
+    "1thess": "1 Thessalonians",
+    "2thess": "2 Thessalonians",
+    "1th": "1 Thessalonians",
+    "2th": "2 Thessalonians",
+
+    "1tim": "1 Timothy",
+    "2tim": "2 Timothy",
+
+    tit: "Titus",
+    ti: "Titus",
+
+    philem: "Philemon",
+    phm: "Philemon",
+
+    heb: "Hebrews",
+    he: "Hebrews",
+
+    jas: "James",
+    jm: "James",
+
+    "1pet": "1 Peter",
+    "2pet": "2 Peter",
+    "1pe": "1 Peter",
+    "2pe": "2 Peter",
+    "1pt": "1 Peter",
+    "2pt": "2 Peter",
+
+    "1john": "1 John",
+    "2john": "2 John",
+    "3john": "3 John",
+    "1jn": "1 John",
+    "2jn": "2 John",
+    "3jn": "3 John",
+
+    jude: "Jude",
+    jud: "Jude",
+
+    rev: "Revelation",
+    re: "Revelation",
+  };
+
+  const fullBook =
+    abbrevMap[normalized] ||
+    abbrevMap[normalized.replace(/\s+/g, "")] ||
+    bookAbbrev; // fallback
+
+  return `${fullBook.toUpperCase()} ${ch}:${vs}`;
+}
 
 // ==================== OPTIMIZATION: Performance Helpers ====================
 // ... (LruCache definitions and throttleRAF unchanged) ...
@@ -327,7 +598,7 @@ const FETCH_STRATEGIES = [
       signal,
       credentials: "omit",
     }),
-    
+
   // Strategy 4: ThingProxy
   async (url, signal) =>
     fetch(`https://thingproxy.freeboard.io/fetch/${url}`, {
@@ -387,7 +658,6 @@ async function safeFetchWithFallbacks(url, signal) {
   throw lastError || new Error("All fetch strategies failed");
 }
 
-
 // ==================== NEW: Version Picker Helpers ====================
 function getSelectedVersion() {
   const el = document.getElementById("version-select");
@@ -417,8 +687,7 @@ function setVersion(version) {
   const saved = localStorage.getItem("bb:lastVersion");
   if (saved) {
     // Verify the saved version actually exists in the dropdown options
-    // (Prevents errors if you remove a version later)
-    const optionExists = Array.from(el.options).some(o => o.value === saved);
+    const optionExists = Array.from(el.options).some((o) => o.value === saved);
     if (optionExists) {
       el.value = saved;
     }
@@ -428,14 +697,38 @@ function setVersion(version) {
   el.addEventListener("change", () => {
     const newVersion = getSelectedVersion();
     localStorage.setItem("bb:lastVersion", newVersion);
-    // Trigger a save to update board settings
     onBoardMutated("version_change");
+
+    // 🔁 NEW: Refresh any search UI that depends on the version
+    try {
+      const mode = window.currentSearchMode || "bible";
+      const searchBar = document.getElementById("search-bar");
+
+      // If we're in CrossRef mode, keep the same reference but reload the verses
+      if (mode === "crossref") {
+        // If we already have crossRefResults, just re-render them with the new version
+        if (Array.isArray(crossRefResults) && crossRefResults.length > 0) {
+          // true = first page → clears container and resets counters
+          renderCrossRefPage(true);
+        } else if (searchBar && searchBar.value.trim()) {
+          // No cached results yet: re-run the crossref search using the current query
+          updateCrossrefsFromCurrentContext(true); // force = true
+        }
+      }
+
+      // (Optional) If you ever want Bible search results to also auto-refresh on version change:
+      // else if (mode === "bible" && searchBar && searchBar.value.trim().length >= 3) {
+      //   searchForQuery(searchBar.value.trim());
+      // }
+    } catch (err) {
+      console.warn("Version change refresh failed:", err);
+    }
   });
 })();
 
 // ==================== Style Injection for Verse Numbers ====================
 (function injectVerseStyles() {
-  const style = document.createElement('style');
+  const style = document.createElement("style");
   style.textContent = `
     .verse-num {
       font-size: 0.6em;
@@ -451,12 +744,24 @@ function setVersion(version) {
 
 // ==================== 2. UPDATED: Fetch Single Verse ====================
 async function fetchVerseText(book, chapter, verse, signal, version = "KJV") {
+  if (version === "ESV") {
+    // Always fetch the whole chapter for NLT to ensure correct splitting
+    try {
+      const verses = await fetchChapterText(book, chapter, signal, "ESV");
+      const target = verses.find((v) => v.verse == verse);
+      // Remove the [N] prefix if returning raw text for a single lookup
+      // (Optional: Your addBibleVerse adds it back, but this keeps it clean)
+      return target ? target.text : "Verse not found.";
+    } catch (e) {
+      return "ESV unavailable.";
+    }
+  }
   // --- NLT HANDLER ---
   if (version === "NLT") {
     // Always fetch the whole chapter for NLT to ensure correct splitting
     try {
       const verses = await fetchChapterText(book, chapter, signal, "NLT");
-      const target = verses.find(v => v.verse == verse);
+      const target = verses.find((v) => v.verse == verse);
       // Remove the [N] prefix if returning raw text for a single lookup
       // (Optional: Your addBibleVerse adds it back, but this keeps it clean)
       return target ? target.text : "Verse not found.";
@@ -484,12 +789,16 @@ async function fetchVerseText(book, chapter, verse, signal, version = "KJV") {
     let finalText = "Verse not found.";
 
     if (data.verses) {
-      finalText = data.verses.map((v) => {
-        const cleanText = v.text.replace(new RegExp(`^${v.verse}`), '').trim();
-        return `[${v.verse}] ${cleanText}`;
-      }).join(" ");
+      finalText = data.verses
+        .map((v) => {
+          const cleanText = v.text
+            .replace(new RegExp(`^${v.verse}`), "")
+            .trim();
+          return `[${v.verse}] ${cleanText}`;
+        })
+        .join(" ");
     } else if (data.text) {
-      const cleanText = data.text.replace(new RegExp(`^${verse}`), '').trim();
+      const cleanText = data.text.replace(new RegExp(`^${verse}`), "").trim();
       finalText = `[${verse}] ${cleanText}`;
     }
 
@@ -507,7 +816,13 @@ let activeBibleSearchController = null;
  * OPTIMIZATION: Use LRU cache
  * MODIFIED: Now includes the Bible 'version' in the API call and cache key.
  */
-async function fetchBibleSearchResults(query, limit = 5, signal, version = "KJV") { // ADDED version
+async function fetchBibleSearchResults(
+  query,
+  limit = 5,
+  signal,
+  version = "KJV"
+) {
+  // ADDED version
   if (!query) return [];
 
   // MODIFIED: Added version to cache key
@@ -606,8 +921,14 @@ const loader = document.getElementById("loader");
 const floatingAddBtn = document.getElementById("floating-add-to-board-btn");
 
 // SONGS
-const songsHeader = document.getElementById("search-query-songs-text");
 const songsContainer = document.getElementById("search-query-song-container");
+const songsHeader = document.getElementById("search-query-songs-text");
+if (songsHeader) {
+  // Default mode is Bible, so hide Songs header until Songs mode is active.
+  songsHeader.style.display = "none";
+}
+
+const crossrefContainer = document.getElementById("search-query-crossref");
 
 // Global action buttons
 const connectBtn = document.getElementById("mobile-action-button");
@@ -624,10 +945,12 @@ const interLoader = document.getElementById("interlinear-loader");
 const interEmpty = document.getElementById("interlinear-empty");
 const interError = document.getElementById("interlinear-error");
 
-// Ensure SVG exists
+// Global SVG namespace for all connection/ghost paths
+const SVG_NS = "http://www.w3.org/2000/svg";
+
 let svg = document.getElementById("connections");
 if (!svg) {
-  svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg = document.createElementNS(SVG_NS, "svg");
   svg.id = "connections";
   svg.classList.add("connections");
   svg.setAttribute("width", "8000");
@@ -638,6 +961,8 @@ if (!svg) {
   svg.style.zIndex = "5";
   workspace.prepend(svg);
 }
+
+const connectionsSvg = svg;
 
 // --- Viewport bars: DOM bootstrap ---
 let viewbarX = document.getElementById("viewbar-x");
@@ -667,13 +992,14 @@ let currentSearchMode = "bible";
 let interlinearInFlight = null; // AbortController for in-flight fetch
 let interlinearSeq = 0; // Sequence number to prevent race conditions
 
-// --- NEW: Verse Multi-Select Queue State ---
-const pendingVerseAdds = new Map();
+// --- Verse Multi-Select Queue State (shared across all modes) ---
+window.pendingVerseAdds = window.pendingVerseAdds || new Map();
+const pendingVerseAdds = window.pendingVerseAdds;
 
-// NEW: Song queue (parallel to verse queue)
+// --- Song queue (parallel to verse queue) ---
 window.pendingSongAdds = window.pendingSongAdds || new Map();
 
-// NEW: Interlinear queue (parallel to others)
+// --- Interlinear queue (parallel to others) ---
 window.pendingInterlinearAdds = window.pendingInterlinearAdds || new Map();
 
 // OPTIMIZATION: Throttled version of updateAllConnections
@@ -740,19 +1066,13 @@ function applyLayout(withTransition = true) {
 
   if (withTransition) searchQueryContainer.style.transition = ".25s";
 
-  searchQueryContainer.style.zIndex = searchDrawerOpen
-    ? `10005`
-    : "-1";
+  searchQueryContainer.style.zIndex = searchDrawerOpen ? `10005` : "-1";
 
-  setTimeout(function() {
-    searchQueryContainer.style.top = searchDrawerOpen
-      ? `0px`
-      : "20px";
+  setTimeout(function () {
+    searchQueryContainer.style.top = searchDrawerOpen ? `0px` : "20px";
 
-    searchQueryContainer.style.opacity = searchDrawerOpen
-      ? `1`
-      : "0";
-  })
+    searchQueryContainer.style.opacity = searchDrawerOpen ? `1` : "0";
+  });
 
   interPanel.classList.toggle("open", interlinearOpen);
 
@@ -781,11 +1101,22 @@ const MIN_SCALE = 0.15,
   PINCH_SENS = 0.003,
   WHEEL_SENS = 0.001;
 
+function syncHandleScaleVar() {
+  const s =
+    (typeof scale === "number" && isFinite(scale) && scale > 0 ? scale : 1) / .45;
+  const inverse = 1 / s;
+  document.documentElement.style.setProperty(
+    "--bb-handle-scale",
+    inverse.toString()
+  );
+}
+
 // --- BoardAPI shim (safe to re-declare) ---
 window.BoardAPI = window.BoardAPI || {};
 if (!window.BoardAPI.getScale) {
   window.BoardAPI.getScale = () => (typeof scale === "number" ? scale : 1);
 }
+
 if (!window.BoardAPI.setScale) {
   window.BoardAPI.setScale = (s) => {
     if (typeof s !== "number" || !isFinite(s) || s <= 0) return;
@@ -795,6 +1126,9 @@ if (!window.BoardAPI.setScale) {
       workspace.style.transformOrigin = "top left";
       workspace.style.transform = `scale(${scale})`;
     }
+
+    syncHandleScaleVar(); // 👈 keep dots size fixed
+
     try {
       clampScroll?.();
     } catch {}
@@ -827,15 +1161,15 @@ let pendingTouchDrag = null;
  */
 function showDidYouMeanSuggestion(result) {
   if (!didYouMeanText || !result || !result.reference) {
-    if (didYouMeanText) didYouMeanText.style.display = 'none';
+    if (didYouMeanText) didYouMeanText.style.display = "none";
     return;
   }
 
   // Use the structure from style.css (div is already styled as a link)
   didYouMeanText.innerHTML = `Did you mean <div>${result.reference}</div>?`;
-  didYouMeanText.style.display = 'flex'; // Make it visible
+  didYouMeanText.style.display = "flex"; // Make it visible
 
-  const link = didYouMeanText.querySelector('div');
+  const link = didYouMeanText.querySelector("div");
   if (link) {
     // Use .onclick to ensure only one handler is attached
     link.onclick = (e) => {
@@ -843,7 +1177,7 @@ function showDidYouMeanSuggestion(result) {
       if (searchBar) {
         searchBar.value = result.reference; // Set input to suggestion
       }
-      didYouMeanText.style.display = 'none'; // Hide suggestion
+      didYouMeanText.style.display = "none"; // Hide suggestion
       searchForQuery(null); // Re-run search with the correct query
     };
   }
@@ -860,66 +1194,83 @@ async function fetchChapterText(book, chapter, signal, version = "KJV") {
   if (cached) return cached;
 
   if (signal?.aborted) throw new Error("Fetch aborted");
-  
+
   // ==================================================
   // 1. OFFICIAL ESV HANDLER (DEFINITIVE FIX)
   // ==================================================
   if (version === "ESV") {
-    const ESV_API_KEY = "4fb585d0388365ed4f7273b1adcbcdad71575a37"
+    const ESV_API_KEY = "4fb585d0388365ed4f7273b1adcbcdad71575a37";
     // NOTE: Requires ESV_API_KEY constant defined elsewhere in script.js
-    if (typeof ESV_API_KEY === 'undefined' || ESV_API_KEY === "YOUR_ESV_API_KEY_HERE") {
+    if (
+      typeof ESV_API_KEY === "undefined" ||
+      ESV_API_KEY === "YOUR_ESV_API_KEY_HERE"
+    ) {
       throw new Error("ESV API key not set.");
     }
 
     const ESV_MAP = {
-      "1 Kings": "1KI",       "2 Kings": "2KI",
-      "1 Samuel": "1SA",      "2 Samuel": "2SA",
-      "1 Corinthians": "1CO", "2 Corinthians": "2CO",
-      "1 Chronicles": "1CH",  "2 Chronicles": "2CH",
-      "1 Thessalonians": "1TH", "2 Thessalonians": "2TH",
-      "1 Timothy": "1TI",     "2 Timothy": "2TI",
-      "1 Peter": "1PE",       "2 Peter": "2PE",
-      "1 John": "1JN",        "2 John": "2JN",        
+      "1 Kings": "1KI",
+      "2 Kings": "2KI",
+      "1 Samuel": "1SA",
+      "2 Samuel": "2SA",
+      "1 Corinthians": "1CO",
+      "2 Corinthians": "2CO",
+      "1 Chronicles": "1CH",
+      "2 Chronicles": "2CH",
+      "1 Thessalonians": "1TH",
+      "2 Thessalonians": "2TH",
+      "1 Timothy": "1TI",
+      "2 Timothy": "2TI",
+      "1 Peter": "1PE",
+      "2 Peter": "2PE",
+      "1 John": "1JN",
+      "2 John": "2JN",
       "3 John": "3JN",
     };
 
     if (ESV_MAP[book]) book = ESV_MAP[book];
 
-    console.log(book)
-    
+    console.log(book);
+
     // ESV API uses a slightly different book naming convention (e.g., '1 John' -> '1-John')
-    const ref = `${book} ${chapter}`.replace(/\s/g, '-');
-    
+    const ref = `${book} ${chapter}`.replace(/\s/g, "-");
+
     // Applying the correct API options to return full chapter content for parsing
-    const apiUrl = `https://api.esv.org/v3/passage/html/?q=${encodeURIComponent(ref)}&include-verse-numbers=true&include-heading=false&include-footnotes=false&include-passage-references=false&include-short-copyright=false`;
+    const apiUrl = `https://api.esv.org/v3/passage/html/?q=${encodeURIComponent(
+      ref
+    )}&include-verse-numbers=true&include-heading=false&include-footnotes=false&include-passage-references=false&include-short-copyright=false`;
     // const apiUrl = `https://api.esv.org/v3/passage/html/?q=1JN1&include-verse-numbers=true&include-heading=false&include-footnotes=false&include-passage-references=false&include-short-copyright=false`;
 
     try {
-      const resp = await fetch(apiUrl, { 
-        signal, 
-        headers: { "Authorization": `Token ${ESV_API_KEY}` }
+      const resp = await fetch(apiUrl, {
+        signal,
+        headers: { Authorization: `Token ${ESV_API_KEY}` },
       });
-      
+
       if (!resp.ok) {
-          throw new Error(`ESV API Error: ${resp.status}`);
+        throw new Error(`ESV API Error: ${resp.status}`);
       }
-      
+
       const data = await resp.json();
       if (!data.passages || data.passages.length === 0) {
-          throw new Error("No verses found for ESV.");
+        throw new Error("No verses found for ESV.");
       }
-      
+
       const html = data.passages[0];
       const parser = new DOMParser();
       // Parse the HTML content returned by the ESV API
-      const doc = parser.parseFromString(html, 'text/html');
-      const textContainer = doc.querySelector('.passage-text') || doc.body;
+      const doc = parser.parseFromString(html, "text/html");
+      const textContainer = doc.querySelector(".passage-text") || doc.body;
 
       // 1. Clean up junk elements/headings, including the overall chapter heading
-      textContainer.querySelectorAll('.esv-passage-heading, .footnotes, .p-end-paragraph, .chapter-num, .chapter-num-break, h3, .heading-paragraph').forEach(el => el.remove());
-      
-      console.log(textContainer)
-      let currentVerseNum = 1; 
+      textContainer
+        .querySelectorAll(
+          ".esv-passage-heading, .footnotes, .p-end-paragraph, .chapter-num, .chapter-num-break, h3, .heading-paragraph"
+        )
+        .forEach((el) => el.remove());
+
+      console.log(textContainer);
+      let currentVerseNum = 1;
       const versesMap = new Map();
       versesMap.set(1, ""); // Initialize Verse 1 to capture leading text
 
@@ -927,89 +1278,110 @@ async function fetchChapterText(book, chapter, signal, version = "KJV") {
       function walk(node) {
         if (node.nodeType === Node.ELEMENT_NODE) {
           // Check for the ESV verse number marker
-          if (node.classList.contains('verse-num')) {
+          if (node.classList.contains("verse-num")) {
             // Found a verse number, switch context
-            const num = parseInt(node.textContent.trim().replace(/[\[\]]/g, ''));
+            const num = parseInt(
+              node.textContent.trim().replace(/[\[\]]/g, "")
+            );
             if (!isNaN(num)) {
               currentVerseNum = num;
               if (!versesMap.has(num)) versesMap.set(num, "");
             }
             // Do NOT recursively process children of the versenum span/bold tag
           }
-          
+
           // Continue recursive walk for all child elements
           node.childNodes.forEach(walk);
-          
         } else if (node.nodeType === Node.TEXT_NODE) {
           // Aggregate text content
-          const text = node.textContent.replace(/\s+/g, ' ').trim();
-          
+          const text = node.textContent.replace(/\s+/g, " ").trim();
+
           if (text && currentVerseNum !== null) {
             let currentText = versesMap.get(currentVerseNum) || "";
-            
+
             // Append text, ensuring a single space separator if needed
-            const prefix = currentText.length > 0 && !currentText.endsWith(' ') ? ' ' : '';
+            const prefix =
+              currentText.length > 0 && !currentText.endsWith(" ") ? " " : "";
             versesMap.set(currentVerseNum, currentText + prefix + text);
           }
         }
       }
 
       walk(textContainer);
-      
+
       // 3. Final formatting and cleanup
       const finalVerses = [];
       for (const [vn, rawText] of versesMap.entries()) {
-          // Remove leading number if it snuck in and trim excess space
-          let cleanText = rawText.trim().replace(new RegExp(`^${vn}\\s*`), "");
-          if (cleanText) {
-              finalVerses.push({
-                  verse: vn,
-                  text: `[${vn}] ${cleanText}` // Explicitly wrap in brackets
-              });
-          }
+        // Remove leading number if it snuck in and trim excess space
+        let cleanText = rawText.trim().replace(new RegExp(`^${vn}\\s*`), "");
+        if (cleanText) {
+          finalVerses.push({
+            verse: vn,
+            text: `[${vn}] ${cleanText}`, // Explicitly wrap in brackets
+          });
+        }
       }
 
       finalVerses.sort((a, b) => a.verse - b.verse);
-      
-      if (finalVerses.length === 0) throw new Error("No verses parsed from ESV.");
+
+      if (finalVerses.length === 0)
+        throw new Error("No verses parsed from ESV.");
 
       chapterCache.set(cacheKey, finalVerses);
       return finalVerses;
-      
     } catch (err) {
       if (signal?.aborted) throw err;
       throw new Error(`ESV content unavailable: ${err.message}`);
     }
   }
 
-
   // ==================================================
   // 2. OFFICIAL NLT (via api.nlt.to) - Retaining original logic structure
   // ==================================================
   if (version === "NLT") {
     const NLT_KEY = "TEST"; // Use 'TEST' or your real key
-    
+
     // --- BOOK MAPPING ---
-    let code = bibleBookCodes[book] || book; 
+    let code = bibleBookCodes[book] || book;
 
     // 2. OVERRIDE: Map codes to NLT-friendly names
     const nltMap = {
-      "SNG": "Song",  "PRO": "Prov",  "ECC": "Eccl",
+      SNG: "Song",
+      PRO: "Prov",
+      ECC: "Eccl",
       // Numbered Books (Use spaces!)
-      "1KI": "1 Kings",       "2KI": "2 Kings",
-      "1SA": "1 Samuel",      "2SA": "2 Samuel",
-      "1PE": "1 Peter",       "2PE": "2 Peter",
-      "1JN": "1 John",        "2JN": "2 John",        
+      "1KI": "1 Kings",
+      "2KI": "2 Kings",
+      "1SA": "1 Samuel",
+      "2SA": "2 Samuel",
+      "1PE": "1 Peter",
+      "2PE": "2 Peter",
+      "1JN": "1 John",
+      "2JN": "2 John",
       "3JN": "3 John",
       // Other abbreviations that might fail
-      "PHP": "Phil",   "PHM": "Phlm",   "JHN": "John",
-      "EZK": "Ezek",   "JOS": "Josh",   "JDG": "Judg",
-      "EST": "Esth",   "NAM": "Nah",    "PSA": "Psalm",
-      "JOL": "Joel",   "AMO": "Amos",   "OBA": "Obadiah",
-      "ZEP": "Zephaniah", "ZEC": "Zechariah", "MAT": "Matthew",
+      PHP: "Phil",
+      PHM: "Phlm",
+      JHN: "John",
+      EZK: "Ezek",
+      JOS: "Josh",
+      JDG: "Judg",
+      EST: "Esth",
+      NAM: "Nah",
+      PSA: "Psalm",
+      JOL: "Joel",
+      AMO: "Amos",
+      OBA: "Obadiah",
+      ZEP: "Zephaniah",
+      ZEC: "Zechariah",
+      MAT: "Matthew",
 
-      "MRK": "Mark", "LUK": "Luke", "ACT": "Acts", 
-      "JUD": "Jude", "EXO": "Exodus", "DEU": "Deuteronomy"
+      MRK: "Mark",
+      LUK: "Luke",
+      ACT: "Acts",
+      JUD: "Jude",
+      EXO: "Exodus",
+      DEU: "Deuteronomy",
     };
 
     if (nltMap[code]) code = nltMap[code];
@@ -1030,27 +1402,29 @@ async function fetchChapterText(book, chapter, signal, version = "KJV") {
       const doc = parser.parseFromString(htmlText, "text/html");
 
       // 1. Clean up junk elements
-      const junk = doc.querySelectorAll('.tn, .a-tn, .chapter-number, .subhead, .cw, .cw_ch');
-      junk.forEach(el => el.remove());
+      const junk = doc.querySelectorAll(
+        ".tn, .a-tn, .chapter-number, .subhead, .cw, .cw_ch"
+      );
+      junk.forEach((el) => el.remove());
 
-      const container = doc.querySelector('body');
+      const container = doc.querySelector("body");
       let currentVerseNum = null;
       const versesMap = new Map();
 
       function walk(node) {
         if (node.nodeType === Node.ELEMENT_NODE) {
-          if (node.classList.contains('vn')) {
+          if (node.classList.contains("vn")) {
             const num = parseInt(node.textContent.trim());
             if (!isNaN(num)) {
               currentVerseNum = num;
               if (!versesMap.has(num)) versesMap.set(num, "");
             }
-            return; 
+            return;
           }
         }
 
         if (node.nodeType === Node.TEXT_NODE && currentVerseNum !== null) {
-          const text = node.textContent.replace(/\s+/g, ' ');
+          const text = node.textContent.replace(/\s+/g, " ");
           const currentText = versesMap.get(currentVerseNum);
           versesMap.set(currentVerseNum, currentText + text);
         }
@@ -1067,7 +1441,7 @@ async function fetchChapterText(book, chapter, signal, version = "KJV") {
         if (cleanText) {
           verses.push({
             verse: vn,
-            text: `[${vn}] ${cleanText}` // Explicitly wrap in brackets
+            text: `[${vn}] ${cleanText}`, // Explicitly wrap in brackets
           });
         }
       }
@@ -1077,7 +1451,6 @@ async function fetchChapterText(book, chapter, signal, version = "KJV") {
 
       chapterCache.set(cacheKey, verses);
       return verses;
-
     } catch (err) {
       console.error("NLT Fetch Failed:", err);
       if (signal?.aborted) throw err;
@@ -1085,13 +1458,14 @@ async function fetchChapterText(book, chapter, signal, version = "KJV") {
     }
   }
 
-
   // ==================================================
   // 3. DEFAULT HANDLER (KJV, ASV, etc.)
   // ==================================================
   const code = bibleBookCodes[book] || book;
-  const apiUrl = `https://full-bible-api.onrender.com/chapter/${encodeURIComponent(version)}/${encodeURIComponent(code)}/${chapter}`;
-  
+  const apiUrl = `https://full-bible-api.onrender.com/chapter/${encodeURIComponent(
+    version
+  )}/${encodeURIComponent(code)}/${chapter}`;
+
   if (cached) return cached;
 
   if (signal?.aborted) throw new Error("Fetch aborted");
@@ -1105,15 +1479,15 @@ async function fetchChapterText(book, chapter, signal, version = "KJV") {
     }
 
     // Format default versions with brackets too
-    const verses = data.verses.map(v => {
-        const cleanText = v.text.replace(new RegExp(`^${v.verse}\\s*`), "");
-        
-        return {
-            verse: v.verse,
-            text: `[${v.verse}] ${cleanText}`
-        };
+    const verses = data.verses.map((v) => {
+      const cleanText = v.text.replace(new RegExp(`^${v.verse}\\s*`), "");
+
+      return {
+        verse: v.verse,
+        text: `[${v.verse}] ${cleanText}`,
+      };
     });
-    
+
     chapterCache.set(cacheKey, verses);
     return verses;
   } catch (err) {
@@ -1121,6 +1495,41 @@ async function fetchChapterText(book, chapter, signal, version = "KJV") {
     throw err;
   }
 }
+
+// Ensure the search drawer is open and sync layout.
+// If forceMode is provided, also switch modes.
+function openDrawerUI(forceMode) {
+  // Open drawer if not already open
+  if (!window.searchDrawerOpen) {
+    window.searchDrawerOpen = true;
+    try {
+      window.applyLayout?.(true);
+    } catch (err) {
+      console.warn("applyLayout failed during openDrawerUI:", err);
+    }
+  } else {
+    // If it's already open, keep layout in sync (no transition)
+    try {
+      window.applyLayout?.(false);
+    } catch (err) {
+      console.warn(
+        "applyLayout failed during openDrawerUI (no transition):",
+        err
+      );
+    }
+  }
+
+  // Optionally force a particular mode
+  if (forceMode) {
+    try {
+      window.setSearchMode?.(forceMode, { openDrawer: false });
+    } catch (err) {
+      console.warn("setSearchMode failed in openDrawerUI:", err);
+    }
+  }
+}
+
+window.openDrawerUI = openDrawerUI;
 
 /**
  * NEW: Scrolls the search panel to a specific verse number.
@@ -1134,7 +1543,7 @@ function scrollToVerse(verseNumber) {
     if (!panel) return;
 
     const verseElement = panel.querySelector(`[data-verse="${verseNumber}"]`);
-    
+
     if (verseElement) {
       verseElement.scrollIntoView({
         behavior: "smooth",
@@ -1147,8 +1556,6 @@ function scrollToVerse(verseNumber) {
 /**
  * NEW: Manages the search mode state and UI.
  */
-
-
 
 function mountInterlinearInline() {
   const container = document.getElementById("search-query-content");
@@ -1170,65 +1577,153 @@ function mountInterlinearInline() {
   interPanel.style.overflow = "visible";
 }
 
+window.currentSearchMode = window.currentSearchMode || "bible";
+
 /**
- * UPDATED: Handles switching modes and VISIBILITY of the main container.
- * Fixes the issue where Bible/Music tabs appeared empty after an Interlinear search.
+ * Unified mode switching for the search drawer.
+ *
+ * Modes:
+ *   - "bible"
+ *   - "songs"
+ *   - "interlinear"
+ *   - "crossref" (or "cross-reference" alias)
  */
 function setSearchMode(mode, opts = {}) {
-  if (mode !== "bible" && mode !== "songs" && mode !== "interlinear") return;
-  const { openDrawer = false } = opts;
+  const normalized =
+    mode === "cross-reference" ? "crossref" : !mode ? "bible" : mode;
 
-  currentSearchMode = mode;
+  const { openDrawer = false, suppressSave = false } = opts;
 
-  if (openDrawer) {
-    searchDrawerOpen = true;
-    try { applyLayout && applyLayout(true); } catch {}
+  window.currentSearchMode = normalized;
+
+  const verseContainer = document.getElementById(
+    "search-query-verse-container"
+  );
+  const songsContainer = document.getElementById("search-query-song-container");
+  const crossrefContainer = document.getElementById("search-query-crossref");
+  const interlinearPanel = document.getElementById("interlinear-panel");
+  const searchQueryFullContainer = document.getElementById(
+    "search-query-full-container"
+  );
+
+  const isBible = normalized === "bible";
+  const isInterlinear = normalized === "interlinear";
+  const isSongs = normalized === "songs";
+  const isCrossref = normalized === "crossref";
+
+  // When Interlinear is active, we hide the regular query container;
+  // for everything else, it's visible.
+  if (searchQueryFullContainer) {
+    searchQueryFullContainer.style.display =
+      normalized === "interlinear" ? "none" : "flex";
   }
 
-  const verseContainer = document.getElementById("search-query-verse-container");
-  const songsContainer = document.getElementById("search-query-song-container");
-  const interlinearPanelEl = document.getElementById("interlinear-panel");
-  const fullContainer = document.getElementById("search-query-full-container"); // <--- NEW REF
+  if (verseContainer) {
+    verseContainer.style.display = normalized === "bible" ? "block" : "none";
+  }
+  if (songsContainer) {
+    songsContainer.style.display = normalized === "songs" ? "block" : "none";
+  }
+  if (crossrefContainer) {
+    crossrefContainer.style.display =
+      normalized === "crossref" ? "block" : "none";
+  }
+  if (interlinearPanel) {
+    interlinearPanel.style.display =
+      normalized === "interlinear" ? "block" : "none";
+  }
 
-  const versesHeader = document.getElementById("search-query-verses-text");
-  const songsHeader  = document.getElementById("search-query-songs-text");
+  // Keep the Songs header in sync with the Songs mode
+  if (songsHeader) {
+    songsHeader.style.display = isSongs ? "" : "none";
+  }
 
-  // 1. Reset standard containers (Hide all first)
-  if (verseContainer) verseContainer.style.display = "none";
-  if (songsContainer) songsContainer.style.display = "none";
-  if (interlinearPanelEl) interlinearPanelEl.style.display = "none";
-  if (versesHeader) versesHeader.style.display = "none";
-  if (songsHeader)  songsHeader.style.display  = "none";
+  // Update the pills
+  toggleSearchModeUI(normalized);
 
-  // 2. Update pills
-  document.getElementById("search-mode-bible")?.classList.toggle("active", mode === "bible");
-  document.getElementById("search-mode-songs")?.classList.toggle("active", mode === "songs");
-  document.getElementById("search-mode-interlinear")?.classList.toggle("active", mode === "interlinear");
+  // Optionally open the drawer as part of the mode change
+  if (openDrawer) {
+    openDrawerUI(normalized);
+  } else {
+    try {
+      window.applyLayout?.(false);
+    } catch (err) {
+      console.warn("applyLayout failed after setSearchMode:", err);
+    }
+  }
 
-  // 3. Handle specific modes and FULL CONTAINER visibility
-  if (mode === "bible") {
-    // Show standard container
-    if (fullContainer) fullContainer.style.display = "flex"; 
-    
-    if (versesHeader) versesHeader.style.display = "block";
-    if (verseContainer) verseContainer.style.display = "block";
-    
-  } else if (mode === "songs") {
-    // Show standard container
-    if (fullContainer) fullContainer.style.display = "flex";
+  // Mode-specific behaviors
+  if (normalized === "crossref") {
+    // Do NOT force refresh here – we just reuse the last results
+    // when the user is only switching pills.
+    try {
+      updateCrossrefsFromCurrentContext(false);
+    } catch (err) {
+      console.warn("updateCrossrefsFromCurrentContext failed:", err);
+    }
+  } else if (normalized === "interlinear") {
+    // Let the interlinear helper respond; it will call openDrawerUI itself.
+    try {
+      if (
+        window.BBSearchHeader &&
+        typeof window.BBSearchHeader.refresh === "function"
+      ) {
+        window.BBSearchHeader.refresh();
+      }
+    } catch (err) {
+      console.warn(
+        "BBSearchHeader.refresh failed in setSearchMode(interlinear):",
+        err
+      );
+    }
+  }
 
-    if (songsHeader) songsHeader.style.display = "block";
-    if (songsContainer) songsContainer.style.display = "grid";
-    
-  } else if (mode === "interlinear") {
-    // Hide standard container so Interlinear can take over
-    if (fullContainer) fullContainer.style.display = "none";
+  // Keep header text in sync for all modes
+  try {
+    if (
+      window.BBSearchHeader &&
+      typeof window.BBSearchHeader.refresh === "function"
+    ) {
+      window.BBSearchHeader.refresh();
+    }
+  } catch (err) {
+    console.warn("BBSearchHeader.refresh failed in setSearchMode:", err);
+  }
 
-    // Mount inline and show the panel
-    if (typeof mountInterlinearInline === 'function') mountInterlinearInline();
-    if (interlinearPanelEl) interlinearPanelEl.style.display = "block";
+  // Optional: persist mode to local storage if you were doing that before
+  if (!suppressSave) {
+    try {
+      localStorage.setItem("bb-last-search-mode", normalized);
+    } catch (_) {}
   }
 }
+
+window.setSearchMode = setSearchMode;
+
+function toggleSearchModeUI(activeMode) {
+  const normalized = activeMode === "cross-reference" ? "crossref" : activeMode;
+
+  const pillBible = document.getElementById("search-mode-bible");
+  const pillSongs = document.getElementById("search-mode-songs");
+  const pillInterlinear = document.getElementById("search-mode-interlinear");
+  const pillCrossref = document.getElementById("search-mode-cross-reference");
+
+  [pillBible, pillSongs, pillInterlinear, pillCrossref].forEach((pill) => {
+    if (pill) pill.classList.remove("active");
+  });
+
+  if (normalized === "bible") {
+    pillBible?.classList.add("active");
+  } else if (normalized === "songs") {
+    pillSongs?.classList.add("active");
+  } else if (normalized === "interlinear") {
+    pillInterlinear?.classList.add("active");
+  } else if (normalized === "crossref") {
+    pillCrossref?.classList.add("active");
+  }
+}
+
+window.toggleSearchModeUI = toggleSearchModeUI;
 
 /**
  * 1. helper function to toggle selection in the global map
@@ -1237,7 +1732,7 @@ function setSearchMode(mode, opts = {}) {
 function toggleInterlinearSelection(btn, row, data) {
   // Ensure the map exists
   if (!window.pendingInterlinearAdds) window.pendingInterlinearAdds = new Map();
-  
+
   // Create a unique key based on reference + word
   const key = `${data.reference}::${data.surface}`;
 
@@ -1260,10 +1755,9 @@ function toggleInterlinearSelection(btn, row, data) {
 }
 
 // --- NEW: Add global click listener for the floating button ---
-floatingAddBtn?.addEventListener("click", function() {
-  handleFloatingAddClick()
+floatingAddBtn?.addEventListener("click", function () {
+  handleFloatingAddClick();
 });
-
 
 function isTouchInsideUI(el) {
   return !!(
@@ -1280,12 +1774,14 @@ function onGlobalMouseUp() {
     try {
       active.style.cursor = "grab";
     } catch {}
-    
+
     // FIX: If we actually dragged, ignore the subsequent click event
     if (hasMovedDuringDrag) {
-        ignoreNextClick = true;
-        // Reset the blocker after a tiny delay (enough to skip the click event)
-        setTimeout(() => { ignoreNextClick = false; }, 50);
+      ignoreNextClick = true;
+      // Reset the blocker after a tiny delay (enough to skip the click event)
+      setTimeout(() => {
+        ignoreNextClick = false;
+      }, 50);
     }
 
     onBoardMutated("item_move_end");
@@ -1355,6 +1851,8 @@ function applyZoom(e, deltaScale) {
   scale = next;
   workspace.style.transformOrigin = "top left";
   workspace.style.transform = `scale(${scale})`;
+
+  syncHandleScaleVar(); // 👈 update CSS var whenever we zoom
 
   // Set scroll atomically
   viewport.scrollLeft = worldX * scale - vpX;
@@ -1700,20 +2198,24 @@ function startDragMouse(item, eOrPoint, offX, offY) {
 
   active = item;
   hasMovedDuringDrag = false; // Reset flag
-  
+
   bringToFront(item);
   item.style.cursor = "grabbing";
 
   // Group Drag Init
-  isGroupDrag = typeof isGroupingMode !== "undefined" && isGroupingMode && typeof selectedGroupItems !== "undefined" && selectedGroupItems.has(item);
-  
+  isGroupDrag =
+    typeof isGroupingMode !== "undefined" &&
+    isGroupingMode &&
+    typeof selectedGroupItems !== "undefined" &&
+    selectedGroupItems.has(item);
+
   if (isGroupDrag) {
     groupDragOffsets.clear();
-    selectedGroupItems.forEach(groupItem => {
+    selectedGroupItems.forEach((groupItem) => {
       const rect = groupItem.getBoundingClientRect();
       groupDragOffsets.set(groupItem, {
         offX: (eOrPoint.clientX - rect.left) / scale,
-        offY: (eOrPoint.clientY - rect.top) / scale
+        offY: (eOrPoint.clientY - rect.top) / scale,
       });
     });
   }
@@ -1732,22 +2234,22 @@ function dragMouseTo(clientX, clientY) {
   hasMovedDuringDrag = true; // Mark that we moved
 
   const vpRect = viewport.getBoundingClientRect();
-  
+
   const moveElement = (el, offX, offY) => {
     const relX = clientX - vpRect.left;
     const relY = clientY - vpRect.top;
     const newLeft = (viewport.scrollLeft + relX) / scale - offX;
     const newTop = (viewport.scrollTop + relY) / scale - offY;
-    
+
     const maxLeft = workspace.offsetWidth - el.offsetWidth;
     const maxTop = workspace.offsetHeight - el.offsetHeight;
-    
+
     el.style.left = clamp(newLeft, 0, maxLeft) + "px";
     el.style.top = clamp(newTop, 0, maxTop) + "px";
   };
 
   if (isGroupDrag) {
-    selectedGroupItems.forEach(item => {
+    selectedGroupItems.forEach((item) => {
       const offsets = groupDragOffsets.get(item);
       if (offsets) moveElement(item, offsets.offX, offsets.offY);
     });
@@ -1770,11 +2272,11 @@ function startDragTouch(item, touchPoint, offX, offY) {
   isGroupDrag = isGroupingMode && selectedGroupItems.has(item);
   if (isGroupDrag) {
     groupDragOffsets.clear();
-    selectedGroupItems.forEach(groupItem => {
+    selectedGroupItems.forEach((groupItem) => {
       const rect = groupItem.getBoundingClientRect();
       groupDragOffsets.set(groupItem, {
         offX: (touchPoint.clientX - rect.left) / scale,
-        offY: (touchPoint.clientY - rect.top) / scale
+        offY: (touchPoint.clientY - rect.top) / scale,
       });
     });
   }
@@ -1794,23 +2296,25 @@ function dragTouchTo(touchPoint) {
   const vp = viewport.getBoundingClientRect();
 
   const moveElement = (el, offX, offY) => {
-     const x = (viewport.scrollLeft + (touchPoint.clientX - vp.left)) / scale - offX;
-     const y = (viewport.scrollTop + (touchPoint.clientY - vp.top)) / scale - offY;
-     const maxLeft = workspace.offsetWidth - el.offsetWidth;
-     const maxTop = workspace.offsetHeight - el.offsetHeight;
-     el.style.left = `${clamp(x, 0, maxLeft)}px`;
-     el.style.top = `${clamp(y, 0, maxTop)}px`;
+    const x =
+      (viewport.scrollLeft + (touchPoint.clientX - vp.left)) / scale - offX;
+    const y =
+      (viewport.scrollTop + (touchPoint.clientY - vp.top)) / scale - offY;
+    const maxLeft = workspace.offsetWidth - el.offsetWidth;
+    const maxTop = workspace.offsetHeight - el.offsetHeight;
+    el.style.left = `${clamp(x, 0, maxLeft)}px`;
+    el.style.top = `${clamp(y, 0, maxTop)}px`;
   };
 
   if (isGroupDrag) {
-    selectedGroupItems.forEach(item => {
+    selectedGroupItems.forEach((item) => {
       const offsets = groupDragOffsets.get(item);
       if (offsets) moveElement(item, offsets.offX, offsets.offY);
     });
   } else {
     moveElement(touchDragElement, touchDragOffset.x, touchDragOffset.y);
   }
-  
+
   throttledUpdateAllConnections();
 }
 
@@ -1860,25 +2364,13 @@ function updateConnection(conn) {
   if ((!r1.width && !r1.height) || (!r2.width && !r2.height)) return;
 
   const p1 = {
-    x:
-      (viewport.scrollLeft +
-        (r1.left - vpRect.left) +
-        r1.width / 2) / scale,
-    y:
-      (viewport.scrollTop +
-        (r1.top - vpRect.top) +
-        r1.height / 2) / scale,
+    x: (viewport.scrollLeft + (r1.left - vpRect.left) + r1.width / 2) / scale,
+    y: (viewport.scrollTop + (r1.top - vpRect.top) + r1.height / 2) / scale,
   };
 
   const p2 = {
-    x:
-      (viewport.scrollLeft +
-        (r2.left - vpRect.left) +
-        r2.width / 2) / scale,
-    y:
-      (viewport.scrollTop +
-        (r2.top - vpRect.top) +
-        r2.height / 2) / scale,
+    x: (viewport.scrollLeft + (r2.left - vpRect.left) + r2.width / 2) / scale,
+    y: (viewport.scrollTop + (r2.top - vpRect.top) + r2.height / 2) / scale,
   };
 
   const dx = p2.x - p1.x;
@@ -1925,10 +2417,7 @@ function updateConnection(conn) {
       if (length > 0 && Number.isFinite(length)) {
         const mid = path.getPointAtLength(length / 2);
         if (mid && Number.isFinite(mid.x) && Number.isFinite(mid.y)) {
-          handle.setAttribute(
-            "transform",
-            `translate(${mid.x}, ${mid.y})`
-          );
+          handle.setAttribute("transform", `translate(${mid.x}, ${mid.y})`);
         }
       }
     } catch {
@@ -1940,6 +2429,205 @@ function updateConnection(conn) {
 function updateAllConnections() {
   connections.forEach((c) => updateConnection(c));
 }
+
+// --- Connection drag / ghost line + snap-to-nearest-item (DEBUG) ---
+const SNAP_RADIUS = 200; // px distance in screen space
+
+// === Drag-to-connect from handles / cards (Miro-style) ===
+let connectionDraftPath = null;
+
+function startConnectionDrag(e, sourceEl) {
+  if (window.__readOnly) return;
+  if (!sourceEl || !connectionsSvg || !viewport) {
+    console.warn("[BB-CONN] abort startConnectionDrag, missing deps", {
+      hasSource: !!sourceEl,
+      hasSvg: !!connectionsSvg,
+      hasViewport: !!viewport,
+    });
+    return;
+  }
+
+  const SNAP_RADIUS = 200; // px on the board
+
+  const isTouch = e.type === "touchstart";
+  const startPoint = isTouch && e.touches ? e.touches[0] : e;
+
+  e.preventDefault();
+  e.stopPropagation();
+
+  const viewportRect = viewport.getBoundingClientRect();
+
+  // center of a board item in *board* coords
+  function getElementCenter(el) {
+    const r = el.getBoundingClientRect();
+    const cx =
+      (viewport.scrollLeft + (r.left - viewportRect.left) + r.width / 2) /
+      scale;
+    const cy =
+      (viewport.scrollTop + (r.top - viewportRect.top) + r.height / 2) / scale;
+    return { x: cx, y: cy };
+  }
+
+  // client (screen) coords -> board coords (same math as connections)
+  function clientToBoard(clientX, clientY) {
+    return {
+      x: (viewport.scrollLeft + (clientX - viewportRect.left)) / scale,
+      y: (viewport.scrollTop + (clientY - viewportRect.top)) / scale,
+    };
+  }
+
+  const src = getElementCenter(sourceEl);
+
+  // Create the ghost dashed path if it doesn't exist yet
+  if (!connectionDraftPath) {
+    connectionDraftPath = document.createElementNS(SVG_NS, "path");
+    connectionDraftPath.classList.add("connection-line", "connection-draft");
+    connectionsSvg.appendChild(connectionDraftPath);
+
+    // Match the current connection color + dashed style
+    try {
+      if (
+        window.BoardAPI &&
+        typeof window.BoardAPI.getConnectionColor === "function"
+      ) {
+        const color = window.BoardAPI.getConnectionColor();
+        if (color) {
+          connectionDraftPath.style.stroke = color;
+        }
+      }
+    } catch (err) {
+      console.warn("[BB-CONN] could not read connection color for draft", err);
+    }
+
+    // Make it obviously "ghost"
+    connectionDraftPath.style.strokeDasharray = "8 6";
+    connectionDraftPath.style.opacity = "0.85";
+  }
+
+  function updateDraft(clientX, clientY) {
+    const dst = clientToBoard(clientX, clientY);
+
+    const p1 = src; // source element center (already in board coords)
+    const p2 = dst; // current mouse position in board coords
+
+    const dx = p2.x - p1.x;
+    const dy = p2.y - p1.y;
+    const absDx = Math.abs(dx);
+    const absDy = Math.abs(dy);
+
+    let d;
+
+    if (absDx < 40 || absDy < 40) {
+      // Short distance → straight line (same rule as updateConnection)
+      d = `M${p1.x},${p1.y} L${p2.x},${p2.y}`;
+    } else {
+      // Same smooth curve logic as real connections
+      const s = 0.7;
+      let c1x = p1.x;
+      let c1y = p1.y;
+      let c2x = p2.x;
+      let c2y = p2.y;
+
+      if (absDx > absDy) {
+        // Mostly horizontal layout
+        c1x += dx * s;
+        c2x -= dx * s;
+        c1y += dy * 0.1;
+        c2y -= dy * 0.1;
+      } else {
+        // Mostly vertical layout
+        c1y += dy * s;
+        c2y -= dy * s;
+        c1x += dx * 0.1;
+        c2x -= dx * 0.1;
+      }
+
+      d = `M${p1.x},${p1.y} C${c1x},${c1y} ${c2x},${c2y} ${p2.x},${p2.y}`;
+    }
+
+    connectionDraftPath.setAttribute("d", d);
+
+    if (DEBUG_CONNECTIONS) {
+      console.log("[BB-CONN] updateDraft", { src: p1, dst: p2, d });
+    }
+  }
+
+  // Initial position for the ghost line
+  updateDraft(startPoint.clientX, startPoint.clientY);
+
+  function onMove(ev) {
+    const pt = ev.touches && ev.touches[0] ? ev.touches[0] : ev;
+    updateDraft(pt.clientX, pt.clientY);
+  }
+
+  function cleanupDraft() {
+    if (
+      connectionDraftPath &&
+      connectionDraftPath.parentNode === connectionsSvg
+    ) {
+      connectionsSvg.removeChild(connectionDraftPath);
+    }
+    connectionDraftPath = null;
+  }
+
+  function onUp(ev) {
+    document.removeEventListener("mousemove", onMove);
+    document.removeEventListener("mouseup", onUp);
+    document.removeEventListener("touchmove", onMove);
+    document.removeEventListener("touchend", onUp);
+
+    const endEvent =
+      ev.changedTouches && ev.changedTouches[0] ? ev.changedTouches[0] : ev;
+    const endPos = clientToBoard(endEvent.clientX, endEvent.clientY);
+
+    // remove the ghost line from the SVG
+    cleanupDraft();
+
+    // === SNAP-TO-NEAREST BOARD ITEM ===
+    let closestEl = null;
+    let closestDist = SNAP_RADIUS;
+
+    document.querySelectorAll(".board-item").forEach((candidate) => {
+      if (candidate === sourceEl) return;
+      if (!candidate.offsetParent) return; // skip hidden
+
+      const cCenter = getElementCenter(candidate);
+      const dx = cCenter.x - endPos.x;
+      const dy = cCenter.y - endPos.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+
+      if (dist < closestDist) {
+        closestDist = dist;
+        closestEl = candidate;
+      }
+    });
+
+    if (
+      closestEl &&
+      window.BoardAPI &&
+      typeof window.BoardAPI.connectItems === "function"
+    ) {
+      window.BoardAPI.connectItems(sourceEl, closestEl);
+
+      // refresh all connections
+      if (typeof window.throttledUpdateAllConnections === "function") {
+        window.throttledUpdateAllConnections();
+      } else if (typeof window.updateAllConnections === "function") {
+        window.updateAllConnections();
+      }
+    }
+  }
+
+  document.addEventListener("mousemove", onMove);
+  document.addEventListener("mouseup", onUp);
+  document.addEventListener("touchmove", onMove, { passive: false });
+  document.addEventListener("touchend", onUp);
+}
+
+// expose it for the handles / interlinear cards to use
+window.startConnectionDrag = startConnectionDrag;
+window.BoardAPI = window.BoardAPI || {};
+window.BoardAPI.startConnectionDrag = startConnectionDrag;
 
 /**
  * Create a new connection: center-to-center curve
@@ -2062,7 +2750,6 @@ window.BoardAPI.setDisconnectMode = setDisconnectMode;
 window.BoardAPI.toggleDisconnectMode = toggleDisconnectMode;
 window.BoardAPI.isDisconnectMode = isDisconnectMode;
 
-
 /**
  * Formats raw verse text for DISPLAY (HTML).
  * Converts "[1]" -> "<span class='verse-num'>1</span>"
@@ -2070,7 +2757,10 @@ window.BoardAPI.isDisconnectMode = isDisconnectMode;
 function formatVerseContent(text) {
   if (!text) return "";
   // Replaces [1], [1-3], or [1:1] with styled HTML span.
-  return text.replace(/\[(\d+(?:[-:a-z]\d+)*)\]/g, '<span class="verse-num">$1</span> ');
+  return text.replace(
+    /\[(\d+(?:[-:a-z]\d+)*)\]/g,
+    '<span class="verse-num">$1</span> '
+  );
 }
 
 /**
@@ -2079,7 +2769,7 @@ function formatVerseContent(text) {
  */
 function cleanDisplayVerse(text) {
   if (!text) return "";
-  return text.replace(/^\[\d+\]\s*/, '');
+  return text.replace(/^\[\d+\]\s*/, "");
 }
 
 /**
@@ -2092,30 +2782,36 @@ function sanitizeVerseText(text) {
   let clean = text;
 
   // 1. Fix Start of Line: "1 In..." -> "[1] In..."
-  clean = clean.replace(/^(\d+)(?=\s)/, '[$1]');
+  clean = clean.replace(/^(\d+)(?=\s)/, "[$1]");
 
-  // 2. Fix Middle of Line (Multi-verse): 
+  // 2. Fix Middle of Line (Multi-verse):
   //    Matches punctuation OR commas OR quotes, followed by space, digit, space.
   //    "John, 2 who" -> "John, [2] who"
   //    "said. 3 Then" -> "said. [3] Then"
   //    "him: 4 The"   -> "him: [4] The"
-  clean = clean.replace(/([.,;?!:”—"’']\s+)(\d+)(?=\s)/g, '$1[$2]');
+  clean = clean.replace(/([.,;?!:”—"’']\s+)(\d+)(?=\s)/g, "$1[$2]");
 
   // 3. Cleanup: Fix double brackets if they happened (e.g. [[1]])
-  clean = clean.replace(/\[\[(\d+)\]\]/g, '[$1]');
+  clean = clean.replace(/\[\[(\d+)\]\]/g, "[$1]");
 
   return clean;
 }
 // ==================== Element Creation ====================
-function addBibleVerse(reference, text, createdFromLoad = false, version = null, delay = 0) {
+function addBibleVerse(
+  reference,
+  text,
+  createdFromLoad = false,
+  version = null,
+  delay = 0
+) {
   if (window.__readOnly && !window.__RESTORING_FROM_SUPABASE) return;
 
   const el = document.createElement("div");
   el.classList.add("board-item", "bible-verse");
-  
+
   if (delay != 0) {
     el.style.opacity = "0";
-    el.style.animation = "loadItemToBoard 1s forwards " + delay + "s"
+    el.style.animation = "loadItemToBoard 1s forwards " + delay + "s";
   }
   el.style.position = "absolute";
 
@@ -2124,25 +2820,27 @@ function addBibleVerse(reference, text, createdFromLoad = false, version = null,
 
   el.dataset.type = "verse";
   el.dataset.reference = reference;
-  el.dataset.text = robustText; 
+  el.dataset.text = robustText;
   if (version) el.dataset.version = version;
 
   const vpRect = viewport.getBoundingClientRect();
-  const visibleX = viewport.scrollLeft / scale, visibleY = viewport.scrollTop / scale;
-  const visibleW = vpRect.width / scale, visibleH = vpRect.height / scale;
+  const visibleX = viewport.scrollLeft / scale,
+    visibleY = viewport.scrollTop / scale;
+  const visibleW = vpRect.width / scale,
+    visibleH = vpRect.height / scale;
   const randX = visibleX + 0.5 * (visibleW - 300);
   const randY = visibleY + 0.5 * (visibleH - 200);
   el.style.left = `${randX + delay * 200}px`;
   el.style.top = `${randY + delay * 200}px`;
-  
+
   // FIX: Z-Index handling
   if (createdFromLoad) {
-      // During load, just increment blindly (sync happens at end of load)
-      currentIndex++;
-      el.style.zIndex = currentIndex;
+    // During load, just increment blindly (sync happens at end of load)
+    currentIndex++;
+    el.style.zIndex = currentIndex;
   } else {
-      // User action: force to front
-      bringToFront(el);
+    // User action: force to front
+    bringToFront(el);
   }
 
   const displayReference = createdFromLoad ? reference : `- ${reference}`;
@@ -2156,6 +2854,8 @@ function addBibleVerse(reference, text, createdFromLoad = false, version = null,
       <div class="verse-text-reference">${displayReference}${versionLabel}</div>
     </div>
   `;
+
+  attachSelectionFrame(el);
 
   workspace.appendChild(el);
   el.dataset.vkey = itemKey(el);
@@ -2174,6 +2874,66 @@ function addBibleVerse(reference, text, createdFromLoad = false, version = null,
   return el;
 }
 
+// === Attach Miro-style selection frame + connection handles to a board item (DEBUG) ===
+const DEBUG_CONNECTIONS = false;
+
+function attachSelectionFrame(el) {
+  if (!el || el.querySelector(".item-selection-frame")) return;
+
+  const frame = document.createElement("div");
+  frame.className = "item-selection-frame";
+
+  const positions = ["top", "right", "bottom", "left"];
+
+  positions.forEach((pos) => {
+    const handle = document.createElement("div");
+    handle.className = `item-connector-handle handle-${pos}`;
+
+    const inner = document.createElement("div");
+    inner.className = "item-connector-dot";
+    handle.appendChild(inner);
+
+    const startDrag = (ev) => {
+      // only left mouse button for mouse; touches are fine
+      if (ev.button !== undefined && ev.button !== 0) return;
+
+      // ✅ Require the item to be selected first
+      const isSelected =
+        el.classList.contains("selected") ||
+        el.classList.contains("selected-connection");
+
+      if (!isSelected) {
+        // optional debug
+        // console.log("[BB-CONN] ignoring drag: item not selected", el);
+        return;
+      }
+
+      ev.preventDefault();
+      ev.stopPropagation();
+
+      if (typeof window.startConnectionDrag === "function") {
+        window.startConnectionDrag(ev, el);
+      } else if (
+        window.BoardAPI &&
+        typeof window.BoardAPI.startConnectionDrag === "function"
+      ) {
+        window.BoardAPI.startConnectionDrag(ev, el);
+      }
+    };
+
+    handle.addEventListener("mousedown", startDrag);
+    handle.addEventListener("touchstart", startDrag, { passive: false });
+
+    frame.appendChild(handle);
+  });
+
+  if (!el.style.position) {
+    el.style.position = "absolute";
+  }
+  el.appendChild(frame);
+}
+
+
 
 // ==================== Note Modal Logic ====================
 const noteModal = document.getElementById("note-modal-backdrop");
@@ -2185,9 +2945,9 @@ let currentEditingNote = null;
 
 function openNoteModal(noteEl = null) {
   if (window.__readOnly) return;
-  
+
   currentEditingNote = noteEl;
-  
+
   if (noteEl) {
     // Edit Mode
     const contentEl = noteEl.querySelector(".text-content");
@@ -2202,7 +2962,7 @@ function openNoteModal(noteEl = null) {
     // Add Mode
     noteInput.value = "";
   }
-  
+
   noteModal.classList.remove("hidden");
   setTimeout(() => noteInput.focus(), 50); // Focus after render
 }
@@ -2214,7 +2974,7 @@ function closeNoteModal() {
 
 function saveNoteFromModal() {
   const text = noteInput.value.trim(); // Allow empty?
-  
+
   // Convert newlines to <br> for HTML display
   const htmlContent = text.replace(/\n/g, "<br>");
 
@@ -2248,17 +3008,17 @@ if (noteModal) {
 
 // Update Main Action Button
 if (textBtn) {
-  // We need to replace the old clone to strip previous listeners if possible, 
-  // or just ensure this one runs and we preventDefault. 
-  // Since we can't easily remove anonymous listeners, ensuring this logic 
-  // supersedes or we modify the original function is key. 
-  // For now, I will attach a new listener and rely on the fact that 
-  // calling openNoteModal is the new desired behavior. 
-  
+  // We need to replace the old clone to strip previous listeners if possible,
+  // or just ensure this one runs and we preventDefault.
+  // Since we can't easily remove anonymous listeners, ensuring this logic
+  // supersedes or we modify the original function is key.
+  // For now, I will attach a new listener and rely on the fact that
+  // calling openNoteModal is the new desired behavior.
+
   // To be clean, let's recreate the button to strip old listeners
   const newTextBtn = textBtn.cloneNode(true);
   textBtn.parentNode.replaceChild(newTextBtn, textBtn);
-  
+
   newTextBtn.addEventListener("click", (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -2299,11 +3059,14 @@ function addTextNote(initial = "New note") {
       </svg>
     </button>
   `;
+
+  attachSelectionFrame(el);
+
   workspace.appendChild(el);
   el.dataset.vkey = itemKey(el);
 
   // --- Logic ---
-  
+
   // 1. Edit Button Logic: Opens the modal
   const editBtn = el.querySelector(".edit-btn");
   if (editBtn) {
@@ -2315,17 +3078,20 @@ function addTextNote(initial = "New note") {
     // Use mousedown/touchstart to catch it before drag logic fires
     editBtn.addEventListener("mousedown", openEdit);
     editBtn.addEventListener("touchstart", openEdit, { passive: false });
-    editBtn.addEventListener("click", (e) => { e.stopPropagation(); });
+    editBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+    });
   }
 
   // 2. Drag/Select Logic
   // (Clicking the card body will bubble to workspace, triggering 'selectItem')
-  let startX = 0, startY = 0;
+  let startX = 0,
+    startY = 0;
 
   el.onmousedown = (e) => {
     if (e.target.closest(".edit-btn")) return; // Ignore edits
     if (isConnectMode) return;
-    
+
     startX = e.clientX;
     startY = e.clientY;
     startDragMouse(el, e);
@@ -2336,7 +3102,7 @@ function addTextNote(initial = "New note") {
     if (isConnectMode || window.__readOnly || e.touches.length !== 1) return;
     const t = e.touches[0];
     const rect = el.getBoundingClientRect();
-    
+
     pendingTouchDrag = {
       item: el,
       startX: t.clientX,
@@ -2350,7 +3116,9 @@ function addTextNote(initial = "New note") {
     if (touchDragElement) onBoardMutated("item_move_touch_end");
     touchDragElement = null;
     pendingTouchDrag = null;
-    setTimeout(() => { touchMoved = false; }, 0);
+    setTimeout(() => {
+      touchMoved = false;
+    }, 0);
   };
 
   onBoardMutated("add_note");
@@ -2384,8 +3152,8 @@ function displaySearchVerseOption(reference, text, version) {
     // Check if this verse is already in the pending queue
     const key = `${reference}::${version}`;
     const isSelected = pendingVerseAdds.has(key);
-    const selectedClass = isSelected ? 'selected-for-add' : '';
-    const btnSelectedClass = isSelected ? 'selected' : '';
+    const selectedClass = isSelected ? "selected-for-add" : "";
+    const btnSelectedClass = isSelected ? "selected" : "";
 
     const item = document.createElement("div");
     item.classList.add("search-query-verse-container", selectedClass);
@@ -2393,7 +3161,7 @@ function displaySearchVerseOption(reference, text, version) {
     item.dataset.ref = reference;
     item.dataset.version = version;
     item.dataset.text = text;
-    
+
     item.innerHTML = `
       <div class="search-query-verse-text">${text}</div>
       <div class="search-query-verse-reference">– ${reference} ${version.toUpperCase()}</div>
@@ -2403,7 +3171,7 @@ function displaySearchVerseOption(reference, text, version) {
     `;
 
     // Click is now handled by the event delegation listener, so no .onclick needed here.
-    
+
     verseContainer.appendChild(item);
   }
 }
@@ -2528,19 +3296,37 @@ async function fetchAndStreamVerseTexts(verseElements, signal) {
     });
   }
 }
+
 // ==================== NEW HELPERS FOR PAGINATED/PRIORITY VERSE LOADING ====================
 /**
- * UPDATED: Fetches verse texts in PARALLEL and cleans display.
+ * Fetches verse texts for a batch of cards.
+ * - success  -> fills text + marks data-status="ready"
+ * - invalid/error -> removes the card completely
  */
 async function fillVerseBatch(verseBatch, signal, version) {
   const promises = verseBatch.map(async ({ ref, el }) => {
+    if (!el) return;
     if (signal?.aborted) return;
     if (el.dataset.status === "ready") return;
 
+    // Helper: mark as error + remove the card from the DOM
+    const removeCard = () => {
+      el.dataset.status = "error";
+      const parent = el.parentElement;
+      el.remove();
+
+      // Optional: if this was the last card in the main list you could
+      // show a "No verses found" message here if you want.
+      // if (parent && !parent.querySelector(".search-query-verse-container")) {
+      //   parent.innerHTML = `<div class="search-query-no-verse-found-container"
+      //      style="text-align:center; color:var(--muted); padding: 15px;">
+      //      No matching verses found.</div>`;
+      // }
+    };
+
     const parts = parseReferenceToParts(ref);
     if (!parts) {
-      el.dataset.status = "error";
-      el.querySelector(".search-query-verse-text").textContent = "Verse not found.";
+      removeCard();
       return;
     }
 
@@ -2555,21 +3341,24 @@ async function fillVerseBatch(verseBatch, signal, version) {
 
       if (signal?.aborted) return;
 
+      // Anything that looks like an error – just drop the card
       if (!text || /not\s*found|unavailable|error/i.test(String(text))) {
-        el.dataset.status = "error";
-        el.querySelector(".search-query-verse-text").textContent = "Verse not found.";
+        removeCard();
         return;
       }
 
+      // ✅ Success: fill in the card
       el.dataset.status = "ready";
       el.dataset.ref = ref;
       el.dataset.version = version;
-      el.dataset.text = text; // Keeps brackets for drag
+      el.dataset.text = text;
 
-      // Clean for display
-      el.querySelector(".search-query-verse-text").textContent = cleanDisplayVerse(text);
-      el.querySelector(".search-query-verse-text").style.color = ""; 
-      el.querySelector(".search-query-verse-text").style.textAlign = ""; 
+      const textEl = el.querySelector(".search-query-verse-text");
+      if (textEl) {
+        textEl.textContent = cleanDisplayVerse(text);
+        textEl.style.color = "";
+        textEl.style.textAlign = "";
+      }
 
       let addBtn = el.querySelector(".search-query-verse-add-button");
       if (!addBtn) {
@@ -2584,12 +3373,12 @@ async function fillVerseBatch(verseBatch, signal, version) {
         el.classList.add("selected-for-add");
         addBtn.classList.add("selected");
       }
-      
+
       addBtn.disabled = false;
     } catch (err) {
       if (!signal?.aborted) {
-         console.warn(`Failed to load ${ref}`, err);
-         el.querySelector(".search-query-verse-text").textContent = "Error loading text.";
+        console.warn(`Failed to load ${ref}`, err);
+        removeCard(); // on network/other error, also hide
       }
     }
   });
@@ -2661,76 +3450,81 @@ async function fetchVerseData(ref, signal, version) {
  * UPDATED: Creates a final, ready-to-add verse card element with clean text.
  */
 function buildSongCard(song) {
-  const title  = song.title  || song.trackName || song.name || '';
-  const artist = song.artist || song.artistName || song.author || '';
-  const lyrics = song.lyrics || '';
-  const cover  = song.cover  || song.artworkUrl100 || song.image || '';
+  const title = song.title || song.trackName || song.name || "";
+  const artist = song.artist || song.artistName || song.author || "";
+  const lyrics = song.lyrics || "";
+  const cover = song.cover || song.artworkUrl100 || song.image || "";
 
-  const row = document.createElement('div');
-  row.className = 'search-query-verse-container verse song-row';
-  
+  const row = document.createElement("div");
+  row.className = "search-query-verse-container verse song-row";
+
   // Data attributes for recreation
-  row.dataset.title  = title;
+  row.dataset.title = title;
   row.dataset.artist = artist;
   row.dataset.lyrics = lyrics;
-  row.dataset.cover  = cover;
+  row.dataset.cover = cover;
 
   // --- FIX: Check Global Queue for Initial State ---
   // Note: Song keys are tricky if you don't have a unique ID. We use Title+Artist.
   // The unified flush logic relies on `pendingSongAdds`.
-  const key = `song::${(title||'').trim()}::${(artist||'').trim()}`;
+  const key = `song::${(title || "").trim()}::${(artist || "").trim()}`;
   const isSelected = window.pendingSongAdds && window.pendingSongAdds.has(key);
-  
+
   if (isSelected) {
-      row.classList.add('selected-for-add');
+    row.classList.add("selected-for-add");
   }
 
-  const img = document.createElement('img');
-  img.className = 'song-cover';
-  img.alt = title ? `Cover art for ${title}` : 'Cover art';
+  const img = document.createElement("img");
+  img.className = "song-cover";
+  img.alt = title ? `Cover art for ${title}` : "Cover art";
   if (cover) img.src = cover;
 
-  const textWrap = document.createElement('div');
-  textWrap.className = 'song-meta';
+  const textWrap = document.createElement("div");
+  textWrap.className = "song-meta";
 
-  const titleEl = document.createElement('div');
-  titleEl.className = 'song-title';
-  titleEl.textContent = title || 'Untitled';
+  const titleEl = document.createElement("div");
+  titleEl.className = "song-title";
+  titleEl.textContent = title || "Untitled";
 
-  const artistEl = document.createElement('div');
-  artistEl.className = 'song-artist';
-  artistEl.textContent = artist || 'Unknown';
+  const artistEl = document.createElement("div");
+  artistEl.className = "song-artist";
+  artistEl.textContent = artist || "Unknown";
 
   textWrap.appendChild(titleEl);
   textWrap.appendChild(artistEl);
 
-  const addBtn = document.createElement('button');
-  addBtn.className = 'search-query-verse-add-button';
-  addBtn.setAttribute('aria-label', `Add song ${title} by ${artist}`);
-  
+  const addBtn = document.createElement("button");
+  addBtn.className = "search-query-verse-add-button";
+  addBtn.setAttribute("aria-label", `Add song ${title} by ${artist}`);
+
   if (isSelected) {
-      addBtn.classList.add('selected');
+    addBtn.classList.add("selected");
   }
 
   // Toggle Logic
   function toggle() {
     if (!window.pendingSongAdds) window.pendingSongAdds = new Map();
-    
+
     if (window.pendingSongAdds.has(key)) {
       window.pendingSongAdds.delete(key);
-      row.classList.remove('selected-for-add');
-      addBtn.classList.remove('selected');
+      row.classList.remove("selected-for-add");
+      addBtn.classList.remove("selected");
     } else {
       window.pendingSongAdds.set(key, { title, artist, lyrics, cover });
-      row.classList.add('selected-for-add');
-      addBtn.classList.add('selected');
+      row.classList.add("selected-for-add");
+      addBtn.classList.add("selected");
     }
-    if (typeof updateFloatingAddButton === 'function') updateFloatingAddButton();
+    if (typeof updateFloatingAddButton === "function")
+      updateFloatingAddButton();
   }
 
-  addBtn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); toggle(); });
-  row.addEventListener('click', (e) => {
-    if (e.target && e.target.closest('.search-query-verse-add-button')) return;
+  addBtn.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    toggle();
+  });
+  row.addEventListener("click", (e) => {
+    if (e.target && e.target.closest(".search-query-verse-add-button")) return;
     toggle();
   });
 
@@ -2748,66 +3542,70 @@ function buildSongCard(song) {
  * @returns {HTMLElement}
  */
 
-
 function buildSongCard(song) {
   // Normalize song fields
-  const title  = song.title  || song.trackName || song.name || '';
-  const artist = song.artist || song.artistName || song.author || '';
-  const lyrics = song.lyrics || '';
-  const cover  = song.cover  || song.artworkUrl100 || song.image || '';
+  const title = song.title || song.trackName || song.name || "";
+  const artist = song.artist || song.artistName || song.author || "";
+  const lyrics = song.lyrics || "";
+  const cover = song.cover || song.artworkUrl100 || song.image || "";
 
   // Container: flex row (image | text | + button)
-  const row = document.createElement('div');
-  row.className = 'search-query-verse-container verse song-row';
-  row.dataset.title  = title;
+  const row = document.createElement("div");
+  row.className = "search-query-verse-container verse song-row";
+  row.dataset.title = title;
   row.dataset.artist = artist;
   row.dataset.lyrics = lyrics;
-  row.dataset.cover  = cover;
+  row.dataset.cover = cover;
 
   // Image (left)
-  const img = document.createElement('img');
-  img.className = 'song-cover';
-  img.alt = title ? `Cover art for ${title}` : 'Cover art';
+  const img = document.createElement("img");
+  img.className = "song-cover";
+  img.alt = title ? `Cover art for ${title}` : "Cover art";
   if (cover) img.src = cover;
 
   // Text container (middle)
-  const textWrap = document.createElement('div');
-  textWrap.className = 'song-meta';
+  const textWrap = document.createElement("div");
+  textWrap.className = "song-meta";
 
-  const titleEl = document.createElement('div');
-  titleEl.className = 'song-title';
-  titleEl.textContent = title || 'Untitled';
+  const titleEl = document.createElement("div");
+  titleEl.className = "song-title";
+  titleEl.textContent = title || "Untitled";
 
-  const artistEl = document.createElement('div');
-  artistEl.className = 'song-artist';
-  artistEl.textContent = artist || 'Unknown';
+  const artistEl = document.createElement("div");
+  artistEl.className = "song-artist";
+  artistEl.textContent = artist || "Unknown";
 
   textWrap.appendChild(titleEl);
   textWrap.appendChild(artistEl);
 
   // + button (right) — reuse verse add button class
-  const addBtn = document.createElement('button');
-  addBtn.className = 'search-query-verse-add-button';
-  addBtn.setAttribute('aria-label', `Add song ${title} by ${artist}`);
+  const addBtn = document.createElement("button");
+  addBtn.className = "search-query-verse-add-button";
+  addBtn.setAttribute("aria-label", `Add song ${title} by ${artist}`);
 
   function toggle() {
     if (!window.pendingSongAdds) window.pendingSongAdds = new Map();
-    const key = `song::${(title||'').trim()}::${(artist||'').trim()}`;
+    const key = `song::${(title || "").trim()}::${(artist || "").trim()}`;
     if (window.pendingSongAdds.has(key)) {
       window.pendingSongAdds.delete(key);
-      row.classList.remove('selected-for-add');
-      addBtn.classList.remove('selected');
+      row.classList.remove("selected-for-add");
+      addBtn.classList.remove("selected");
     } else {
       window.pendingSongAdds.set(key, { title, artist, lyrics, cover });
-      row.classList.add('selected-for-add');
-      addBtn.classList.add('selected');
+      row.classList.add("selected-for-add");
+      addBtn.classList.add("selected");
     }
-    if (typeof window.updateFloatingAddButton === 'function') window.updateFloatingAddButton();
+    if (typeof window.updateFloatingAddButton === "function")
+      window.updateFloatingAddButton();
   }
 
-  addBtn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); toggle(); });
-  row.addEventListener('click', (e) => {
-    if (e.target && e.target.closest('.search-query-verse-add-button')) return;
+  addBtn.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    toggle();
+  });
+  row.addEventListener("click", (e) => {
+    if (e.target && e.target.closest(".search-query-verse-add-button")) return;
     toggle();
   });
 
@@ -2818,7 +3616,6 @@ function buildSongCard(song) {
 
   return row;
 }
-
 
 /**
  * Creates or finds the "Load more" button for songs.
@@ -2870,7 +3667,9 @@ function prefetchSearchForQuery(query) {
   (async () => {
     try {
       // --- NEW: Use isReferenceShaped ---
-      const refShaped = window.isReferenceShaped ? window.isReferenceShaped(query) : false;
+      const refShaped = window.isReferenceShaped
+        ? window.isReferenceShaped(query)
+        : false;
 
       // --- 1. ALWAYS prefetch songs ---
       fetchSongs(query, SEARCH_RESULT_LIMIT, signal).catch(() => {});
@@ -2879,22 +3678,45 @@ function prefetchSearchForQuery(query) {
       // --- 2. Prefetch correct Bible data ---
       if (refShaped) {
         // It looks like a reference, try to parse it
-        const bibleRef = window.findBibleVerseReference ? window.findBibleVerseReference(query) : null;
+        const bibleRef = window.findBibleVerseReference
+          ? window.findBibleVerseReference(query)
+          : null;
         if (bibleRef && bibleRef.book && bibleRef.chapter) {
           // Prefetch the full chapter (e.g., "John 3:16" or "Josua 1:9" -> "Joshua 1:9")
-          fetchChapterText(bibleRef.book, bibleRef.chapter, signal, version).catch(() => {});
-          console.log(`[Prefetch] Warmed chapter cache for ${bibleRef.book} ${bibleRef.chapter}`);
+          fetchChapterText(
+            bibleRef.book,
+            bibleRef.chapter,
+            signal,
+            version
+          ).catch(() => {});
+          console.log(
+            `[Prefetch] Warmed chapter cache for ${bibleRef.book} ${bibleRef.chapter}`
+          );
         } else {
           // It's reference-shaped but didn't parse (e.g., "Asdf 1:1" or "Josua 1:9" -> didYouMean)
           // We can't prefetch a chapter, so just prefetch text search as a fallback.
-          fetchBibleSearchResults(query, SEARCH_RESULT_LIMIT, signal, version).catch(() => {});
-          console.log(`[Prefetch] Warmed bible text search for "${query}" (ref-shaped fallback)`);
+          fetchBibleSearchResults(
+            query,
+            SEARCH_RESULT_LIMIT,
+            signal,
+            version
+          ).catch(() => {});
+          console.log(
+            `[Prefetch] Warmed bible text search for "${query}" (ref-shaped fallback)`
+          );
         }
       } else {
         // NOT reference-shaped (e.g., "love")
         // Prefetch the text search results
-        fetchBibleSearchResults(query, SEARCH_RESULT_LIMIT, signal, version).catch(() => {});
-        console.log(`[Prefetch] Warmed bible text search for "${query}" (text query)`);
+        fetchBibleSearchResults(
+          query,
+          SEARCH_RESULT_LIMIT,
+          signal,
+          version
+        ).catch(() => {});
+        console.log(
+          `[Prefetch] Warmed bible text search for "${query}" (text query)`
+        );
       }
     } catch (err) {
       if (!signal.aborted) {
@@ -2939,7 +3761,9 @@ if (TYPE_AHEAD_ENABLED && searchBar) {
  */
 function renderSongResults(songs, songsContainer, signal, options = {}) {
   const { isBackground = false } = options;
-  const readySongs = (songs || []).filter(s => s && s.trackName && s.artistName);
+  const readySongs = (songs || []).filter(
+    (s) => s && s.trackName && s.artistName
+  );
   songsContainer.innerHTML = ""; // Clear previous results
 
   if (readySongs.length === 0) {
@@ -2988,12 +3812,12 @@ function renderSongResults(songs, songsContainer, signal, options = {}) {
 async function runSongsFallback(query, signal, version) {
   // console.log("Bible search failed, falling back to Songs mode...");
   setSearchMode("songs");
-  
+
   // Reset header text from "John 3" back to the query
   if (typeof searchQuery !== "undefined") {
     searchQuery.textContent = `Search for "${query}"`;
   }
-  
+
   // Run the song search as the primary task (not background)
   await runSongsSearch(query, signal, version, { isBackground: false });
 }
@@ -3028,11 +3852,11 @@ async function runSongsSearch(query, signal, version, options = {}) {
   if (isBackground) {
     songsContainer.innerHTML = "";
   }
-  
+
   try {
     const songs = await fetchSongs(query, SEARCH_RESULT_LIMIT, signal);
     if (signal.aborted) return;
-    
+
     // Only log performance if it's the *main* task
     if (!isBackground) {
       logPerf("songs_data_received (primary)");
@@ -3040,7 +3864,6 @@ async function runSongsSearch(query, signal, version, options = {}) {
 
     // Pass the isBackground flag to the renderer
     renderSongResults(songs, songsContainer, signal, { isBackground });
-
   } catch (err) {
     if (signal.aborted) return;
     // Only show errors if we're not in the background
@@ -3048,10 +3871,26 @@ async function runSongsSearch(query, signal, version, options = {}) {
       // console.error("Error in song search:", err);
       // ESCAPE USER INPUT HERE
       const safeQuery = escapeHtml(query);
-      const safeMessage = err.message ? escapeHtml(err.message) : `No songs found for "${safeQuery}".`;
+      const safeMessage = err.message
+        ? escapeHtml(err.message)
+        : `No songs found for "${safeQuery}".`;
       songsContainer.innerHTML = `<div class="search-query-no-verse-found-container" style="text-align:center; color:var(--muted); padding: 15px;">${safeMessage}</div>`;
     }
   }
+}
+
+function safeGetSelectedVersion() {
+  try {
+    if (typeof window.getSelectedBibleVersion === "function") {
+      return window.getSelectedBibleVersion();
+    }
+    if (typeof window.getSelectedVersion === "function") {
+      return window.getSelectedVersion();
+    }
+  } catch (e) {
+    console.warn("getSelectedVersion error:", e);
+  }
+  return "ESV";
 }
 
 /**
@@ -3059,14 +3898,17 @@ async function runSongsSearch(query, signal, version, options = {}) {
  * Runs the full Bible REFERENCE (chapter) search logic.
  * THROWS on failure (e.g., "John 99" not found).
  */
-async function runBibleSearch(bibleRef, signal, version, options = {}) { // Added options
+async function runBibleSearch(bibleRef, signal, version, options = {}) {
+  // Added options
   const { isBackground = false } = options; // Destructure
-  const verseContainer = document.getElementById("search-query-verse-container");
+  const verseContainer = document.getElementById(
+    "search-query-verse-container"
+  );
   if (!verseContainer) throw new Error("Internal UI error.");
 
   // 1. We already have the reference, so we can skip parsing.
   const result = bibleRef; // Use the passed-in ref
-  
+
   if (!result || !result.book || !result.chapter) {
     // This should technically not be hit if searchForQuery is correct,
     // but it's a good safeguard.
@@ -3075,37 +3917,52 @@ async function runBibleSearch(bibleRef, signal, version, options = {}) { // Adde
 
   // 2. Set header and fetch full chapter
   const refString = `${result.book} ${result.chapter}`;
-  
+
   // --- MODIFICATION ---
   if (!isBackground) {
     // Only update UI text if this is the primary task
-    if (searchQuery) searchQuery.textContent = `Search for "${searchBar.value}"`;
+    if (searchQuery)
+      searchQuery.textContent = `Search for "${searchBar.value}"`;
     if (didYouMeanText) didYouMeanText.style.display = "none"; // Always hide suggestion on success
   }
   // --- END MODIFICATION ---
 
   // This will throw if fetch fails (e.g., John 99)
-  const verses = await fetchChapterText(result.book, result.chapter, signal, version);
+  const verses = await fetchChapterText(
+    result.book,
+    result.chapter,
+    signal,
+    version
+  );
 
   if (!verses || verses.length === 0) {
     // This will also be caught and trigger song fallback
     throw new Error(`No verses found for ${refString}.`);
   }
-  
+
   if (signal.aborted) throw new Error("Search aborted");
-  
-  if (!isBackground) { // Log perf only for primary task
+
+  if (!isBackground) {
+    // Log perf only for primary task
     logPerf("chapter_data_received");
   }
 
   // 3. Render chapter (This is safe, it just populates the hidden container)
-  renderChapter(verseContainer, verses, result.verse, refString, result.book, version);
+  renderChapter(
+    verseContainer,
+    verses,
+    result.verse,
+    refString,
+    result.book,
+    version
+  );
 
   // 4. Scroll to verse
-  if (result.verse && !isBackground) { // Only scroll if primary
+  if (result.verse && !isBackground) {
+    // Only scroll if primary
     scrollToVerse(result.verse);
   }
-  
+
   return true; // Success
 }
 
@@ -3113,9 +3970,12 @@ async function runBibleSearch(bibleRef, signal, version, options = {}) { // Adde
  * NEW: Runs a full-text search for Bible verses.
  * Renders results as verse cards and falls back to songs on 0 results (if primary).
  */
-async function runBibleTextSearch(query, signal, version, options = {}) { // Added options
+async function runBibleTextSearch(query, signal, version, options = {}) {
+  // Added options
   const { isBackground = false } = options; // Destructure
-  const verseContainer = document.getElementById("search-query-verse-container");
+  const verseContainer = document.getElementById(
+    "search-query-verse-container"
+  );
   if (!verseContainer) throw new Error("Internal UI error.");
 
   // --- MODIFICATION ---
@@ -3126,14 +3986,20 @@ async function runBibleTextSearch(query, signal, version, options = {}) { // Add
     if (didYouMeanText) didYouMeanText.style.display = "none"; // Hide suggestion
   }
   // --- END MODIFICATION ---
-  
+
   try {
     // 1. Fetch search results (list of references)
     // MODIFIED: Passed 'version'
-    const refs = await fetchBibleSearchResults(query, SEARCH_RESULT_LIMIT, signal, version);
+    const refs = await fetchBibleSearchResults(
+      query,
+      SEARCH_RESULT_LIMIT,
+      signal,
+      version
+    );
     if (signal.aborted) return;
 
-    if (!isBackground) { // Log perf only for primary task
+    if (!isBackground) {
+      // Log perf only for primary task
       logPerf("bible_text_search_refs_received");
     }
 
@@ -3142,7 +4008,9 @@ async function runBibleTextSearch(query, signal, version, options = {}) { // Add
       // --- MODIFICATION (Restored) ---
       if (!isBackground) {
         // Only run song fallback if this was the *primary* task
-        console.warn(`Bible text search for "${query}" found 0 results. Falling back to songs.`);
+        console.warn(
+          `Bible text search for "${query}" found 0 results. Falling back to songs.`
+        );
         await runSongsFallback(query, signal, version); // <-- This is the restored fallback
       } else {
         // If background, just show "No results" in the hidden tab
@@ -3154,15 +4022,15 @@ async function runBibleTextSearch(query, signal, version, options = {}) { // Add
 
     // 3. We have results! Render them as verse cards. (Unchanged)
     verseContainer.innerHTML = ""; // Clear loader/previous
-    
+
     // Create placeholders for fillVerseBatch
     const verseElements = [];
     for (const ref of refs) {
       const item = document.createElement("div");
-      item.classList.add("search-query-verse-container"); 
+      item.classList.add("search-query-verse-container");
       item.classList.add("loading"); // <-- ADD THIS
       item.dataset.status = "pending"; // Mark for fillVerseBatch
-      
+
       item.dataset.version = version;
 
       // Basic skeleton
@@ -3184,7 +4052,8 @@ async function runBibleTextSearch(query, signal, version, options = {}) { // Add
     // Load initial batch first for responsiveness
     await fillVerseBatch(initialBatch, signal, version);
 
-    if (!isBackground) { // Log perf only for primary task
+    if (!isBackground) {
+      // Log perf only for primary task
       logPerf("bible_text_search_initial_batch_rendered");
     }
 
@@ -3194,25 +4063,26 @@ async function runBibleTextSearch(query, signal, version, options = {}) { // Add
         if (signal?.aborted) return;
         const next = remainingBatch.splice(0, LOAD_MORE_CHUNK);
         await fillVerseBatch(next, signal, version);
-        
+
         if (remainingBatch.length === 0) {
           verseContainer.querySelector("#load-more-verses-btn")?.remove();
         }
       };
-      
+
       ensureLoadMoreButton(verseContainer, loadMore);
     }
-    
   } catch (err) {
     if (signal.aborted) return;
     // --- MODIFICATION: SECURITY FIX ---
     if (!isBackground) {
       // Only show errors in the UI if this was the primary task
       // console.error("Error in Bible text search:", err);
-      
+
       // ESCAPE USER INPUT HERE
       const safeQuery = escapeHtml(query);
-      const safeMessage = err.message ? escapeHtml(err.message) : `No results found for "${safeQuery}".`;
+      const safeMessage = err.message
+        ? escapeHtml(err.message)
+        : `No results found for "${safeQuery}".`;
 
       verseContainer.innerHTML = `<div class="search-query-no-verse-found-container" style="text-align:center; color:var(--muted); padding: 15px;">${safeMessage}</div>`;
     }
@@ -3224,9 +4094,15 @@ async function runBibleTextSearch(query, signal, version, options = {}) { // Add
  * OPTIMIZATION: Use LRU cache
  * MODIFIED: Now includes the Bible 'version' in the API call and cache key.
  */
-async function fetchBibleSearchResults(query, limit = 5, signal, version = "KJV") { // ADDED version
+async function fetchBibleSearchResults(
+  query,
+  limit = 5,
+  signal,
+  version = "KJV"
+) {
+  // ADDED version
   if (!query) return [];
-  
+
   // MODIFIED: Added version to cache key
   const key = `${version.toLowerCase()}:${query.toLowerCase()}::${limit}`;
   const cached = bibleSearchCache.get(key); // .get() updates recency
@@ -3266,7 +4142,7 @@ async function searchForQuery(event) {
   }
 
   const input = document.getElementById("search-bar");
-  const rawQuery = (input?.value || "").trim(); 
+  const rawQuery = (input?.value || "").trim();
 
   if (!rawQuery) return false;
 
@@ -3291,26 +4167,28 @@ async function searchForQuery(event) {
   // --- 2. Show Skeleton UI & Open Panel ---
   // Reset "Did You Mean" initially
   if (typeof didYouMeanText !== "undefined")
-    didYouMeanText.style.display = "none"; 
-  
+    didYouMeanText.style.display = "none";
+
   if (typeof searchQueryFullContainer !== "undefined")
     searchQueryFullContainer.style.display = "none";
   if (typeof loader !== "undefined") loader.style.display = "flex";
 
   searchDrawerOpen = true;
-  
+
   // Only close interlinear panel if we are NOT in interlinear mode
   if (currentSearchMode !== "interlinear" && interlinearOpen) {
-      closeInterlinearPanel();
+    closeInterlinearPanel();
   }
-  
+
   applyLayout(true); // This triggers the slide-up animation
 
   if (typeof searchQuery !== "undefined")
     searchQuery.textContent = `Search for "${rawQuery}"`;
 
   // Get containers and clear them for the new results
-  const verseContainer = document.getElementById("search-query-verse-container");
+  const verseContainer = document.getElementById(
+    "search-query-verse-container"
+  );
   const songsContainer = document.getElementById("search-query-song-container");
   if (verseContainer) verseContainer.innerHTML = "";
   if (songsContainer) songsContainer.innerHTML = "";
@@ -3322,60 +4200,76 @@ async function searchForQuery(event) {
   // --- 3. Determine Search Paths ---
   try {
     // 1. Decide if it's reference-shaped
-    const refShaped = window.isReferenceShaped ? window.isReferenceShaped(rawQuery) : false;
-    
+    const refShaped = window.isReferenceShaped
+      ? window.isReferenceShaped(rawQuery)
+      : false;
+
     // 2. Only attempt to parse a Bible reference if it's reference-shaped
-    const bibleRefInfo = refShaped && window.findBibleVerseReference
-      ? window.findBibleVerseReference(rawQuery)
-      : null;
-    
-    const isClearBibleRef = bibleRefInfo && bibleRefInfo.book && bibleRefInfo.chapter;
-    const isDidYouMean = refShaped && bibleRefInfo && bibleRefInfo.didYouMean && !isClearBibleRef;
+    const bibleRefInfo =
+      refShaped && window.findBibleVerseReference
+        ? window.findBibleVerseReference(rawQuery)
+        : null;
+
+    const isClearBibleRef =
+      bibleRefInfo && bibleRefInfo.book && bibleRefInfo.chapter;
+    const isDidYouMean =
+      refShaped && bibleRefInfo && bibleRefInfo.didYouMean && !isClearBibleRef;
 
     let primarySearchPromise;
 
     // --- CASE: INTERLINEAR MODE ---
     if (currentSearchMode === "interlinear") {
-       
-       // A. "Did You Mean" Logic (NEW)
-       if (isDidYouMean) {
-          showDidYouMeanSuggestion(bibleRefInfo);
-       }
+      // A. "Did You Mean" Logic (NEW)
+      if (isDidYouMean) {
+        showDidYouMeanSuggestion(bibleRefInfo);
+      }
 
-       // B. Primary Task: Interlinear
-       if (typeof window.openInterlinearFromCurrentQuery === "function") {
-           primarySearchPromise = window.openInterlinearFromCurrentQuery();
-       } else {
-           primarySearchPromise = Promise.resolve();
-       }
-       
-       // Hide the loader since openInterlinearFromCurrentQuery manages its own loader
-       if (loader) loader.style.display = "none"; 
+      // B. Primary Task: Interlinear
+      if (typeof window.openInterlinearFromCurrentQuery === "function") {
+        primarySearchPromise = window.openInterlinearFromCurrentQuery();
+      } else {
+        primarySearchPromise = Promise.resolve();
+      }
 
-       // C. Background Tasks (Fixes "Empty Tabs" issue)
-       // 1. Background Songs
-       runSongsSearch(rawQuery, signal, version, { isBackground: true }).catch(() => {});
+      // Hide the loader since openInterlinearFromCurrentQuery manages its own loader
+      if (loader) loader.style.display = "none";
 
-       // 2. Background Bible
-       if (isClearBibleRef) {
-          runBibleSearch(bibleRefInfo, signal, version, { isBackground: true }).catch(() => {});
-       } else {
-          // If it's not reference-shaped or just a fuzzy match, run text search
-          runBibleTextSearch(rawQuery, signal, version, { isBackground: true }).catch(() => {});
-       }
-    } 
-    
+      // C. Background Tasks (Fixes "Empty Tabs" issue)
+      // 1. Background Songs
+      runSongsSearch(rawQuery, signal, version, { isBackground: true }).catch(
+        () => {}
+      );
+
+      // 2. Background Bible
+      if (isClearBibleRef) {
+        runBibleSearch(bibleRefInfo, signal, version, {
+          isBackground: true,
+        }).catch(() => {});
+      } else {
+        // If it's not reference-shaped or just a fuzzy match, run text search
+        runBibleTextSearch(rawQuery, signal, version, {
+          isBackground: true,
+        }).catch(() => {});
+      }
+    }
+
     // --- CASE: BIBLE MODE ---
     else if (currentSearchMode === "bible") {
       if (isClearBibleRef) {
-        primarySearchPromise = runBibleSearch(bibleRefInfo, signal, version, { isBackground: false });
+        primarySearchPromise = runBibleSearch(bibleRefInfo, signal, version, {
+          isBackground: false,
+        });
         // Background: Songs
-        runSongsSearch(rawQuery, signal, version, { isBackground: true }).catch(() => {});
+        runSongsSearch(rawQuery, signal, version, { isBackground: true }).catch(
+          () => {}
+        );
       } else if (isDidYouMean) {
         showDidYouMeanSuggestion(bibleRefInfo);
-        primarySearchPromise = Promise.resolve(); 
+        primarySearchPromise = Promise.resolve();
         // Background: Songs
-        runSongsSearch(rawQuery, signal, version, { isBackground: true }).catch(() => {});
+        runSongsSearch(rawQuery, signal, version, { isBackground: true }).catch(
+          () => {}
+        );
       } else if (refShaped && bibleRefInfo === null) {
         // Ref-shaped but no match (e.g., "Asdf 1:1")
         if (verseContainer) {
@@ -3386,81 +4280,144 @@ async function searchForQuery(event) {
               No verses found for "${safeQuery}".
             </div>`;
         }
-        primarySearchPromise = Promise.resolve(); 
+        primarySearchPromise = Promise.resolve();
       } else {
         // NOT reference-shaped (e.g., "love") -> Text Search
-        primarySearchPromise = runBibleTextSearch(rawQuery, signal, version, { isBackground: false });
+        primarySearchPromise = runBibleTextSearch(rawQuery, signal, version, {
+          isBackground: false,
+        });
         // Background: Songs
-        runSongsSearch(rawQuery, signal, version, { isBackground: true }).catch(() => {});
+        runSongsSearch(rawQuery, signal, version, { isBackground: true }).catch(
+          () => {}
+        );
+      }
+    }
+
+    // --- CASE: CROSS REF MODE ---
+    else if (window.currentSearchMode === "crossref") {
+      event.preventDefault();
+
+      try {
+        // Ensure drawer + mode are correct
+        setSearchMode("crossref", { openDrawer: true });
+
+        // 1) Cross references (primary for this mode) – force refetch for new query
+        if (typeof updateCrossrefsFromCurrentContext === "function") {
+          updateCrossrefsFromCurrentContext(true);
+        }
+
+        // 2) Background Songs search (so Songs tab is warm)
+        try {
+          runSongsSearch(rawQuery, signal, version, {
+            isBackground: true,
+          }).catch(() => {});
+        } catch (_) {}
+
+        // 3) Background Bible search (chapter/verses or text, just like Bible mode)
+        try {
+          if (isClearBibleRef) {
+            runBibleSearch(bibleRefInfo, signal, version, {
+              isBackground: true,
+            }).catch(() => {});
+          } else {
+            runBibleTextSearch(rawQuery, signal, version, {
+              isBackground: true,
+            }).catch(() => {});
+          }
+        } catch (_) {}
+
+        // 4) Optional: warm Interlinear panel if the query looks like a verse.
+        // This populates the panel but does NOT change the mode.
+        try {
+          if (
+            refShaped &&
+            typeof populateInterlinearFromCurrentQuery === "function"
+          ) {
+            populateInterlinearFromCurrentQuery();
+          }
+        } catch (_) {}
+      } catch (err) {
+        console.error("Crossref search failed:", err);
       }
 
-    } 
-    
+      // We fully handled the submit
+      return false;
+    }
+
     // --- CASE: SONGS MODE ---
     else {
-      primarySearchPromise = runSongsSearch(rawQuery, signal, version, { isBackground: false });
-      
+      primarySearchPromise = runSongsSearch(rawQuery, signal, version, {
+        isBackground: false,
+      });
+
       // Background Bible Search
       if (isClearBibleRef) {
-        runBibleSearch(bibleRefInfo, signal, version, { isBackground: true }).catch(() => {});
+        runBibleSearch(bibleRefInfo, signal, version, {
+          isBackground: true,
+        }).catch(() => {});
       } else if (isDidYouMean) {
-        showDidYouMeanSuggestion(bibleRefInfo); 
+        showDidYouMeanSuggestion(bibleRefInfo);
       } else if (!refShaped) {
-        runBibleTextSearch(rawQuery, signal, version, { isBackground: true }).catch(() => {});
+        runBibleTextSearch(rawQuery, signal, version, {
+          isBackground: true,
+        }).catch(() => {});
       }
     }
-    
+
     // --- 5. Wait for the Primary task to complete ---
     if (primarySearchPromise) {
-        await primarySearchPromise;
+      await primarySearchPromise;
     }
-
   } catch (err) {
     if (!signal.aborted) {
       // console.error("Error in searchForQuery:", err);
-      const container = currentSearchMode === 'bible' ? verseContainer : songsContainer;
-      if (container && currentSearchMode !== 'interlinear') {
+      const container =
+        currentSearchMode === "bible" ? verseContainer : songsContainer;
+      if (container && currentSearchMode !== "interlinear") {
         const safeQuery = escapeHtml(rawQuery);
-        const safeMessage = err.message ? escapeHtml(err.message) : `No results found for "${safeQuery}".`;
+        const safeMessage = err.message
+          ? escapeHtml(err.message)
+          : `No results found for "${safeQuery}".`;
         container.innerHTML = `<div class="search-query-no-verse-found-container" style="text-align:center; color:var(--muted); padding: 15px;">${safeMessage}</div>`;
       }
     }
   } finally {
     // Hide main loader (unless we are in interlinear, which handles its own)
-    if (loader && currentSearchMode !== 'interlinear') {
-        loader.style.display = "none";
+    if (loader && currentSearchMode !== "interlinear") {
+      loader.style.display = "none";
     }
-    if (searchQueryFullContainer && currentSearchMode !== 'interlinear') {
-        searchQueryFullContainer.style.display = "flex";
+    if (searchQueryFullContainer && currentSearchMode !== "interlinear") {
+      searchQueryFullContainer.style.display = "flex";
     }
   }
 
   return false; // prevent default navigation
 }
 
-
 // ... (closeSearchQuery unchanged) ...
 function closeSearchQuery() {
   searchDrawerOpen = false;
+
+  // Reset crossref mode back to bible so reopening works
+  if (window.currentSearchMode === "crossref") {
+    window.setSearchMode("bible", { openDrawer: false, suppressSave: true });
+  }
+
   applyLayout(true);
   if (searchBar) searchQuery.textContent = `Search for "${searchBar.value}"`;
 
-  // OPTIMIZATION: Abort in-flight search when panel is closed
   if (globalSearchController) {
     globalSearchController.abort();
     globalSearchController = null;
   }
-  // NEW: Abort prefetch controller
   if (typeAheadController) {
     typeAheadController.abort();
     typeAheadController = null;
   }
-  // Abort Bible Search API controller (from original script)
   if (activeBibleSearchController) {
     activeBibleSearchController.abort();
     activeBibleSearchController = null;
   }
-  // Abort debounced search
   clearTimeout(searchDebounceTimer);
 }
 
@@ -3481,7 +4438,7 @@ function setTheme(isLight) {
 setTheme(localStorage.getItem("theme") === "light");
 toggle?.addEventListener("click", () => {
   // console.log("Change Theme!")
-  setTheme(body.classList.contains("light"))
+  setTheme(body.classList.contains("light"));
 });
 
 // ==================== Selection + Action buttons ====================
@@ -3527,16 +4484,19 @@ function setConnectMode(on) {
 }
 
 function selectItem(el) {
+  // initial
+  syncHandleScaleVar();
+  
   if (!el) return;
   if (selectedItem && selectedItem !== el) {
     selectedItem.classList.remove("selected-connection");
   }
   selectedItem = el;
   el.classList.add("selected-connection");
-  
+
   // FIX: Ensure selection brings item to front
   bringToFront(el);
-  
+
   updateActionButtonsEnabled();
 }
 
@@ -3552,7 +4512,7 @@ workspace.addEventListener("click", (e) => {
   if (touchMoved || window.__readOnly || ignoreNextClick) return;
 
   const item = e.target.closest(".board-item");
-  
+
   if (typeof isGroupingMode !== "undefined" && isGroupingMode) {
     if (item) {
       toggleGroupSelection(item);
@@ -3579,11 +4539,12 @@ document.addEventListener("click", (e) => {
   const insideWorkspace = e.target.closest("#workspace");
   const insideAction = e.target.closest("#action-buttons-container");
   const insideSearch = e.target.closest("#search-container"); // Don't deselect when clicking search
+  const insideColorToolbar = e.target.closest("#connection-color-toolbar"); // ✅ NEW
 
   // Allow deselecting in read-only, just don't do work if nothing is selected
   if (window.__readOnly && !selectedItem) return;
 
-  if (!insideWorkspace && !insideAction && !insideSearch) {
+  if (!insideWorkspace && !insideAction && !insideSearch && !insideColorToolbar) {
     // 🔵 IMPORTANT: do NOT auto-close the search panel here anymore.
     // It should only close via Esc key or the Esc button.
 
@@ -3596,6 +4557,7 @@ document.addEventListener("click", (e) => {
     }
   }
 });
+
 
 // ... (keydown listener unchanged) ...
 document.addEventListener("keydown", (e) => {
@@ -3611,7 +4573,11 @@ document.addEventListener("keydown", (e) => {
 const disconnectModeBtn = document.getElementById("disconnect-mode-btn");
 if (disconnectModeBtn) {
   disconnectModeBtn.addEventListener("click", () => {
-    if (!window.BoardAPI || typeof window.BoardAPI.toggleDisconnectMode !== "function") return;
+    if (
+      !window.BoardAPI ||
+      typeof window.BoardAPI.toggleDisconnectMode !== "function"
+    )
+      return;
 
     window.BoardAPI.toggleDisconnectMode();
     const on =
@@ -3620,7 +4586,6 @@ if (disconnectModeBtn) {
     disconnectModeBtn.classList.toggle("active", !!on);
   });
 }
-
 
 connectBtn?.addEventListener("click", (e) => {
   e.preventDefault();
@@ -3643,7 +4608,7 @@ deleteBtn?.addEventListener("click", (e) => {
   // --- NEW: Group Delete ---
   if (isGroupingMode && selectedGroupItems.size > 0) {
     if (confirm(`Delete ${selectedGroupItems.size} items?`)) {
-      selectedGroupItems.forEach(el => {
+      selectedGroupItems.forEach((el) => {
         window.BoardAPI.deleteItem(el);
       });
       selectedGroupItems.clear();
@@ -3671,7 +4636,10 @@ function openInterlinearPanel() {
     interPanel.setAttribute("aria-busy", "true");
   }
   if (interLoader) interLoader.style.display = "flex";
-  if (interError) { interError.style.display = "none"; interError.textContent = "Couldn’t load interlinear data."; }
+  if (interError) {
+    interError.style.display = "none";
+    interError.textContent = "Couldn’t load interlinear data.";
+  }
   if (interList) interList.innerHTML = "";
 }
 
@@ -3791,7 +4759,7 @@ async function fetchInterlinear(book, chapter, verse, signal) {
 function renderInterlinearTokens(tokens, referenceTitle) {
   const list = document.getElementById("interlinear-list");
   if (!list) return;
-  
+
   list.innerHTML = ""; // Clear loading state
 
   if (!tokens || tokens.length === 0) {
@@ -3802,15 +4770,24 @@ function renderInterlinearTokens(tokens, referenceTitle) {
   tokens.forEach((token, index) => {
     // Create the Row
     const row = document.createElement("div");
-    row.className = "interlinear-row"; 
+    row.className = "interlinear-row";
 
     // Extract Data with safe fallbacks
-    const surface = token.text || token.surface || token.original || token.word || "?";
-    const english = token.gloss || token.english || token.translated || token.definition || token.meaning || token.trans || token.translation || "?";
+    const surface =
+      token.text || token.surface || token.original || token.word || "?";
+    const english =
+      token.gloss ||
+      token.english ||
+      token.translated ||
+      token.definition ||
+      token.meaning ||
+      token.trans ||
+      token.translation ||
+      "?";
     const translit = token.translit || token.transliteration || "";
     const morph = token.morph || token.grammar || "";
     const strong = token.strong || token.strongs || "";
-    
+
     // Build Content
     const surfaceEl = document.createElement("div");
     surfaceEl.className = "interlinear-surface";
@@ -3822,14 +4799,15 @@ function renderInterlinearTokens(tokens, referenceTitle) {
 
     const metaEl = document.createElement("div");
     metaEl.className = "interlinear-meta";
-    if (translit) metaEl.innerHTML += `<span class="meta-chip">${translit}</span>`;
+    if (translit)
+      metaEl.innerHTML += `<span class="meta-chip">${translit}</span>`;
     if (morph) metaEl.innerHTML += `<span class="meta-chip">${morph}</span>`;
     if (strong) metaEl.innerHTML += `<span class="meta-chip">${strong}</span>`;
 
     // --- THE ADD BUTTON ---
     const addBtn = document.createElement("div");
     addBtn.className = "search-query-verse-add-button";
-    
+
     // Data payload
     const cardData = {
       type: "interlinear",
@@ -3838,18 +4816,21 @@ function renderInterlinearTokens(tokens, referenceTitle) {
       translit: translit,
       morph: morph,
       strong: strong,
-      reference: `${referenceTitle}:${index + 1}`
+      reference: `${referenceTitle}:${index + 1}`,
     };
 
     // Check if already selected (Persistence)
     const key = `${cardData.reference}::${surface}`;
-    if (window.pendingInterlinearAdds && window.pendingInterlinearAdds.has(key)) {
-       row.classList.add("selected-for-add");
-       addBtn.classList.add("selected");
+    if (
+      window.pendingInterlinearAdds &&
+      window.pendingInterlinearAdds.has(key)
+    ) {
+      row.classList.add("selected-for-add");
+      addBtn.classList.add("selected");
     }
 
     // --- CLICK HANDLERS (New Logic) ---
-    
+
     // 1. Button Click (Stop propagation to prevent double-toggle)
     addBtn.onclick = (e) => {
       e.stopPropagation();
@@ -3997,7 +4978,7 @@ async function fetchSongs(query, limit = 5, signal = null) {
     entity: "song",
     limit: String(limit),
   }).toString()}`;
-  
+
   try {
     // OPTIMIZATION: Pass signal to fetch
     const r = await fetch(url, { signal });
@@ -4037,8 +5018,10 @@ function addSongElement({ title, artist, cover }, delay = 0) {
   el.dataset.cover = cover || "";
 
   const vpRect = viewport.getBoundingClientRect();
-  const visibleX = viewport.scrollLeft / scale, visibleY = viewport.scrollTop / scale;
-  const visibleW = vpRect.width / scale, visibleH = vpRect.height / scale;
+  const visibleX = viewport.scrollLeft / scale,
+    visibleY = viewport.scrollTop / scale;
+  const visibleW = vpRect.width / scale,
+    visibleH = vpRect.height / scale;
   const baseX = visibleX + (visibleW - 320) / 2;
   const baseY = visibleY + (visibleH - 90) / 2;
 
@@ -4046,10 +5029,10 @@ function addSongElement({ title, artist, cover }, delay = 0) {
     el.style.opacity = "0";
     el.style.animation = "loadItemToBoard 1s forwards " + delay + "s";
     el.style.left = `${baseX + delay * 200}px`;
-    el.style.top  = `${baseY + delay * 200}px`;
+    el.style.top = `${baseY + delay * 200}px`;
   } else {
     el.style.left = `${baseX}px`;
-    el.style.top  = `${baseY}px`;
+    el.style.top = `${baseY}px`;
   }
 
   // FIX: Force to front
@@ -4065,8 +5048,11 @@ function addSongElement({ title, artist, cover }, delay = 0) {
     </div>
   `;
 
+  attachSelectionFrame(el);
+
   workspace.appendChild(el);
-  el.dataset.vkey = el.dataset.vkey || "v_" + Math.random().toString(36).slice(2);
+  el.dataset.vkey =
+    el.dataset.vkey || "v_" + Math.random().toString(36).slice(2);
 
   el.onmousedown = (e) => {
     if (typeof startDragMouse === "function") startDragMouse(el, e);
@@ -4075,7 +5061,6 @@ function addSongElement({ title, artist, cover }, delay = 0) {
   onBoardMutated("add_song");
   return el;
 }
-
 
 // ---------- AUTOSAVE: Wire title edit ----------
 // ... (Unchanged, but with read-only guard) ...
@@ -4105,6 +5090,10 @@ function addSongElement({ title, artist, cover }, delay = 0) {
     el.addEventListener("blur", trigger, { passive: true });
   }
 })();
+
+document.addEventListener("DOMContentLoaded", () => {
+  initCrossRefSelectionDelegation();
+});
 
 // ---------- AUTOSAVE: MutationObserver Fallback ----------
 // ... (Unchanged, but with read-only guard) ...
@@ -4155,16 +5144,65 @@ function addSongElement({ title, artist, cover }, delay = 0) {
   });
 })();
 
+// ------------------------------
+// Cross Reference "+" selection
+// ------------------------------
+
+let crossRefSelectionBound = false;
+
+function initCrossRefSelectionDelegation() {
+  if (crossRefSelectionBound) return;
+  crossRefSelectionBound = true;
+
+  const container = document.getElementById("search-query-crossref-container");
+  if (!container) return;
+
+  container.addEventListener("click", (e) => {
+    const btn = e.target.closest(".search-query-verse-add-button");
+    const card = e.target.closest(".search-query-verse-container");
+    if (!card) return;
+
+    // Verse metadata filled by fillVerseBatch(...)
+    const reference = card.dataset.ref || card.dataset.reference;
+    const text = card.dataset.text || "";
+    const version =
+      card.dataset.version ||
+      (typeof safeGetSelectedVersion === "function"
+        ? safeGetSelectedVersion()
+        : "KJV");
+
+    if (!reference) return;
+
+    const verseData = { reference, text, version };
+    const targetBtn =
+      btn || card.querySelector(".search-query-verse-add-button");
+
+    if (
+      verseData &&
+      targetBtn &&
+      typeof window.toggleVerseSelection === "function"
+    ) {
+      if (btn) {
+        // Don't let the click bubble to the card itself
+        e.stopPropagation();
+      }
+      window.toggleVerseSelection(verseData, targetBtn);
+    }
+  });
+}
+
 (function initVerseClickDelegation() {
-  const verseContainer = document.getElementById("search-query-verse-container");
-  
+  const verseContainer = document.getElementById(
+    "search-query-verse-container"
+  );
+
   if (!verseContainer) return;
 
   verseContainer.addEventListener("click", (e) => {
     // 1. Identify targets
     const btn = e.target.closest(".search-query-verse-add-button");
     const card = e.target.closest(".verse, .search-query-verse-container");
-    
+
     if (!card) return;
 
     // 2. Extract Data
@@ -4178,17 +5216,18 @@ function addSongElement({ title, artist, cover }, delay = 0) {
     const verseData = {
       reference: reference,
       text: text,
-      version: version
+      version: version,
     };
 
     // 3. Find the button (if we clicked the row, we still need the button element to update it)
-    const targetBtn = btn || card.querySelector(".search-query-verse-add-button");
+    const targetBtn =
+      btn || card.querySelector(".search-query-verse-add-button");
 
     if (verseData && targetBtn) {
       // 4. Execute Toggle
       // (Stop propagation if we clicked the button directly to prevent potential double-firing)
       if (btn) {
-        e.stopPropagation(); 
+        e.stopPropagation();
       }
       toggleVerseSelection(verseData, targetBtn);
     }
@@ -4203,7 +5242,7 @@ function addSongElement({ title, artist, cover }, delay = 0) {
   bibleBtn?.addEventListener("click", () => {
     setSearchMode("bible");
     // Optionally: re-run search for the same query in the new mode
-    // searchForQuery(null); 
+    // searchForQuery(null);
   });
 
   songsBtn?.addEventListener("click", () => {
@@ -4612,7 +5651,6 @@ function applyReadOnlyGuards(isReadOnly) {
     // 6. Show Export button
     // if (exportBtn) exportBtn.style.display = "inline-block";
     if (exportBtn) exportBtn.style.display = "none"; // Make sure it's visible
-
   }
 }
 
@@ -4720,7 +5758,7 @@ function deserializeBoard(data) {
             el.style.left = item.left;
             el.style.top = item.top;
             // Restore saved Z-Index
-            el.style.zIndex = item.zIndex || "10"; 
+            el.style.zIndex = item.zIndex || "10";
             el.dataset.vkey = item.vkey;
             itemEls[item.vkey] = el;
           }
@@ -4774,9 +5812,9 @@ function deserializeBoard(data) {
     // Find the highest z-index on the board and ensure new items appear above it
     const allItems = document.querySelectorAll(".board-item");
     let maxZ = 0;
-    allItems.forEach(el => {
-        const z = parseInt(el.style.zIndex) || 0;
-        if (z > maxZ) maxZ = z;
+    allItems.forEach((el) => {
+      const z = parseInt(el.style.zIndex) || 0;
+      if (z > maxZ) maxZ = z;
     });
     // Update the global counter so the next click/add is definitely on top
     currentIndex = maxZ + 1;
@@ -4819,8 +5857,7 @@ function buildBoardTourSteps() {
       id: "search",
       target: () => document.getElementById("search-bar"),
       title: "Search anything",
-      text:
-        "Use this search bar to find verses, topics, and songs. It's your quick entry into the board.",
+      text: "Use this search bar to find verses, topics, and songs. It's your quick entry into the board.",
       placement: "top",
       allowPointerThrough: true,
       beforeStep: () => {
@@ -5134,6 +6171,328 @@ function setupBoardSettingsPanel() {
   }
 }
 
+// ============================================================
+//                  CROSS REFERENCE MODE (FINAL)
+// ============================================================
+
+// API Endpoint
+const CROSSREF_API_BASE = "https://full-bible-api.onrender.com/crossref";
+
+let crossRefResults = [];
+let crossRefRenderedCount = 0;
+let crossRefAbortController = null;
+let lastCrossRefKey = "";
+
+// --- Normalizes reference strings so that "Gen", "Genesis" etc. map consistently ---
+function normalizeRef(ref) {
+  if (!ref) return "";
+  return ref
+    .replace(/\s+/g, "")
+    .replace(/([A-Za-z]+)(\d+)/, "$1 $2")
+    .trim()
+    .toLowerCase()
+    .replace("genesis", "gen")
+    .replace("exodus", "exod")
+    .replace("psalms", "ps")
+    .replace("psalm", "ps")
+    .replace("proverbs", "prov")
+    .replace("isaiah", "isa")
+    .replace("john", "john") // keep
+    .replace("hebrews", "heb");
+}
+
+// Helpers
+function isMultiVerseReference(ref) {
+  if (!ref) return false;
+
+  // If it contains a dash, it's a range.
+  if (ref.includes("-")) return true;
+
+  // If it contains two verse numbers without a dash, but split oddly:
+  // Example: "John 1 1" (missing colon), treat as invalid.
+  const parts = ref.trim().split(/\s+/);
+
+  // Valid single verse should match something like "John", "1:3"
+  const last = parts[parts.length - 1];
+  if (!/^\d+:\d+$/.test(last)) return true;
+
+  return false;
+}
+
+function $(id) {
+  return document.getElementById(id);
+}
+
+// Normalize a book name from user input (e.g. "1 peter", "1Pe")
+// to the canonical label from bibleBookCodes (e.g. "1 Peter").
+function normalizeBookForCrossref(book) {
+  if (!book) return "";
+
+  const target = book.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+  for (const full of Object.keys(bibleBookCodes)) {
+    const normFull = full.toLowerCase().replace(/[^a-z0-9]/g, "");
+    if (normFull === target) {
+      // Exact canonical match, e.g. "1 Peter"
+      return full;
+    }
+  }
+
+  // Fallback: basic title-case so "1 peter" -> "1 Peter"
+  return book
+    .split(/\s+/)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(" ");
+}
+
+// Take whatever the user typed ("1 peter 1:1", "1 Peter1:1", etc.)
+// and turn it into a canonical "Book Chapter:Verse" string
+// using your existing reference parser + bibleBookCodes.
+function cleanRefForApi(rawRef) {
+  if (!rawRef) return "";
+  let ref = String(rawRef).trim();
+
+  // Try to parse with the helper you already have
+  const parts = parseReferenceToParts(ref); // { book, chapter, verse } or null
+
+  if (parts) {
+    let { book, chapter, verse } = parts;
+
+    // Normalize the book using bibleBookCodes (handles "1 Peter", "1 peter", etc.)
+    const target = book.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+    let canonicalBook = null;
+    for (const fullName of Object.keys(bibleBookCodes)) {
+      const normFull = fullName.toLowerCase().replace(/[^a-z0-9]/g, "");
+      if (normFull === target) {
+        canonicalBook = fullName;
+        break;
+      }
+    }
+
+    // Fallback: simple title-case if not found in bibleBookCodes
+    if (!canonicalBook) {
+      canonicalBook = book
+        .split(/\s+/)
+        .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+        .join(" ");
+    }
+
+    return `${canonicalBook} ${chapter}:${verse}`;
+  }
+
+  // Fallback path if parsing failed: at least ensure "Genesis1:1" → "Genesis 1:1"
+  ref = ref.replace(/(\D+)(\d+:\d+)/, "$1 $2");
+  return ref.trim();
+}
+
+// Build valid API URL
+function buildCrossrefUrl(ref) {
+  const cleaned = cleanRefForApi(ref);
+  console.log("[Crossref] Fetching for:", cleaned);
+  return `${CROSSREF_API_BASE}/?verse=${encodeURIComponent(cleaned)}`;
+}
+
+// Display error or empty state
+function renderCrossrefsMessage(msg, type = "empty") {
+  const wrap = $("search-query-crossref-container");
+  if (!wrap) return;
+  wrap.innerHTML = "";
+
+  const div = document.createElement("div");
+  div.className =
+    type === "error" ? "crossref-error-message" : "crossref-empty-message";
+  div.textContent = msg;
+
+  wrap.appendChild(div);
+}
+
+// Build individual result row
+// Build a "Bible-style" card shell for a cross-reference.
+// fillVerseBatch will later fill in the verse text and wire the + button.
+function buildCrossRefRowShell(ref, votes, version) {
+  const row = document.createElement("div");
+  row.className = "search-query-verse-container crossref-row";
+  row.dataset.status = "loading";
+  row.dataset.ref = ref;
+  row.dataset.version = version;
+
+  row.innerHTML = `
+    <div class="search-query-verse-text">Loading...</div>
+    <div class="search-query-verse-reference">
+      – ${ref} ${version.toUpperCase()}
+    </div>
+  `;
+  return row;
+}
+
+// Render one "page" of Crossref results
+function renderCrossRefPage(isFirstPage) {
+  const wrap = $("search-query-crossref-container");
+  if (!wrap || !crossRefResults || !crossRefResults.length) return;
+
+  const version = safeGetSelectedVersion() || "KJV";
+
+  // First page: clear + reset counter
+  if (isFirstPage) {
+    wrap.innerHTML = "";
+    crossRefRenderedCount = 0;
+  } else {
+    // Remove old "Load more" wrapper if present
+    const oldMore = wrap.querySelector(".crossref-load-more-wrapper");
+    if (oldMore) oldMore.remove();
+  }
+
+  const LOAD_SIZE = isFirstPage
+    ? CROSSREF_INITIAL_VISIBLE_COUNT
+    : CROSSREF_LOAD_MORE_CHUNK;
+
+  const start = crossRefRenderedCount;
+  const end = Math.min(start + LOAD_SIZE, crossRefResults.length);
+  if (start >= end) return;
+
+  const verseBatch = [];
+
+  for (let i = start; i < end; i++) {
+    const item = crossRefResults[i];
+    if (!item) continue;
+
+    const cleanedRef = cleanRefForApi(item.cross_ref);
+    if (!cleanedRef) continue;
+
+    // ❗ SKIP multi-verse references
+    if (isMultiVerseReference(cleanedRef)) {
+      console.warn("Skipping multi-verse crossref:", cleanedRef);
+      continue;
+    }
+
+    const displayRef = expandReferenceAbbrev(cleanedRef);
+
+    const card = buildCrossRefRowShell(displayRef, item.votes, version);
+    wrap.appendChild(card);
+
+    verseBatch.push({ ref: displayRef, el: card });
+  }
+
+  crossRefRenderedCount = end;
+
+  // ⬅️ THIS is the key change: we now pass { ref, el } objects
+  // and a real version argument.
+  if (verseBatch.length) {
+    fillVerseBatch(verseBatch, null, version);
+  }
+
+  // Show "Load more" if there are more crossrefs
+  if (crossRefRenderedCount < crossRefResults.length) {
+    const moreWrap = document.createElement("div");
+    moreWrap.className = "crossref-load-more-wrapper";
+
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "search-load-more";
+    btn.textContent = "Load more";
+
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      renderCrossRefPage(false);
+    });
+
+    moreWrap.appendChild(btn);
+    wrap.appendChild(moreWrap);
+  }
+}
+
+// Fetch API → parse → render
+async function fetchAndRenderCrossrefs(ref) {
+  const cleaned = cleanRefForApi(ref);
+  console.log("[Crossref] Fetching for:", cleaned);
+
+  const wrap = $("search-query-crossref-container");
+
+  if (!cleaned) {
+    renderCrossrefsMessage("Enter a valid verse reference.");
+    return;
+  }
+
+  const url = buildCrossrefUrl(cleaned);
+
+  if (crossRefAbortController) {
+    try {
+      crossRefAbortController.abort();
+    } catch (_) {}
+  }
+  crossRefAbortController = new AbortController();
+
+  $("crossref-loader").style.display = "block";
+  wrap.innerHTML = "";
+
+  try {
+    const res = await fetch(url, { signal: crossRefAbortController.signal });
+    if (!res.ok) throw new Error("Crossref API error " + res.status);
+
+    const data = await res.json();
+
+    // important: Extract results array
+    crossRefResults = Array.isArray(data.results) ? data.results : [];
+
+    if (crossRefResults.length === 0) {
+      renderCrossrefsMessage(
+        'No cross references for "' + searchBar.value + '".'
+      );
+      return;
+    }
+
+    renderCrossRefPage(true);
+  } catch (err) {
+    if (err.name !== "AbortError") {
+      console.error("Crossref fetch error:", err);
+      renderCrossrefsMessage("Error loading cross references.", "error");
+    }
+  } finally {
+    $("crossref-loader").style.display = "none";
+  }
+}
+
+// Update from context (entry point)
+function updateCrossrefsFromCurrentContext(force = false) {
+  if (window.currentSearchMode !== "crossref") return;
+
+  const bar = $("search-bar");
+  const raw = bar?.value?.trim() ?? "";
+
+  if (!raw) {
+    renderCrossrefsMessage("Enter a verse reference to see results.");
+    return;
+  }
+
+  // ✅ Normalize to a full, canonical reference like "1 Peter 1:3"
+  const canonicalRef = cleanRefForApi(raw);
+  if (!canonicalRef) {
+    renderCrossrefsMessage("Enter a valid verse reference.");
+    return;
+  }
+
+  const key = canonicalRef;
+  if (!force && key === lastCrossRefKey) return;
+  lastCrossRefKey = key;
+
+  // We pass the canonical ref; fetchAndRenderCrossrefs will still re-clean it,
+  // which is harmless and keeps behavior consistent.
+  fetchAndRenderCrossrefs(canonicalRef);
+}
+
+window.updateCrossrefsFromCurrentContext = updateCrossrefsFromCurrentContext;
+
+// "Load More" button
+document.addEventListener("DOMContentLoaded", () => {
+  const btn = $("crossref-load-more");
+  if (btn) {
+    btn.addEventListener("click", () => {
+      renderCrossRefPage(false);
+    });
+  }
+});
+
 setupBoardSettingsPanel();
 
 // ===== expose a small API for the Supabase module (keep at end of script.js) =====
@@ -5229,7 +6588,7 @@ window.BoardAPI = {
    * @param {object} data The board state object.
    */
   deserializeBoard,
-}
+};
 
 /**
  * Parse "Book C:V" into {book, chapter, verse} or null
@@ -5237,15 +6596,17 @@ window.BoardAPI = {
 function parseReferenceString(refStr) {
   if (!refStr) return null;
   let s = String(refStr)
-    .replace(/\(.*?\)/g, '')
-    .replace(/[“”"']/g, '')
+    .replace(/\(.*?\)/g, "")
+    .replace(/[“”"']/g, "")
     .trim();
   const m = s.match(/^([\dI]{0,3}\s*[A-Za-z .'-]+?)\s+(\d+):(\d+)$/);
   if (!m) return null;
-  return { book: m[1].trim(), chapter: parseInt(m[2], 10), verse: parseInt(m[3], 10) };
+  return {
+    book: m[1].trim(),
+    chapter: parseInt(m[2], 10),
+    verse: parseInt(m[3], 10),
+  };
 }
-
-
 
 /**
  * Open Interlinear for current search query (if verse). Otherwise show "No interlinear for ..."
@@ -5268,9 +6629,16 @@ function openInterlinearFromCurrentQuery() {
   const ref = parseReferenceString(q);
   if (ref && typeof openInterlinearForReference === "function") {
     // Ensure drawer is open
-    if (!window.searchDrawerOpen) { window.searchDrawerOpen = true; try { applyLayout && applyLayout(true); } catch {} }
+    if (!window.searchDrawerOpen) {
+      window.searchDrawerOpen = true;
+      try {
+        applyLayout && applyLayout(true);
+      } catch {}
+    }
     // Switch to Interlinear mode
-    try { setSearchMode && setSearchMode("interlinear", { openDrawer: true }); } catch {}
+    try {
+      setSearchMode && setSearchMode("interlinear", { openDrawer: true });
+    } catch {}
     // Fetch and render
     openInterlinearForReference(`${ref.book} ${ref.chapter}:${ref.verse}`);
   } else {
@@ -5278,16 +6646,18 @@ function openInterlinearFromCurrentQuery() {
     if (interPanel) interPanel.setAttribute("aria-busy", "false");
     if (interLoader) interLoader.style.display = "none";
     if (interError) interError.style.display = "none";
-    if (interList) interList.innerHTML = q
-      ? `<div class="search-query-no-verse-found-container" style="text-align:center; color:var(--muted); padding: 12px;">No interlinear for "${q}". Please search for a verse(John 3:16, e.g)</div>`
-      : `<div class="search-query-no-verse-found-container" style="text-align:center; color:var(--muted); padding: 12px;">No interlinear.</div>`;
+    if (interList)
+      interList.innerHTML = q
+        ? `<div class="search-query-no-verse-found-container" style="text-align:center; color:var(--muted); padding: 12px;">No interlinear for "${q}". Please search for a verse(John 3:16, e.g)</div>`
+        : `<div class="search-query-no-verse-found-container" style="text-align:center; color:var(--muted); padding: 12px;">No interlinear.</div>`;
   }
 }
 
-
 function populateInterlinearFromCurrentQuery() {
   const bar = document.getElementById("search-bar");
-  const q = (bar && bar.value ? bar.value.trim() : "") || (window.__lastRawQuery || "").trim();
+  const q =
+    (bar && bar.value ? bar.value.trim() : "") ||
+    (window.__lastRawQuery || "").trim();
 
   const interList = document.getElementById("interlinear-list");
   const interLoader = document.getElementById("interlinear-loader");
@@ -5301,10 +6671,18 @@ function populateInterlinearFromCurrentQuery() {
 
   // Prefer project parser if available
   let ref = null;
-  try { if (typeof parseReferenceString === "function") ref = parseReferenceString(q); } catch {}
+  try {
+    if (typeof parseReferenceString === "function")
+      ref = parseReferenceString(q);
+  } catch {}
   if (!ref && q) {
     const m = q.match(/^([\dI]{0,3}\s*[A-Za-z .'-]+?)\s+(\d+):(\d+)$/);
-    if (m) ref = { book: m[1].trim(), chapter: parseInt(m[2],10), verse: parseInt(m[3],10) };
+    if (m)
+      ref = {
+        book: m[1].trim(),
+        chapter: parseInt(m[2], 10),
+        verse: parseInt(m[3], 10),
+      };
   }
 
   if (ref && typeof openInterlinearForReference === "function") {
@@ -5314,15 +6692,12 @@ function populateInterlinearFromCurrentQuery() {
     if (interPanel) interPanel.setAttribute("aria-busy", "false");
     if (interLoader) interLoader.style.display = "none";
     if (interError) interError.style.display = "none";
-    if (interList) interList.innerHTML = q
-      ? `<div class="search-query-no-verse-found-container" style="text-align:center; color:var(--muted); padding: 12px;">No interlinear for "${q}". Please search for a verse(John 3:16, e.g)</div>`
-      : `<div class="search-query-no-verse-found-container" style="text-align:center; color:var(--muted); padding: 12px;">No interlinear.</div>`;
+    if (interList)
+      interList.innerHTML = q
+        ? `<div class="search-query-no-verse-found-container" style="text-align:center; color:var(--muted); padding: 12px;">No interlinear for "${q}". Please search for a verse(John 3:16, e.g)</div>`
+        : `<div class="search-query-no-verse-found-container" style="text-align:center; color:var(--muted); padding: 12px;">No interlinear.</div>`;
   }
 }
-
-
-
-
 
 // --- BEGIN: Interlinear-from-query hardening (drop-in) ---
 
@@ -5331,14 +6706,19 @@ window.__lastRawQuery = window.__lastRawQuery || "";
 
 // Robust "Book C:V" parser (uses the one already in your file)
 function __parseRefStrict(s) {
-  if (typeof parseReferenceString === "function") return parseReferenceString(s);
+  if (typeof parseReferenceString === "function")
+    return parseReferenceString(s);
   const t = String(s || "")
     .replace(/\(.*?\)/g, "")
     .replace(/[“”"']/g, "")
     .trim();
   const m = t.match(/^([\dI]{0,3}\s*[A-Za-z .'-]+?)\s+(\d+):(\d+)$/);
   if (!m) return null;
-  return { book: m[1].trim(), chapter: parseInt(m[2], 10), verse: parseInt(m[3], 10) };
+  return {
+    book: m[1].trim(),
+    chapter: parseInt(m[2], 10),
+    verse: parseInt(m[3], 10),
+  };
 }
 
 /**
@@ -5352,30 +6732,46 @@ async function openInterlinearFromCurrentQuery() {
 
   // console.log(q)
   const interPanel = document.getElementById("interlinear-panel");
-  const interList  = document.getElementById("interlinear-list");
-  const interErr   = document.getElementById("interlinear-error");
-  const interLoad  = document.getElementById("interlinear-loader");
+  const interList = document.getElementById("interlinear-list");
+  const interErr = document.getElementById("interlinear-error");
+  const interLoad = document.getElementById("interlinear-loader");
 
   // Make sure the panel is inline (not hidden behind the drawer)
-  try { mountInterlinearInline && mountInterlinearInline(); } catch {}
+  try {
+    mountInterlinearInline && mountInterlinearInline();
+  } catch {}
 
   // Ensure drawer open + switch to Interlinear
-  if (!window.searchDrawerOpen) { window.searchDrawerOpen = true; try { applyLayout?.(true); } catch {} }
-  try { setSearchMode?.("interlinear", { openDrawer: true }); } catch {}
+  if (!window.searchDrawerOpen) {
+    window.searchDrawerOpen = true;
+    try {
+      applyLayout?.(true);
+    } catch {}
+  }
+  try {
+    setSearchMode?.("interlinear", { openDrawer: true });
+  } catch {}
 
   // Reset UI
   if (interPanel) interPanel.setAttribute("aria-busy", "true");
-  if (interLoad)  interLoad.style.display = "flex";
-  if (interErr)   interErr.style.display  = "none";
-  if (interList)  interList.innerHTML     = "";
+  if (interLoad) interLoad.style.display = "flex";
+  if (interErr) interErr.style.display = "none";
+  if (interList) interList.innerHTML = "";
 
   // Parse "Book C:V" (use project parser if available)
-  const ref = (typeof parseReferenceString === "function")
-    ? parseReferenceString(q)
-    : (() => {
-        const m = q.match(/^([\dI]{0,3}\s*[A-Za-z .'-]+?)\s+(\d+):(\d+)$/);
-        return m ? { book: m[1].trim(), chapter: parseInt(m[2],10), verse: parseInt(m[3],10) } : null;
-      })();
+  const ref =
+    typeof parseReferenceString === "function"
+      ? parseReferenceString(q)
+      : (() => {
+          const m = q.match(/^([\dI]{0,3}\s*[A-Za-z .'-]+?)\s+(\d+):(\d+)$/);
+          return m
+            ? {
+                book: m[1].trim(),
+                chapter: parseInt(m[2], 10),
+                verse: parseInt(m[3], 10),
+              }
+            : null;
+        })();
 
   if (!ref) {
     // Not a verse-shaped query → show friendly message
@@ -5385,14 +6781,16 @@ async function openInterlinearFromCurrentQuery() {
         : `<div class="search-query-no-verse-found-container" style="text-align:center; color:var(--muted); padding: 12px;">No interlinear.</div>`;
     }
     if (interPanel) interPanel.setAttribute("aria-busy", "false");
-    if (interLoad)  interLoad.style.display = "none";
+    if (interLoad) interLoad.style.display = "none";
     return;
   }
 
   // Call your existing interlinear opener; ALWAYS stop the loader afterward
   try {
     if (typeof openInterlinearForReference === "function") {
-      await openInterlinearForReference(`${ref.book} ${ref.chapter}:${ref.verse}`);
+      await openInterlinearForReference(
+        `${ref.book} ${ref.chapter}:${ref.verse}`
+      );
     } else {
       throw new Error("openInterlinearForReference not found");
     }
@@ -5404,10 +6802,9 @@ async function openInterlinearFromCurrentQuery() {
     }
   } finally {
     if (interPanel) interPanel.setAttribute("aria-busy", "false");
-    if (interLoad)  interLoad.style.display = "none";
+    if (interLoad) interLoad.style.display = "none";
   }
 }
-
 
 // Capture the last query when the user presses Enter in the search bar,
 // so the Interlinear pill can immediately use it without retyping.
@@ -5432,21 +6829,24 @@ let _lastLoadedInterlinearRef = null;
 
 async function openInterlinearForReference(refString) {
   // Ensure panel visible/inline
-  try { mountInterlinearInline && mountInterlinearInline(); } catch {}
-  
+  try {
+    mountInterlinearInline && mountInterlinearInline();
+  } catch {}
+
   const interPanel = document.getElementById("interlinear-panel");
-  const interList  = document.getElementById("interlinear-list");
-  const interLoader= document.getElementById("interlinear-loader");
+  const interList = document.getElementById("interlinear-list");
+  const interLoader = document.getElementById("interlinear-loader");
   const interError = document.getElementById("interlinear-error");
 
   // 1. Parse the requested reference
   const ref = parseReferenceString(refString);
-  
+
   if (!ref) {
     // Handle invalid reference logic
     if (interPanel) interPanel.setAttribute("aria-busy", "false");
     if (interLoader) interLoader.style.display = "none";
-    if (interList) interList.innerHTML = `<div class="search-query-no-verse-found-container" style="text-align:center; color:var(--muted); padding: 12px;">No interlinear for "${refString}". Please search for a verse(John 3:16, e.g)</div>`;
+    if (interList)
+      interList.innerHTML = `<div class="search-query-no-verse-found-container" style="text-align:center; color:var(--muted); padding: 12px;">No interlinear for "${refString}". Please search for a verse(John 3:16, e.g)</div>`;
     return;
   }
 
@@ -5459,8 +6859,8 @@ async function openInterlinearForReference(refString) {
     // Just ensure UI is in "Ready" state (hide loader, show content)
     if (interPanel) interPanel.setAttribute("aria-busy", "false");
     if (interLoader) interLoader.style.display = "none";
-    if (interError)  interError.style.display = "none";
-    if (interList)   interList.style.display = "block";
+    if (interError) interError.style.display = "none";
+    if (interList) interList.style.display = "block";
     return; // <--- EXIT EARLY
   }
 
@@ -5470,8 +6870,8 @@ async function openInterlinearForReference(refString) {
   // Show Loading UI
   if (interPanel) interPanel.setAttribute("aria-busy", "true");
   if (interLoader) interLoader.style.display = "flex";
-  if (interError)  interError.style.display  = "none";
-  if (interList)   interList.innerHTML       = "";
+  if (interError) interError.style.display = "none";
+  if (interList) interList.innerHTML = "";
 
   // Map to code if bibleBookCodes exists
   let bookCode = ref.book;
@@ -5482,11 +6882,15 @@ async function openInterlinearForReference(refString) {
   } catch (_) {}
 
   // Build API URL
-  const apiUrl = `https://full-bible-api.onrender.com/interlinear/${encodeURIComponent(bookCode)}/${ref.chapter}/${ref.verse}`;
+  const apiUrl = `https://full-bible-api.onrender.com/interlinear/${encodeURIComponent(
+    bookCode
+  )}/${ref.chapter}/${ref.verse}`;
 
   // Abort previous in-flight request
   if (window.__interlinearAbortController) {
-    try { window.__interlinearAbortController.abort(); } catch (_) {}
+    try {
+      window.__interlinearAbortController.abort();
+    } catch (_) {}
   }
   const controller = new AbortController();
   window.__interlinearAbortController = controller;
@@ -5497,20 +6901,27 @@ async function openInterlinearForReference(refString) {
     if (typeof safeFetchWithFallbacks === "function") {
       resp = await safeFetchWithFallbacks(apiUrl, controller.signal);
     } else {
-      resp = await fetch(apiUrl, { signal: controller.signal, mode: "cors", credentials: "omit" });
+      resp = await fetch(apiUrl, {
+        signal: controller.signal,
+        mode: "cors",
+        credentials: "omit",
+      });
     }
-    
+
     const data = await resp.json();
-    const tokens = Array.isArray(data?.tokens) ? data.tokens : (Array.isArray(data) ? data : []);
-    
+    const tokens = Array.isArray(data?.tokens)
+      ? data.tokens
+      : Array.isArray(data)
+      ? data
+      : [];
+
     // Render
     renderInterlinearTokens(tokens, `${ref.book} ${ref.chapter}:${ref.verse}`);
-    
   } catch (err) {
     if (controller.signal.aborted) return;
-    
+
     // Reset cache on error so user can try again
-    _lastLoadedInterlinearRef = null; 
+    _lastLoadedInterlinearRef = null;
 
     console.warn("Interlinear fetch failed:", err);
     if (interError) {
@@ -5523,33 +6934,37 @@ async function openInterlinearForReference(refString) {
   }
 }
 
-// This should already be in your script.js, but ensure 
+// This should already be in your script.js, but ensure
 // it handles the visual toggling for the parent row correctly.
 function toggleItemInQueue(btn, rowElement, data) {
   const queue = window.itemsToAddQueue;
   const floatBtn = document.getElementById("floating-add-to-board-btn");
 
-  // Check if item is already in queue (simple object reference check might fail if recreating objs, 
+  // Check if item is already in queue (simple object reference check might fail if recreating objs,
   // but for this UI lifecycle it's usually fine. If strict dedupe needed, use a unique ID).
-  
+
   // Basic toggle logic
   if (btn.classList.contains("selected")) {
     // REMOVE
     btn.classList.remove("selected");
     rowElement.classList.remove("selected-for-add");
-    
+
     // Find and delete from Set (since object references might differ, we might need to find by ID/content)
     // Simple approach: Iterate set and match specific props
     for (const i of queue) {
-      if (i.type === data.type && 
-         (i.reference === data.reference && i.surface === data.surface)) { // Unique check for Interlinear
-         queue.delete(i);
-         break;
+      if (
+        i.type === data.type &&
+        i.reference === data.reference &&
+        i.surface === data.surface
+      ) {
+        // Unique check for Interlinear
+        queue.delete(i);
+        break;
       }
       // Add checks for verse/song uniqueness if needed
-      if (i.type === 'verse' && i.reference === data.reference) {
-         queue.delete(i);
-         break;
+      if (i.type === "verse" && i.reference === data.reference) {
+        queue.delete(i);
+        break;
       }
     }
   } else {
@@ -5564,7 +6979,7 @@ function toggleItemInQueue(btn, rowElement, data) {
     floatBtn.style.display = "flex";
     floatBtn.innerHTML = `<svg class="add-to-board-icon-open" ...>...</svg> Add ${queue.size} to Board`;
     // Add click listener only once or rely on global listener
-    floatBtn.onclick = flushItemsQueueToBoard; 
+    floatBtn.onclick = flushItemsQueueToBoard;
   } else {
     floatBtn.style.display = "none";
   }
@@ -5580,7 +6995,7 @@ async function flushItemsQueueToBoard() {
   // 1. Hide the search/drawer UI
   const searchContainer = document.getElementById("search-query-container");
   const searchInput = document.getElementById("search-bar");
-  
+
   // Fade out search
   if (searchContainer) {
     searchContainer.style.opacity = "0";
@@ -5589,7 +7004,7 @@ async function flushItemsQueueToBoard() {
       if (searchInput) searchInput.value = "";
     }, 250);
   }
-  
+
   // Hide Interlinear Panel if open
   const interlinearPanel = document.getElementById("interlinear-panel");
   if (interlinearPanel) interlinearPanel.classList.remove("open");
@@ -5608,7 +7023,7 @@ async function flushItemsQueueToBoard() {
 
   // Offset logic
   let index = 0;
-  const offsetStep = 30; 
+  const offsetStep = 30;
   const totalItems = window.itemsToAddQueue.size;
   const startX = centerX - ((totalItems - 1) * offsetStep) / 2;
   const startY = centerY - ((totalItems - 1) * offsetStep) / 2;
@@ -5625,22 +7040,22 @@ async function flushItemsQueueToBoard() {
         false, // not from load
         item.version
       );
-    } 
+    }
     // --- CASE: SONG ---
     else if (item.type === "song") {
       newEl = window.BoardAPI.addSongElement(item);
     }
     // --- NEW CASE: INTERLINEAR ---
     else if (item.type === "interlinear") {
-       // This calls the existing BoardAPI function (wrapped by undo-redo.js)
-       newEl = window.BoardAPI.addInterlinearCard({
-         surface: item.surface,
-         english: item.english,
-         translit: item.translit,
-         morph: item.morph,
-         strong: item.strong,
-         reference: item.reference
-       });
+      // This calls the existing BoardAPI function (wrapped by undo-redo.js)
+      newEl = window.BoardAPI.addInterlinearCard({
+        surface: item.surface,
+        english: item.english,
+        translit: item.translit,
+        morph: item.morph,
+        strong: item.strong,
+        reference: item.reference,
+      });
     }
 
     // 4. Position & Animate
@@ -5650,10 +7065,10 @@ async function flushItemsQueueToBoard() {
 
       newEl.style.left = `${x}px`;
       newEl.style.top = `${y}px`;
-      
+
       // Add the "pop-in" animation class
       newEl.classList.add("item-pop-in");
-      
+
       // Trigger a save/sync
       if (window.BoardAPI.triggerAutosave) {
         window.BoardAPI.triggerAutosave("items_flushed");
@@ -5664,16 +7079,17 @@ async function flushItemsQueueToBoard() {
 
   // 5. Clean up
   window.itemsToAddQueue.clear();
-  
+
   // Remove "selected" styling from all buttons in the DOM
-  document.querySelectorAll(".search-query-verse-add-button.selected").forEach(btn => {
+  document
+    .querySelectorAll(".search-query-verse-add-button.selected")
+    .forEach((btn) => {
       btn.classList.remove("selected");
-  });
-  document.querySelectorAll(".selected-for-add").forEach(row => {
-      row.classList.remove("selected-for-add");
+    });
+  document.querySelectorAll(".selected-for-add").forEach((row) => {
+    row.classList.remove("selected-for-add");
   });
 }
-
 
 /* =================================================================
    SINGLE INTERLINEAR HANDLER (Paste at bottom of script.js)
@@ -5684,24 +7100,32 @@ async function flushItemsQueueToBoard() {
 window.__currentInterlinearRef = null;
 
 // Override the helper to check cache BEFORE clearing the DOM
-window.openInterlinearFromCurrentQuery = async function() {
+window.openInterlinearFromCurrentQuery = async function () {
   const searchEl = document.getElementById("search-bar");
   const q = (searchEl?.value || window.__lastRawQuery || "").trim();
 
   // 1. Parse
-  const ref = (typeof parseReferenceString === "function")
-    ? parseReferenceString(q)
-    : (() => {
-        const m = q.match(/^([\dI]{0,3}\s*[A-Za-z .'-]+?)\s+(\d+):(\d+)$/);
-        return m ? { book: m[1].trim(), chapter: parseInt(m[2],10), verse: parseInt(m[3],10) } : null;
-    })();
+  const ref =
+    typeof parseReferenceString === "function"
+      ? parseReferenceString(q)
+      : (() => {
+          const m = q.match(/^([\dI]{0,3}\s*[A-Za-z .'-]+?)\s+(\d+):(\d+)$/);
+          return m
+            ? {
+                book: m[1].trim(),
+                chapter: parseInt(m[2], 10),
+                verse: parseInt(m[3], 10),
+              }
+            : null;
+        })();
 
   const interPanel = document.getElementById("interlinear-panel");
   const interLoader = document.getElementById("interlinear-loader");
   const interList = document.getElementById("interlinear-list");
 
   if (!ref) {
-    if (interList) interList.innerHTML = `<div class="search-query-no-verse-found-container" style="text-align:center; color:var(--muted); padding: 12px;">No interlinear for "${q}". Please search for a verse(John 3:16, e.g)</div>`;
+    if (interList)
+      interList.innerHTML = `<div class="search-query-no-verse-found-container" style="text-align:center; color:var(--muted); padding: 12px;">No interlinear for "${q}". Please search for a verse(John 3:16, e.g)</div>`;
     if (interLoader) interLoader.style.display = "none";
     return;
   }
@@ -5709,25 +7133,32 @@ window.openInterlinearFromCurrentQuery = async function() {
   // 2. CHECK CACHE
   const requestKey = `${ref.book.toUpperCase()}_${ref.chapter}:${ref.verse}`;
   const hasContent = interList && interList.children.length > 0;
-  
+
   // If the panel is open AND showing this exact verse, STOP.
-  if (window.__currentInterlinearRef === requestKey && interPanel && interPanel.classList.contains("open") && hasContent) {
+  if (
+    window.__currentInterlinearRef === requestKey &&
+    interPanel &&
+    interPanel.classList.contains("open") &&
+    hasContent
+  ) {
     // console.log("Interlinear already loaded for:", requestKey);
-    return; 
+    return;
   }
 
   // 3. Proceed
   window.__currentInterlinearRef = requestKey;
-  
+
   if (interPanel) {
-      interPanel.setAttribute("aria-busy", "true");
-      interPanel.classList.add("open");
+    interPanel.setAttribute("aria-busy", "true");
+    interPanel.classList.add("open");
   }
   if (interLoader) interLoader.style.display = "flex";
-  if (interList) interList.innerHTML = ""; 
+  if (interList) interList.innerHTML = "";
 
   if (typeof openInterlinearForReference === "function") {
-    await openInterlinearForReference(`${ref.book} ${ref.chapter}:${ref.verse}`);
+    await openInterlinearForReference(
+      `${ref.book} ${ref.chapter}:${ref.verse}`
+    );
   }
 };
 
@@ -5737,22 +7168,22 @@ window.openInterlinearFromCurrentQuery = async function() {
    =================================================================
 */
 
-(function() {
+(function () {
   // console.log("🔧 Applying Interlinear Refresh Fix...");
 
   // 1. Global tracking for the current view
   window.__lastInterlinearRef = null;
 
   // 2. Define the "Smart" logic that checks cache
-  const smartInterlinearOpener = async function() {
+  const smartInterlinearOpener = async function () {
     const searchEl = document.getElementById("search-bar");
     // Get query from input OR the global fallback
     const q = (searchEl?.value || window.__lastRawQuery || "").trim();
 
     const interPanel = document.getElementById("interlinear-panel");
-    const interList  = document.getElementById("interlinear-list");
-    const interLoad  = document.getElementById("interlinear-loader");
-    
+    const interList = document.getElementById("interlinear-list");
+    const interLoad = document.getElementById("interlinear-loader");
+
     // 1. Parse the reference (e.g. "John 3:16")
     // Use your project's parser if available, otherwise simple regex
     let ref = null;
@@ -5760,12 +7191,18 @@ window.openInterlinearFromCurrentQuery = async function() {
       ref = parseReferenceString(q);
     } else {
       const m = q.match(/^([\dI]{0,3}\s*[A-Za-z .'-]+?)\s+(\d+):(\d+)$/);
-      if (m) ref = { book: m[1].trim(), chapter: parseInt(m[2],10), verse: parseInt(m[3],10) };
+      if (m)
+        ref = {
+          book: m[1].trim(),
+          chapter: parseInt(m[2], 10),
+          verse: parseInt(m[3], 10),
+        };
     }
 
     // If not a verse, just clear and show message
     if (!ref) {
-      if (interList) interList.innerHTML = `<div class="search-query-no-verse-found-container" style="text-align:center; color:var(--muted); padding: 12px;">No interlinear for "${q}". Please search for a verse(John 3:16, e.g)</div>`;
+      if (interList)
+        interList.innerHTML = `<div class="search-query-no-verse-found-container" style="text-align:center; color:var(--muted); padding: 12px;">No interlinear for "${q}". Please search for a verse(John 3:16, e.g)</div>`;
       if (interLoad) interLoad.style.display = "none";
       return;
     }
@@ -5774,12 +7211,19 @@ window.openInterlinearFromCurrentQuery = async function() {
     // Generate a unique key for this specific verse
     const requestKey = `${ref.book.toUpperCase()}_${ref.chapter}:${ref.verse}`;
     const hasContent = interList && interList.children.length > 0;
-    const isPanelOpen = interPanel && (interPanel.classList.contains("open") || interPanel.style.display === "block");
+    const isPanelOpen =
+      interPanel &&
+      (interPanel.classList.contains("open") ||
+        interPanel.style.display === "block");
 
     // If we are already looking at this verse, and the panel has content... STOP.
-    if (window.__lastInterlinearRef === requestKey && isPanelOpen && hasContent) {
+    if (
+      window.__lastInterlinearRef === requestKey &&
+      isPanelOpen &&
+      hasContent
+    ) {
       // console.log("🛑 Interlinear Cache Hit: Preventing refresh for", requestKey);
-      return; 
+      return;
     }
 
     // 3. It's a new request. Update tracking and proceed.
@@ -5789,7 +7233,7 @@ window.openInterlinearFromCurrentQuery = async function() {
     // Ensure UI is open/loading
     if (interPanel) {
       // Use inline style if not using classes, or class if using CSS
-      interPanel.style.display = "block"; 
+      interPanel.style.display = "block";
       interPanel.classList.add("open");
       interPanel.setAttribute("aria-busy", "true");
     }
@@ -5798,7 +7242,9 @@ window.openInterlinearFromCurrentQuery = async function() {
 
     // 4. Call the API Fetcher
     if (typeof openInterlinearForReference === "function") {
-      await openInterlinearForReference(`${ref.book} ${ref.chapter}:${ref.verse}`);
+      await openInterlinearForReference(
+        `${ref.book} ${ref.chapter}:${ref.verse}`
+      );
     }
   };
 
@@ -5830,11 +7276,7 @@ window.openInterlinearFromCurrentQuery = async function() {
 
     // console.log("✅ Interlinear Button: Listeners reset.");
   }
-
 })();
-
-
-
 
 /* =============================================================================
    FIX: INTERLINEAR CARD SETUP & DRAG LOGIC
@@ -5848,12 +7290,14 @@ function attachInterlinearEvents(el) {
   // A. Card Dragging (Mouse)
   el.addEventListener("mousedown", (e) => {
     // Ignore clicks on buttons/inputs or the connection handle (handled separately)
-    if (e.target.tagName === "BUTTON" || 
-        e.target.tagName === "INPUT" || 
-        e.target.closest(".connection-handle")) {
+    if (
+      e.target.tagName === "BUTTON" ||
+      e.target.tagName === "INPUT" ||
+      e.target.closest(".connection-handle")
+    ) {
       return;
     }
-    
+
     // Try to call the global BoardAPI handler if it exists
     if (window.BoardAPI && typeof window.BoardAPI.onItemDown === "function") {
       window.BoardAPI.onItemDown(e, el);
@@ -5861,34 +7305,50 @@ function attachInterlinearEvents(el) {
   });
 
   // B. Card Dragging (Touch)
-  el.addEventListener("touchstart", (e) => {
-    if (e.target.tagName === "BUTTON" || 
-        e.target.tagName === "INPUT" || 
-        e.target.closest(".connection-handle")) {
-      return;
-    }
-    
-    if (window.BoardAPI && typeof window.BoardAPI.onItemDown === "function") {
-      window.BoardAPI.onItemDown(e, el);
-    }
-  }, { passive: false });
+  el.addEventListener(
+    "touchstart",
+    (e) => {
+      if (
+        e.target.tagName === "BUTTON" ||
+        e.target.tagName === "INPUT" ||
+        e.target.closest(".connection-handle")
+      ) {
+        return;
+      }
+
+      if (window.BoardAPI && typeof window.BoardAPI.onItemDown === "function") {
+        window.BoardAPI.onItemDown(e, el);
+      }
+    },
+    { passive: false }
+  );
 
   // C. Connection Handle Logic
   const handle = el.querySelector(".connection-handle");
   if (handle) {
     handle.addEventListener("mousedown", (e) => {
       e.stopPropagation(); // Stop card drag
-      if (window.BoardAPI && typeof window.BoardAPI.startConnectionDrag === "function") {
+      if (
+        window.BoardAPI &&
+        typeof window.BoardAPI.startConnectionDrag === "function"
+      ) {
         window.BoardAPI.startConnectionDrag(e, el);
       }
     });
 
-    handle.addEventListener("touchstart", (e) => {
-      e.stopPropagation();
-      if (window.BoardAPI && typeof window.BoardAPI.startConnectionDrag === "function") {
-        window.BoardAPI.startConnectionDrag(e, el);
-      }
-    }, { passive: false });
+    handle.addEventListener(
+      "touchstart",
+      (e) => {
+        e.stopPropagation();
+        if (
+          window.BoardAPI &&
+          typeof window.BoardAPI.startConnectionDrag === "function"
+        ) {
+          window.BoardAPI.startConnectionDrag(e, el);
+        }
+      },
+      { passive: false }
+    );
   }
 }
 
@@ -5901,7 +7361,7 @@ function attachInterlinearEvents(el) {
 function addInterlinearCard(data, delay = 0) {
   const el = document.createElement("div");
   el.className = "board-item interlinear-card";
-  
+
   // --- Animation ---
   if (delay !== 0) {
     el.style.opacity = "0";
@@ -5949,9 +7409,21 @@ function addInterlinearCard(data, delay = 0) {
       <div class="interlinear-card-surface">${data.surface || "?"}</div>
       <div class="interlinear-card-english">${data.english || "?"}</div>
       <div class="interlinear-card-meta">
-        ${data.translit ? `<span class="interlinear-chip">${data.translit}</span>` : ""}
-        ${data.morph ? `<span class="interlinear-chip">${data.morph}</span>` : ""}
-        ${data.strong ? `<span class="interlinear-chip">${data.strong}</span>` : ""}
+        ${
+          data.translit
+            ? `<span class="interlinear-chip">${data.translit}</span>`
+            : ""
+        }
+        ${
+          data.morph
+            ? `<span class="interlinear-chip">${data.morph}</span>`
+            : ""
+        }
+        ${
+          data.strong
+            ? `<span class="interlinear-chip">${data.strong}</span>`
+            : ""
+        }
       </div>
     </div>
   `;
@@ -5960,20 +7432,24 @@ function addInterlinearCard(data, delay = 0) {
   // Matches how addBibleVerse and addSongElement work in your file
   el.onmousedown = (e) => {
     // Ignore clicks on buttons/inputs or the handle
-    if (e.target.closest("button") || 
-        e.target.closest("input") || 
-        e.target.closest(".connection-handle")) {
+    if (
+      e.target.closest("button") ||
+      e.target.closest("input") ||
+      e.target.closest(".connection-handle")
+    ) {
       return;
     }
-    
+
     // Check for connect mode or standard drag
     if (typeof isConnectMode !== "undefined" && isConnectMode) return;
 
     // Use the global drag starter
     if (typeof startDragMouse === "function") {
-       startDragMouse(el, e);
+      startDragMouse(el, e);
     }
   };
+
+  attachSelectionFrame(el);
 
   // Note: Touch events are handled globally by the workspace listener in your script.js,
   // so we don't need to attach ontouchstart here manually.
@@ -5981,13 +7457,13 @@ function addInterlinearCard(data, delay = 0) {
   // --- Append to Board ---
   const workspace = document.getElementById("workspace");
   if (workspace) workspace.appendChild(el);
-  
+
   // --- Save ---
   // Use the safe autosave trigger
   if (typeof onBoardMutated === "function") {
-      onBoardMutated("add_interlinear");
+    onBoardMutated("add_interlinear");
   } else if (window.BoardAPI && window.BoardAPI.triggerAutosave) {
-      window.BoardAPI.triggerAutosave("add_interlinear");
+    window.BoardAPI.triggerAutosave("add_interlinear");
   }
 
   return el;
@@ -5996,8 +7472,6 @@ function addInterlinearCard(data, delay = 0) {
 // Attach to Global API
 if (!window.BoardAPI) window.BoardAPI = {};
 window.BoardAPI.addInterlinearCard = addInterlinearCard;
-
-
 
 /* ==================== MULTI-SELECT & VERSE GROUPING LOGIC ==================== */
 
@@ -6019,11 +7493,11 @@ function updateFloatingButton() {
       <span class="material-symbols-outlined">add_circle</span>
       Add ${count} Item${count !== 1 ? "s" : ""}
     `;
-    
+
     // Unbind old listeners to prevent duplicates, then rebind
     const newBtn = floatBtn.cloneNode(true);
     floatBtn.parentNode.replaceChild(newBtn, floatBtn);
-    
+
     newBtn.onclick = (e) => {
       e.preventDefault();
       e.stopPropagation();
@@ -6047,10 +7521,10 @@ function flushVerseQueue() {
   const parseRef = (ref) => {
     const match = ref.match(/^((?:[1-3]\s)?[A-Za-z\s]+)\s+(\d+):(\d+)$/);
     if (!match) return { book: ref, chapter: 0, verse: 0 };
-    return { 
-      book: match[1].trim(), 
-      chapter: parseInt(match[2]), 
-      verse: parseInt(match[3]) 
+    return {
+      book: match[1].trim(),
+      chapter: parseInt(match[2]),
+      verse: parseInt(match[3]),
     };
   };
 
@@ -6089,55 +7563,76 @@ function flushVerseQueue() {
 
   // 4. Create Elements
   groups.forEach((group, index) => {
-    const delay = index * 0.1; 
+    const delay = index * 0.1;
 
     if (group.length === 1) {
       // --- Single Verse ---
       const v = group[0];
-      window.BoardAPI.addBibleVerse(v.reference, v.text, false, v.version, delay);
+      window.BoardAPI.addBibleVerse(
+        v.reference,
+        v.text,
+        false,
+        v.version,
+        delay
+      );
     } else {
       // --- Verse Range (Section) ---
       const first = group[0];
       const last = group[group.length - 1];
-      
+
       const parseRef = (ref) => {
-         // Simple parser for the queue logic
-         const m = ref.match(/:(\d+)$/);
-         return m ? parseInt(m[1]) : 0;
+        // Simple parser for the queue logic
+        const m = ref.match(/:(\d+)$/);
+        return m ? parseInt(m[1]) : 0;
       };
 
-      const firstMeta = parseReferenceToParts(first.reference) || { book: "", chapter: 0, verse: 0 };
+      const firstMeta = parseReferenceToParts(first.reference) || {
+        book: "",
+        chapter: 0,
+        verse: 0,
+      };
       const lastMeta = parseReferenceToParts(last.reference) || { verse: 0 };
-      
+
       // Construct range reference: "Genesis 50:2-3"
       const combinedRef = `${firstMeta.book} ${firstMeta.chapter}:${firstMeta.verse}-${lastMeta.verse}`;
 
       // FIX: Force [N] formatting on every verse BEFORE joining
-      const combinedText = group.map(v => {
-        const vNum = parseRef(v.reference);
-        let cleanText = v.text;
-        
-        // 1. Remove existing [N] or leading numbers to start fresh
-        //    Removes "[2] " or "2 " or "<sup>2</sup>"
-        cleanText = cleanText.replace(/^\[\d+\]\s*/, "")
-                             .replace(/^\d+\s+/, "") 
-                             .replace(/<[^>]+>/g, ""); // Clean any stray HTML
+      const combinedText = group
+        .map((v) => {
+          const vNum = parseRef(v.reference);
+          let cleanText = v.text;
 
-        // 2. Re-apply standard bracket format
-        return `[${vNum}] ${cleanText}`;
-      }).join(" ");
+          // 1. Remove existing [N] or leading numbers to start fresh
+          //    Removes "[2] " or "2 " or "<sup>2</sup>"
+          cleanText = cleanText
+            .replace(/^\[\d+\]\s*/, "")
+            .replace(/^\d+\s+/, "")
+            .replace(/<[^>]+>/g, ""); // Clean any stray HTML
 
-      window.BoardAPI.addBibleVerse(combinedRef, combinedText, false, first.version, delay);
+          // 2. Re-apply standard bracket format
+          return `[${vNum}] ${cleanText}`;
+        })
+        .join(" ");
+
+      window.BoardAPI.addBibleVerse(
+        combinedRef,
+        combinedText,
+        false,
+        first.version,
+        delay
+      );
     }
   });
 
   // 5. Cleanup
   verseSelectionQueue.clear();
   updateFloatingButton();
-  document.querySelectorAll('.search-query-verse-add-button.selected').forEach(btn => {
-    btn.classList.remove('selected');
-  });
-  
+  document
+    .querySelectorAll(".search-query-verse-add-button.selected")
+    .forEach((btn) => {
+      btn.classList.remove("selected");
+    });
+
   closeSearchQuery();
 }
 
@@ -6149,8 +7644,10 @@ function flushVerseQueue() {
  */
 function renderVerses(verses) {
   const container = document.getElementById("search-query-verse-container");
-  const noResultContainer = document.querySelector(".search-query-no-verse-found-container");
-  
+  const noResultContainer = document.querySelector(
+    ".search-query-no-verse-found-container"
+  );
+
   if (!container) return;
   container.innerHTML = ""; // Clear previous results
 
@@ -6158,17 +7655,17 @@ function renderVerses(verses) {
     if (noResultContainer) noResultContainer.style.display = "block";
     return;
   }
-  
+
   if (noResultContainer) noResultContainer.style.display = "none";
 
   verses.forEach((verse) => {
     // 1. Create Row
     const row = document.createElement("div");
-    row.className = "search-query-verse-container verse"; 
-    row.dataset.verse = verse.verse; 
+    row.className = "search-query-verse-container verse";
+    row.dataset.verse = verse.verse;
     row.dataset.status = "ready"; // Mark ready for CSS animations
-    
-    // NEW: Add dataset for click delegation
+
+    // Dataset for unified selection + cross-tab syncing
     row.dataset.ref = verse.reference;
     row.dataset.text = verse.text;
     row.dataset.version = verse.version;
@@ -6176,85 +7673,48 @@ function renderVerses(verses) {
     // 2. Text Container
     const textDiv = document.createElement("div");
     textDiv.className = "search-query-verse-text";
-    
-    // Check if this verse is currently in our selection queue
-    const isSelected = verseSelectionQueue.has(verse.reference);
 
     textDiv.innerHTML = `
       <div class="search-query-verse-reference">${verse.reference}</div>
       <div class="verse-text-content">${verse.text}</div>
     `;
 
-    // 3. Selection Button
+    // 3. Selection state from the SHARED queue (Bible + CrossRef)
+    const key = `${normalizeRef(verse.reference)}::${verse.version}`;
+    const isSelected =
+      window.pendingVerseAdds && window.pendingVerseAdds.has(key);
+
+    // 4. Selection Button
     const addBtn = document.createElement("button");
     addBtn.className = "search-query-verse-add-button";
-    if (isSelected) addBtn.classList.add("selected");
-    
-    // REMOVED: addBtn.innerHTML = ... 
-    // The CSS ::before handles the icon content now.
 
-    // 4. Click Handler (Direct click on button)
+    if (isSelected) {
+      addBtn.classList.add("selected");
+      row.classList.add("selected-for-add");
+    }
+
+    // 5. Click Handler
     addBtn.onclick = (e) => {
-      e.stopPropagation(); // Prevent triggering row clicks if any
-      toggleVerseSelection(verse, addBtn);
+      e.stopPropagation();
+      toggleVerseSelection(
+        {
+          reference: verse.reference,
+          text: verse.text,
+          version: verse.version,
+          verse: verse.verse,
+        },
+        addBtn
+      );
     };
 
     row.appendChild(textDiv);
     row.appendChild(addBtn);
     container.appendChild(row);
   });
-  
-  // Ensure float button visibility matches current queue
+
+  // Ensure floating button visibility matches current shared queue
   updateFloatingButton();
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 /* =============================================================================
    UNIFIED SELECTION SYSTEM (Fixes Bible Search Separation)
@@ -6277,17 +7737,20 @@ function toggleVerseSelection(verseData, btnElement) {
     // REMOVE
     window.pendingVerseAdds.delete(key);
     if (btnElement) btnElement.classList.remove("selected");
-    
+
     // Visually unselect the row too
-    const row = btnElement ? btnElement.closest('.search-query-verse-container, .verse') : null;
+    const row = btnElement
+      ? btnElement.closest(".search-query-verse-container, .verse")
+      : null;
     if (row) row.classList.remove("selected-for-add");
-    
   } else {
     // ADD
     window.pendingVerseAdds.set(key, verseData);
     if (btnElement) btnElement.classList.add("selected");
-    
-    const row = btnElement ? btnElement.closest('.search-query-verse-container, .verse') : null;
+
+    const row = btnElement
+      ? btnElement.closest(".search-query-verse-container, .verse")
+      : null;
     if (row) row.classList.add("selected-for-add");
   }
 
@@ -6304,35 +7767,38 @@ function updateFloatingAddButton() {
   const vCount = window.pendingVerseAdds.size;
   const sCount = window.pendingSongAdds.size;
   const iCount = window.pendingInterlinearAdds.size;
-  
+
   const total = vCount + sCount + iCount;
 
   if (total > 0) {
     floatBtn.style.display = "inline-flex";
-    
+
     // Rebuild button content
     floatBtn.innerHTML = "";
-    
+
     // Icon
     const SVG_NS = "http://www.w3.org/2000/svg";
     const icon = document.createElementNS(SVG_NS, "svg");
     icon.setAttribute("class", "add-to-board-icon-open");
     icon.setAttribute("viewBox", "0 -960 960 960");
     const path = document.createElementNS(SVG_NS, "path");
-    path.setAttribute("d", "M212-86q-53 0-89.5-36.5T86-212v-536q0-53 36.5-89.5T212-874h268v126H212v536h536v-268h126v268q0 53-36.5 89.5T748-86H212Zm207-246-87-87 329-329H560v-126h314v314H748v-101L419-332Z");
+    path.setAttribute(
+      "d",
+      "M212-86q-53 0-89.5-36.5T86-212v-536q0-53 36.5-89.5T212-874h268v126H212v536h536v-268h126v268q0 53-36.5 89.5T748-86H212Zm207-246-87-87 329-329H560v-126h314v314H748v-101L419-332Z"
+    );
     icon.appendChild(path);
-    
+
     // Text
     const text = document.createElement("span");
     text.textContent = `Add ${total} Item${total !== 1 ? "s" : ""}`;
-    
+
     floatBtn.appendChild(icon);
     floatBtn.appendChild(text);
 
     // Remove old listeners and attach the unified handler
     const newBtn = floatBtn.cloneNode(true);
     floatBtn.parentNode.replaceChild(newBtn, floatBtn);
-    
+
     newBtn.onclick = (e) => {
       e.preventDefault();
       e.stopPropagation();
@@ -6347,15 +7813,16 @@ function updateFloatingAddButton() {
 // Flushes all three queues to the board at once.
 function handleFloatingAddClick() {
   // Hide UI immediately
-  if (typeof clearSelection === 'function') clearSelection();
-  if (typeof closeInterlinearPanel === 'function') closeInterlinearPanel();
-  if (typeof closeSearchQuery === 'function') closeSearchQuery();
+  if (typeof clearSelection === "function") clearSelection();
+  if (typeof closeInterlinearPanel === "function") closeInterlinearPanel();
+  if (typeof closeSearchQuery === "function") closeSearchQuery();
 
   const verses = Array.from(window.pendingVerseAdds.values());
   const songs = Array.from(window.pendingSongAdds.values());
   const interlinear = Array.from(window.pendingInterlinearAdds.values());
 
-  if (verses.length === 0 && songs.length === 0 && interlinear.length === 0) return;
+  if (verses.length === 0 && songs.length === 0 && interlinear.length === 0)
+    return;
 
   // Clear State
   window.pendingVerseAdds.clear();
@@ -6367,105 +7834,127 @@ function handleFloatingAddClick() {
 
   // --- PROCESS VERSES (Group continuous ranges) ---
   if (verses.length > 0) {
-    
     // Helper to parse "Genesis 1:1" into parts for sorting
     const parseFullRef = (ref) => {
-        // Matches "Book Chapter:Verse"
-        const parts = ref.match(/^(.+)\s+(\d+):(\d+)$/);
-        if (!parts) return { book: ref, chapter: 0, verse: 0 };
-        return { 
-            book: parts[1], 
-            chapter: parseInt(parts[2]), 
-            verse: parseInt(parts[3]) 
-        };
+      // Matches "Book Chapter:Verse"
+      const parts = ref.match(/^(.+)\s+(\d+):(\d+)$/);
+      if (!parts) return { book: ref, chapter: 0, verse: 0 };
+      return {
+        book: parts[1],
+        chapter: parseInt(parts[2]),
+        verse: parseInt(parts[3]),
+      };
     };
 
     // FIX: Sort by VERSION first, then by Book/Chapter/Verse
     verses.sort((a, b) => {
-        // 1. Primary Sort: Version (e.g. KJV before NLT)
-        if (a.version < b.version) return -1;
-        if (a.version > b.version) return 1;
+      // 1. Primary Sort: Version (e.g. KJV before NLT)
+      if (a.version < b.version) return -1;
+      if (a.version > b.version) return 1;
 
-        // 2. Secondary Sort: Reference
-        const ra = parseFullRef(a.reference);
-        const rb = parseFullRef(b.reference);
+      // 2. Secondary Sort: Reference
+      const ra = parseFullRef(a.reference);
+      const rb = parseFullRef(b.reference);
 
-        // Sort by Book, then Chapter, then Verse
-        if (ra.book !== rb.book) return ra.book.localeCompare(rb.book);
-        if (ra.chapter !== rb.chapter) return ra.chapter - rb.chapter;
-        return ra.verse - rb.verse;
+      // Sort by Book, then Chapter, then Verse
+      if (ra.book !== rb.book) return ra.book.localeCompare(rb.book);
+      if (ra.chapter !== rb.chapter) return ra.chapter - rb.chapter;
+      return ra.verse - rb.verse;
     });
 
     // Group continuous verses
     let groups = [[verses[0]]];
-    
+
     for (let i = 1; i < verses.length; i++) {
-        const prev = groups[groups.length-1][groups[groups.length-1].length-1];
-        const curr = verses[i];
-        
-        const prevData = parseFullRef(prev.reference);
-        const currData = parseFullRef(curr.reference);
-        
-        // Check if: Same Version AND Same Book AND Same Chapter AND Sequential Verse
-        if (
-            prev.version === curr.version && 
-            prevData.book === currData.book && 
-            prevData.chapter === currData.chapter && 
-            currData.verse === prevData.verse + 1
-        ) {
-            groups[groups.length-1].push(curr);
-        } else {
-            groups.push([curr]);
-        }
+      const prev =
+        groups[groups.length - 1][groups[groups.length - 1].length - 1];
+      const curr = verses[i];
+
+      const prevData = parseFullRef(prev.reference);
+      const currData = parseFullRef(curr.reference);
+
+      // Check if: Same Version AND Same Book AND Same Chapter AND Sequential Verse
+      if (
+        prev.version === curr.version &&
+        prevData.book === currData.book &&
+        prevData.chapter === currData.chapter &&
+        currData.verse === prevData.verse + 1
+      ) {
+        groups[groups.length - 1].push(curr);
+      } else {
+        groups.push([curr]);
+      }
     }
 
     // Add Groups to Board
-    groups.forEach(group => {
-        if (group.length === 1) {
-            // Single Verse
-            const v = group[0];
-            window.BoardAPI.addBibleVerse(v.reference, v.text, false, v.version, delay);
-        } else {
-            // Verse Range
-            const first = group[0];
-            const last = group[group.length - 1];
-            
-            // Parse base reference (e.g., "Genesis 1")
-            const baseRefParts = first.reference.match(/^(.+\s+\d+):/);
-            const baseRef = baseRefParts ? baseRefParts[1] : first.reference.split(":")[0];
-            
-            const startV = first.reference.split(":")[1];
-            const endV = last.reference.split(":")[1];
-            
-            // Combine text with proper spacing
-            const combinedText = group.map(v => {
-                const vNum = v.reference.split(":")[1];
-                // Clean existing numbering to prevent double brackets
-                const clean = v.text.replace(/^\[\d+\]\s*/, "").replace(/^\d+\s+/, "");
-                return `[${vNum}] ${clean}`;
-            }).join(" ");
-            
-            window.BoardAPI.addBibleVerse(`${baseRef}:${startV}-${endV}`, combinedText, false, first.version, delay);
-        }
-        delay += 0.15;
+    groups.forEach((group) => {
+      if (group.length === 1) {
+        // Single Verse
+        const v = group[0];
+        window.BoardAPI.addBibleVerse(
+          v.reference,
+          v.text,
+          false,
+          v.version,
+          delay
+        );
+      } else {
+        // Verse Range
+        const first = group[0];
+        const last = group[group.length - 1];
+
+        // Parse base reference (e.g., "Genesis 1")
+        const baseRefParts = first.reference.match(/^(.+\s+\d+):/);
+        const baseRef = baseRefParts
+          ? baseRefParts[1]
+          : first.reference.split(":")[0];
+
+        const startV = first.reference.split(":")[1];
+        const endV = last.reference.split(":")[1];
+
+        // Combine text with proper spacing
+        const combinedText = group
+          .map((v) => {
+            const vNum = v.reference.split(":")[1];
+            // Clean existing numbering to prevent double brackets
+            const clean = v.text
+              .replace(/^\[\d+\]\s*/, "")
+              .replace(/^\d+\s+/, "");
+            return `[${vNum}] ${clean}`;
+          })
+          .join(" ");
+
+        window.BoardAPI.addBibleVerse(
+          `${baseRef}:${startV}-${endV}`,
+          combinedText,
+          false,
+          first.version,
+          delay
+        );
+      }
+      delay += 0.15;
     });
   }
 
   // --- ADD SONGS ---
-  songs.forEach(song => {
+  songs.forEach((song) => {
     window.BoardAPI.addSongElement(song, delay);
     delay += 0.15;
   });
 
   // --- ADD INTERLINEAR ---
-  interlinear.forEach(item => {
+  interlinear.forEach((item) => {
     window.BoardAPI.addInterlinearCard(item, delay);
     delay += 0.15;
   });
 
   // Cleanup Visuals
-  document.querySelectorAll(".selected-for-add").forEach(el => el.classList.remove("selected-for-add"));
-  document.querySelectorAll(".search-query-verse-add-button.selected").forEach(el => el.classList.remove("selected"));
+  document
+    .querySelectorAll(".selected-for-add")
+    .forEach((el) => el.classList.remove("selected-for-add"));
+  document
+    .querySelectorAll(".search-query-verse-add-button.selected")
+    .forEach((el) => el.classList.remove("selected"));
 }
 
 /* =============================================================================
@@ -6480,7 +7969,7 @@ function renderVerseList(container, versesData, version) {
   }
 
   const verseList = document.createElement("div");
-  verseList.className = "verse-list-container"; 
+  verseList.className = "verse-list-container";
 
   let html = "";
 
@@ -6492,9 +7981,9 @@ function renderVerseList(container, versesData, version) {
     // --- THE FIX: Check the SHARED queue, not the old isolated one ---
     const key = `${fullRef}::${version}`;
     const isSelected = window.pendingVerseAdds.has(key);
-    
-    const selectedClass = isSelected ? 'selected-for-add' : '';
-    const btnSelectedClass = isSelected ? 'selected' : '';
+
+    const selectedClass = isSelected ? "selected-for-add" : "";
+    const btnSelectedClass = isSelected ? "selected" : "";
 
     html += `
       <div class="verse verse-card-style ${selectedClass}" 
@@ -6513,12 +8002,19 @@ function renderVerseList(container, versesData, version) {
   }
 
   verseList.innerHTML = html;
-  container.innerHTML = ""; 
+  container.innerHTML = "";
   container.appendChild(verseList);
 }
 
 // Also patch the Chapter Renderer (Reference Search) to be safe
-function renderChapter(container, verses, targetVerse, refString, book, version) {
+function renderChapter(
+  container,
+  verses,
+  targetVerse,
+  refString,
+  book,
+  version
+) {
   if (!container || !verses || verses.length === 0) {
     container.innerHTML = `<div class="search-query-no-verse-found-container" style="text-align:center; color:var(--muted); padding: 15px;">No matching verses found.</div>`;
     return;
@@ -6528,22 +8024,22 @@ function renderChapter(container, verses, targetVerse, refString, book, version)
   verseList.className = "verse-list-container";
   const chapterNum = refString.match(/\d+$/)?.[0] || "";
 
-  verses.forEach(verse => {
+  verses.forEach((verse) => {
     const fullRef = `${book} ${chapterNum}:${verse.verse}`;
-    const rawText = verse.text.replace(/"/g, "&quot;"); 
+    const rawText = verse.text.replace(/"/g, "&quot;");
     const displayText = verse.text.replace(/^\[\d+\]\s*/, "");
 
     // --- THE FIX: Check shared queue ---
     const key = `${fullRef}::${version}`;
     const isSelected = window.pendingVerseAdds.has(key);
-    
-    const selectedClass = isSelected ? 'selected-for-add' : '';
-    const btnSelectedClass = isSelected ? 'selected' : '';
+
+    const selectedClass = isSelected ? "selected-for-add" : "";
+    const btnSelectedClass = isSelected ? "selected" : "";
 
     let isTarget = verse.verse == targetVerse;
 
     verseList.innerHTML += `
-      <div class="verse ${isTarget ? 'highlighted' : ''} ${selectedClass}" 
+      <div class="verse ${isTarget ? "highlighted" : ""} ${selectedClass}" 
            data-verse="${verse.verse}" 
            data-ref="${fullRef}" 
            data-version="${version}" 
@@ -6557,18 +8053,18 @@ function renderChapter(container, verses, targetVerse, refString, book, version)
     `;
   });
 
-  container.innerHTML = ""; 
+  container.innerHTML = "";
   container.appendChild(verseList);
-  
+
   // Append copyright (reuse existing logic if available, or minimal fallback)
-  const noticeText = ({
+  const noticeText = {
     NLT: `Scripture quotations are taken from the Holy Bible, New Living Translation, copyright © 1996, 2004, 2015 by Tyndale House Foundation. Used by permission of Tyndale House Publishers, Inc., Carol Stream, Illinois 60188. All rights reserved.`,
     FBV: `The Free Bible Version is licensed under a Creative Commons Attribution-ShareAlike 4.0 International License.`,
     WEBUS: `The World English Bible is in the Public Domain.`,
     KJV: `Public Domain.`,
     ASV: `Public Domain.`,
-    ESV: `Scripture quotations are from the ESV® Bible (The Holy Bible, English Standard Version®), copyright © 2001 by Crossway, a publishing ministry of Good News Publishers. Used by permission. All rights reserved.`
-  })[version];
+    ESV: `Scripture quotations are from the ESV® Bible (The Holy Bible, English Standard Version®), copyright © 2001 by Crossway, a publishing ministry of Good News Publishers. Used by permission. All rights reserved.`,
+  }[version];
 
   if (noticeText) {
     const copyright = document.createElement("div");
@@ -6577,8 +8073,6 @@ function renderChapter(container, verses, targetVerse, refString, book, version)
     container.appendChild(copyright);
   }
 }
-
-
 
 /* ==================== GROUPING MODE LOGIC (UPDATED) ==================== */
 
@@ -6606,7 +8100,7 @@ function ensureGroupCheckbox(el) {
 function toggleGroupingMode() {
   isGroupingMode = !isGroupingMode;
   document.body.classList.toggle("grouping-mode", isGroupingMode);
-  
+
   const btn = document.getElementById("grouping-mode-btn");
   if (btn) btn.classList.toggle("active", isGroupingMode);
 
@@ -6617,14 +8111,14 @@ function toggleGroupingMode() {
     // Turning off: clear group selection
     clearGroupSelection();
   }
-  
+
   updateActionButtonsEnabled();
 }
 
 // 2. Toggle Item Selection
 function toggleGroupSelection(el) {
   if (!el) return;
-  
+
   if (selectedGroupItems.has(el)) {
     // Deselect
     selectedGroupItems.delete(el);
@@ -6634,13 +8128,13 @@ function toggleGroupSelection(el) {
     selectedGroupItems.add(el);
     el.classList.add("group-selected");
   }
-  
+
   updateActionButtonsEnabled();
 }
 
 // 3. Clear All
 function clearGroupSelection() {
-  selectedGroupItems.forEach(el => el.classList.remove("group-selected"));
+  selectedGroupItems.forEach((el) => el.classList.remove("group-selected"));
   selectedGroupItems.clear();
   updateActionButtonsEnabled();
 }

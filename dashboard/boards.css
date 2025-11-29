@@ -67,7 +67,7 @@ body {
   --sidebar-collapsed: 72px;
   --sidebar-transition: 240ms cubic-bezier(.2,.9,.25,1);
   --overlay-bg: rgba(0, 0, 0, 0.55);
-  --sidebar-z: 2000;
+  --sidebar-z: 400000;
 }
 
 /* Base sidebar */
@@ -98,7 +98,7 @@ body {
 
   display: flex;
   flex-direction: column;
-  overflow:hidden;
+  /* overflow:hidden; */
 }
 
 #persistence-status {
@@ -158,6 +158,7 @@ body {
 /* Collapsed sidebar (desktop) */
 .sidebar.collapsed {
   width: var(--sidebar-collapsed);
+  overflow: visible;
 }
 
 /* Offscreen (mobile) */
@@ -327,7 +328,7 @@ body {
   margin-top: auto;
   display: flex;
   flex-direction: column; /* Stacks items if you add more later */
-  width: 100%;
+  width: calc(100% - 20px);
 }
 
 .icon {
@@ -605,7 +606,7 @@ body {
   border: 1px solid var(--border);
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-  z-index: 20000; /* Very high to sit on top */
+  z-index: 1000000; /* Very high to sit on top */
   min-width: 130px;
   display: none; 
   flex-direction: column;
@@ -656,7 +657,7 @@ body {
   inset: 0;
   background: rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(4px);
-  z-index: 20000;
+  z-index: 400000;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -666,7 +667,7 @@ body {
 }
 
 .modal-content {
-  background: var(--bg-dots);
+  background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 25px;
   padding:20px;
@@ -713,7 +714,7 @@ body {
   font-weight: 700;
 }
 .modal-btn.delete { background: #3f1515; color: #ff8888; border-color: #662222; }
-.modal-btn.cancel { background: transparent; color: var(--fg); }
+.modal-btn.cancel { background: var(--bg-dots); color: var(--fg); }
 .modal-btn.primary { background: var(--accent); color: var(--bg); border-color: var(--accent); }
 
 
@@ -779,6 +780,14 @@ body {
 .modal-close-btn:hover {
   color: var(--fg);
   background:var(--bg-alt);
+}
+
+@media (max-width:900px) {
+  .search-modal-content {
+    width:100%;
+    position:fixed;
+    bottom:0px;
+  }
 }
 
 
@@ -958,7 +967,7 @@ body {
 
 .delete-modal-content {
   max-width: 400px;
-  background: var(--bg-alt); /* Or #202020 to match image specifically */
+  background: var(--bg); /* Or #202020 to match image specifically */
   border: 1px solid var(--border);
   box-shadow: 0 20px 40px rgba(0,0,0,0.5);
   padding: 24px;
@@ -1006,7 +1015,7 @@ body {
 
 /* Make Cancel button blend in */
 .modal-btn.cancel {
-  background: transparent;
+  background: var(--bg-dots);
   border: 1px solid var(--border);
   color: var(--fg);
   padding: 10px 20px;
@@ -1014,7 +1023,8 @@ body {
   margin-right: 10px;
 }
 .modal-btn.cancel:hover {
-  background: var(--bg-dots);
+  background: var(--bg-alt);
+  /* opacity:0.7; */
 }
 
 /* =========================
@@ -1155,7 +1165,7 @@ body {
 
 /* --- Profile Button --- */
 .user-profile-btn {
-  width: calc(100% - 20px);
+  width: calc(100%);
   display: flex;
   align-items: center;
   gap: 12px;
@@ -1217,16 +1227,16 @@ body {
 /* --- Pop-up Menu --- */
 .profile-menu {
   position: absolute;
-  bottom: 100%; /* Sits on top of the footer */
+  bottom:100%;
   left: 10px;
-  right: 30px; /* Stretch to width of footer padding */
+  right: 10px; /* Stretch to width of footer padding */
   margin-bottom: 8px;
   background: var(--bg-dots);
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 6px;
   box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-  z-index: 200000;
+  z-index: 400000;
   
   display: flex;
   flex-direction: column;
@@ -1312,7 +1322,7 @@ body {
   border: 1px solid var(--border);
   border-radius: 12px; /* Match profile menu */
   box-shadow: 0 10px 30px rgba(0,0,0,0.5); /* Match profile menu */
-  z-index: 20000;
+  z-index: var(--sidebar-z);
   min-width: 160px; /* Slightly wider */
   display: none; 
   flex-direction: column;
@@ -1410,7 +1420,7 @@ body {
 .delete-modal-content {
   /* This ensures the modal box sits in the center */
   max-width: 400px;
-  background: var(--bg-alt); /* Dark background */
+  background: var(--bg); /* Dark background */
   border: 1px solid var(--border);
   color:var(--fg);
   border-radius: 25px; /* Borrowing style from other modals */

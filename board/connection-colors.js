@@ -86,11 +86,11 @@
       swatch.className = "color-swatch";
       swatch.dataset.color = color;
       swatch.style.backgroundColor = color;
-      swatch.title = `Set connection color (${color})`;
+  swatch.title = `Set connection color (${color})`;
 
-      swatch.addEventListener("click", () => {
-        window.BoardAPI.setConnectionColor(color);
-      });
+  swatch.addEventListener("click", () => {
+    window.BoardAPI.setConnectionColor(color);
+  });
 
       g_paletteToolbar.appendChild(swatch);
     });

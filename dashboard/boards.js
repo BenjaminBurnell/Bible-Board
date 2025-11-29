@@ -14,16 +14,38 @@ let activeDropdown = null;
 let loadedBoards = [];
 let boardToDelete = null; // Global variable for deletion
 
+// ✅ NEW: tracks whether we've finished a Pro check
+let hasProCheckCompleted = false;
+
 // --- ASYNCHRONOUS PRO STATUS CHECK ---
-/**
- * Checks the user's live subscription status using RevenueCat.
- * @returns {Promise<boolean>} True if Pro, False if Free/Unsubscribed.
- */
+// Returns true if the current user is Pro (RevenueCat / SubscriptionService)
 async function isProUser() {
-    if (!currentUser) return false;
-    // Calls the SubscriptionService which performs the RevenueCat check
-    return await SubscriptionService.initAndCheck();
+  // If we somehow don't have currentUser yet, try to fetch it from Supabase
+  if (!currentUser) {
+    try {
+      const { data, error } = await sb.auth.getSession();
+      if (error) {
+        console.error("isProUser: getSession error", error);
+        return false;
+      }
+      const user = data?.session?.user || null;
+      if (!user) return false;
+      currentUser = user;
+      try {
+        updateUserProfileUI(user);
+      } catch (e) {
+        console.warn("isProUser: updateUserProfileUI failed", e);
+      }
+    } catch (e) {
+      console.error("isProUser: unexpected auth error", e);
+      return false;
+    }
+  }
+
+  // Calls the SubscriptionService which performs the RevenueCat check
+  return await SubscriptionService.initAndCheck();
 }
+
 // --------------------------------------
 
 // --- DOM Refs ---
@@ -296,6 +318,7 @@ contextMenuEl.innerHTML = `
   <button id="ctx-rename" class="menu-option">
     <span class="material-symbols-outlined">edit</span> Rename
   </button>
+  <div class="menu-divider"></div>
   <button id="ctx-delete" class="menu-option delete">
     <span class="material-symbols-outlined">delete</span> Delete
   </button>
@@ -506,36 +529,85 @@ async function loadBoards() {
 
 /**
  * Handles the user action to create a new board.
- * @param {boolean} isInitialLoad If true, bypasses the limit check (used when creating the very first board).
+ * @param {boolean} isInitialLoad If true, used when auto-creating the very first board.
  */
 async function handleNewBoard(isInitialLoad = false) {
-  if (!currentUser) {
+  // 1. Robust auth check: try cached user first
+  let user = currentUser;
+
+  if (!user) {
+    try {
+      const { data, error } = await sb.auth.getSession();
+      if (error) {
+        console.error("handleNewBoard: getSession error", error);
+      }
+      user = data?.session?.user || null;
+
+      if (user) {
+        currentUser = user;
+        try {
+          updateUserProfileUI(user);
+        } catch (e) {
+          console.warn("handleNewBoard: updateUserProfileUI failed", e);
+        }
+      }
+    } catch (e) {
+      console.error("handleNewBoard: unexpected auth error", e);
+    }
+  }
+
+  if (!user) {
     alert("Please sign in first.");
     return;
   }
-  
+
+  // 2. Subscription status
   const isPro = await isProUser();
-  const status = isPro ? 'PRO' : 'FREE';
-  const currentCount = loadedBoards.length;
-  console.log(`User Subscription Status: ${status} (Boards: ${currentCount})`);
-  
-  // 1. CRITICAL ENFORCEMENT CHECK
-  // If the user is NOT PRO (Free/misidentified) AND the current count is >= LIMIT (3)
-  if (!isPro && currentCount >= FREE_BOARD_LIMIT) {
-      // NOTE: The initial load bypass is essential for the 1st, 2nd, and 3rd boards to be created.
-      if (currentCount === 0 && isInitialLoad) {
-          // Allow the very first board creation.
-      } else {
-          // Block all other attempts (4th board onwards)
-          console.warn("LIMIT REACHED: Showing upgrade modal.");
-          openUpgradeModal(); // <--- THIS CALL MAKES THE MODAL VISIBLE
-          return; // STOP execution
+  const status = isPro ? "PRO" : "FREE";
+
+  // 3. Authoritative board count: ask Supabase, not just loadedBoards
+  let currentCount = loadedBoards.length; // fallback
+
+  if (!isPro) {
+    try {
+      const { data: files, error: listErr } = await sb.storage
+        .from(BUCKET)
+        .list(`${user.id}/boards`, { limit: 200, offset: 0 });
+
+      if (listErr) {
+        console.error("handleNewBoard: list error while counting boards:", listErr);
+      } else if (Array.isArray(files)) {
+        const boardFiles = files.filter((f) => f.name.endsWith(".json"));
+        currentCount = boardFiles.length;
       }
+    } catch (err) {
+      console.error(
+        "handleNewBoard: unexpected error while counting boards:",
+        err
+      );
+    }
   }
-  
-  // 2. Proceed with creation (if Pro or under the limit)
+
+  console.log(
+    `User Subscription Status: ${status} (Boards: ${currentCount}), isInitialLoad=${isInitialLoad}`
+  );
+
+  // 4. Enforce FREE limit, but still allow initial bootstrap if you want
+  if (!isPro && currentCount >= FREE_BOARD_LIMIT) {
+    if (isInitialLoad && currentCount === 0) {
+      // edge-case safety: you can leave this if you want a special "first board" escape hatch
+    } else {
+      console.warn("LIMIT REACHED: Showing upgrade modal.");
+      openUpgradeModal();
+      return;
+    }
+  }
+
+  // 5. Proceed with creation
   await createBoardFile(crypto.randomUUID());
 }
+
+
 
 
 /**
@@ -677,25 +749,21 @@ function closeProfileMenu() {
 }
 
 // ==================== AUTH GATEKEEPER ====================
-
 async function handleAuthChange(user, valid = false) {
   currentUser = user;
 
   if (user) {
-    // 1. Update UI
     updateUserProfileUI(user);
 
-    // CRITICAL FIX: Run the check to update subscription status, but DO NOT block access to the dashboard.
-    // This is necessary for the isProUser() check to work in handleNewBoard.
-    await SubscriptionService.initAndCheck(); 
-    
-    // 3. Load boards for all authenticated users (Free or Paid)
+    await SubscriptionService.initAndCheck();
+    hasProCheckCompleted = true;        // ✅ we have now “checked” Pro status
+
     loadBoards();
   } else if (valid) {
-    // Not logged in
     window.location = "../";
   }
 }
+
 
 // ==================== ADVANCED SEARCH LOGIC ====================
 const searchBackdrop = document.getElementById("search-modal-backdrop");
