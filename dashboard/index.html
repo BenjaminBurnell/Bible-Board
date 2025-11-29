@@ -408,25 +408,6 @@
         </svg> -->
       </button>
     </div>
-    <form id="search-container" onsubmit="return searchForQuery(event)">
-      <input id="search-bar" type="text" placeholder="Search " autocomplete="off" />
-      <select id="version-select" title="Version" aria-label="Bible version">
-        <option>NLT</option>
-        <!-- <option>NIV</option> -->
-        <option>KJV</option>
-        <option>ESV</option>
-        <option>ASV</option>
-          <!-- <option>SBLG</option> -->
-      </select>
-      <button id="search-button" type="submit">
-
-        <svg style="margin-top:2px;margin-right:2px;" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="var(--fg)" stroke="var(--bg)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-search">
-          <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-          <path d="M10 10m-7 0a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"/>
-          <path d="M21 21l-6 -6" fill="none"/>
-        </svg>
-      </button>
-    </form>
   </div>
   
 
@@ -531,6 +512,26 @@
 
     </div>
   </div>
+
+  <form id="search-container" onsubmit="return searchForQuery(event)">
+    <input id="search-bar" type="text" placeholder="Search " autocomplete="off" />
+    <select id="version-select" title="Version" aria-label="Bible version">
+      <option>NLT</option>
+      <!-- <option>NIV</option> -->
+      <option>KJV</option>
+      <option>ESV</option>
+      <option>ASV</option>
+        <!-- <option>SBLG</option> -->
+    </select>
+    <button id="search-button" type="submit">
+
+      <svg style="margin-top:2px;margin-right:2px;" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="var(--fg)" stroke="var(--bg)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-search">
+        <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+        <path d="M10 10m-7 0a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"/>
+        <path d="M21 21l-6 -6" fill="none"/>
+      </svg>
+    </button>
+  </form>
 
   <!-- Interlinear panel (now inline within search drawer) -->
   <aside id="interlinear-panel" aria-live="polite" aria-busy="false">

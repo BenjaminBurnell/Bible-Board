@@ -1887,15 +1887,15 @@ body.read-only .connection-handle {
     gap: 8px;
     padding: 8px;
     justify-content: left;
-    width:100vw;
+    width:calc(100vw - 40px);
     margin-left: -20px;
-    padding-left: 20px;
+    padding-left: 25px;
     overflow-x: scroll;
     position:relative;
   }
 
   .search-mode-toggle > :last-child {
-    margin-right: 40px;
+    /* margin-right: 20px; */
   }
 }
 
