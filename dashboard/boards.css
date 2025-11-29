@@ -520,25 +520,16 @@ body {
     --overlay-bg: rgba(0, 0, 0, 0.55);
     --sidebar-z: 2000;
   }
-  
-  #bible-board-container {
-    width:auto;
-    height:auto;
-    position:fixed;
-    top:0;
-    bottom:0;
-    left:0;
-    right:0;
-    overflow:hidden;
-  }
 }
 
 #bible-board-container {
   width:calc(100% - var(--sidebar-width));
-  height:100vh;
-  position:relative;
+  height:auto;
+  position:fixed !important;
   top:0px;
   right:0px;
+  bottom: 0px !important;
+  left:0px;
   left:var(--sidebar-width);
   overflow:hidden;
 }
@@ -1120,12 +1111,12 @@ body {
   /* Fix the board container to fill the screen */
   #bible-board-container {
     width: 100vw;
-    height: 100vh;
+    height: auto;
     position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
+    top: 0px;
+    left: 0px;
+    right: 0px;
+    bottom: 0px;
     overflow: hidden;
   }
 
@@ -1289,7 +1280,7 @@ body {
   border: none;
   border-radius: 8px;
   color: var(--fg);
-  font-size: 0.9rem;
+  font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
   text-align: left;
@@ -1335,24 +1326,23 @@ body {
    Global Context Menu (Fixed Position)
    ========================= */
 #board-context-menu {
-  position: absolute;   /* 🔹 now relative to #sidebar-boards-container */
+  position: absolute;              /* was: fixed */
   background: var(--bg-dots);
   border: 1px solid var(--border);
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-  z-index: 100000;      /* still on top of sidebar content */
-  min-width: 130px;
+  border-radius: 12px;
+  box-shadow: 0 5px 30px rgba(0,0,0,0.2);
+  z-index: var(--sidebar-z);
+  min-width: 160px;
   display: none;
   flex-direction: column;
   padding: 4px;
   backdrop-filter: blur(10px);
 }
-
-
 #board-context-menu.show {
   display: flex;
   animation: menuFadeIn 0.1s ease-out;
 }
+
 
 @keyframes menuFadeIn {
   from { opacity: 0; transform: scale(0.95); }
@@ -1414,66 +1404,351 @@ body {
 
 
 
-/* =========================
-   Modal Styles (Essential for Visibility)
-   ========================= */
+/* ==========================================================
+   Upgrade / Pricing Modal
+   ========================================================== */
 
-/* Backdrop: Fixed, Fullscreen, High Z-Index */
 #upgrade-modal-backdrop {
   position: fixed;
-  inset: 0; /* Stretches to fill viewport */
-  background: rgba(0, 0, 0, 0.6); /* Dark semi-transparent background */
-  backdrop-filter: blur(4px);
-  z-index: 400000; /* Must be high to cover the whole UI */
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(6px);
+  z-index: 400000;
   display: flex;
-  align-items: center;
   justify-content: center;
+  align-items: center;
+  overflow-y: auto;
+  padding: 28px 16px;
 }
 
-/* Hides the modal by default */
 #upgrade-modal-backdrop.hidden {
   display: none !important;
 }
 
-/* Modal Content Container (Reusing existing classes from index.html) */
-.delete-modal-content {
-  /* This ensures the modal box sits in the center */
-  max-width: 400px;
-  background: var(--bg); /* Dark background */
+.upgrade-modal {
+  position: relative;
+  width: calc(100vw - 50px);
+  max-width: 800px;
+  background: var(--bg);
   border: 1px solid var(--border);
-  color:var(--fg);
-  border-radius: 25px; /* Borrowing style from other modals */
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
-  padding: 24px;
+  border-radius: 26px;
+  padding: 28px 30px;
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.55);
+  color: var(--fg);
 }
 
-/* Ensures button spacing inside the modal */
-.modal-actions {
+.upgrade-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  border: 1px solid var(--border);
+  background: var(--bg-dots);
+  color: var(--muted);
+  border-radius: 50%;
+  width: 38px;
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.upgrade-close:hover {
+  color: var(--fg);
+  background: var(--bg-alt);
+}
+
+.upgrade-header {
   display: flex;
-  justify-content: flex-end;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+  margin-bottom: 4px;
+}
+
+.upgrade-eyebrow {
+  margin: 0;
+  color: var(--muted);
+  letter-spacing: 0.14em;
+  font-weight: 800;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+}
+
+.upgrade-header h2 {
+  margin: 0;
+  font-size: 1.8rem;
+  color: var(--fg);
+}
+
+.upgrade-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-dots);
+  border: 1px solid var(--border);
+  padding: 4px;
+  border-radius: 999px;
+}
+
+.toggle-chip {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.toggle-chip.active {
+  background: var(--accent);
+  color: var(--bg);
+}
+
+.toggle-chip[disabled] {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.plan-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+  margin-top: 18px;
+}
+
+.plan-card {
+  background: var(--bg-dots);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
   gap: 10px;
-  margin-top: 20px; 
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
 }
 
-h2 {
-  padding:0px;
-  margin:0px;
+.plan-card.highlight {
+  background: linear-gradient(180deg, rgba(103, 228, 149, 0.12), rgba(103, 228, 149, 0.05));
+  border-color: var(--accent);
+  box-shadow: 0 12px 35px rgba(103, 228, 149, 0.25);
 }
 
-#upgrade-modal-image-container{
-  width:100%;
-  height:300px;
-  position:relative;
-  overflow:hidden;
-  border-radius:15px;
+.plan-card.pro-plan {
+  background: var(--bg-alt);
 }
 
-#upgrade-modal-image {
-  width:100%;
-  height:100%;
-  object-fit:cover;
-  object-position: center;
-  filter: blur(.05rem);
+.plan-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.plan-name {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--fg);
+}
+
+.plan-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--fg);
+  background: var(--bg-alt);
+  border: 1px solid var(--border);
+}
+
+.plan-pill.accent {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--bg);
+}
+
+.plan-pill.dark {
+  background: var(--fg);
+  border-color: var(--fg);
+  color: var(--bg);
+}
+
+.plan-pill.muted {
+  color: var(--muted);
+  background: var(--bg-dots);
+}
+
+.plan-price {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  font-weight: 800;
+  font-size: 2.4rem;
+  color: var(--fg);
+}
+
+.plan-price .currency {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.plan-price .per {
+  font-size: 0.9rem;
+  color: var(--muted);
+  font-weight: 700;
+  margin-bottom:5px;
+  align-self: flex-end;
+}
+
+.plan-subtitle {
+  margin: 0;
+  color: var(--fg);
+  font-weight: 700;
+  margin-bottom: 15px;
+}
+
+.plan-features {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.plan-feature-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 12px;
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-top: 15px;
+}
+
+.plan-feature-list li {
+  display: flex;
+  align-items: center;
+  /* justify-content: center; */
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+/* Icon inside the feature row */
+.plan-feature-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--fg);  /* Tabler icons use currentColor for stroke */
+}
+
+.plan-feature-list li span {
+  line-height: 1.4;
+}
+
+
+.plan-feature {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  color: var(--fg);
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.feature-icon {
+  width: 22px;
+  height: 22px;
+  border-radius: 8px;
+  background: var(--bg-alt);
+  border: 1px solid var(--border);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.plan-card.highlight .feature-icon {
+  background: rgba(103, 228, 149, 0.12);
+  border-color: rgba(103, 228, 149, 0.4);
+}
+
+.plan-card.pro-plan .feature-icon {
+  background: var(--bg);
+  border-color: var(--border);
+  color: var(--fg);
+}
+
+.plan-cta {
+  width: 100%;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  padding: 12px;
+  font-weight: 800;
+  font-size: 0.95rem;
+  cursor: pointer;
+  background: var(--bg-alt);
+  color: var(--fg);
+}
+
+.plan-cta.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--bg);
+  box-shadow: 0 8px 24px rgba(103, 228, 149, 0.35);
+}
+
+.plan-cta.dark {
+  background: var(--fg);
+  border-color: var(--fg);
+  color: var(--bg);
+}
+
+.plan-cta.ghost {
+  background: transparent;
+  color: var(--muted);
+}
+
+.plan-cta[disabled] {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.plan-footnote {
+  margin: 4px 0 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.plan-link {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+@media (max-width: 900px) {
+  #upgrade-modal-backdrop {
+    align-items: flex-end;
+    padding: 12px;
+  }
+
+  .upgrade-modal {
+    width: 100%;
+    border-radius: 24px 24px 0 0;
+    padding: 22px;
+  }
+
+  .plan-price {
+    font-size: 2.1rem;
+  }
 }
 
 #sidebar-logo-img {
@@ -1481,4 +1756,42 @@ h2 {
   height:32px;
   object-fit: cover;
   object-position: center;
+}
+
+#search-mode-panel-fade-left {
+  width:30px;
+  height:50px;
+  background:linear-gradient(to right, var(--bg), var(--bg-trasparent));
+  position:absolute;
+  left:-1px;
+  bottom:0px;
+}
+
+#search-mode-panel-fade-right {
+  width:30px;
+  height:50px;
+  background:linear-gradient(to left, var(--bg), var(--bg-trasparent));
+  position:absolute;
+  right:-16px;
+  bottom:0px;
+}
+
+@media (max-width:900px) {
+  #search-mode-panel-fade-left {
+    width:15px;
+    height:50px;
+    background:linear-gradient(to right, var(--bg), var(--bg-trasparent));
+    position:absolute;
+    left:-20px;
+    bottom:0px;
+  }
+
+  #search-mode-panel-fade-right {
+    width:15px;
+    height:50px;
+    background:linear-gradient(to left, var(--bg), var(--bg-trasparent));
+    position:absolute;
+    right:-20px;
+    bottom:0px;
+  }
 }

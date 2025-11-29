@@ -5,6 +5,7 @@ import { SubscriptionService } from "../subscriptionService.js";
 
 const BUCKET = "bible-boards";
 const FREE_BOARD_LIMIT = 3; // The maximum number of boards for a free user
+const FREE_ITEM_LIMIT_PER_BOARD = 100;
 
 // --- State ---
 let currentUser = null;
@@ -340,7 +341,14 @@ contextMenuEl.innerHTML = `
       Delete
   </button>
 `;
-document.body.appendChild(contextMenuEl);
+
+// Prefer to attach inside the scroll container so it moves with the list
+if (sidebarBoardsContainer) {
+  sidebarBoardsContainer.appendChild(contextMenuEl);
+} else {
+  document.body.appendChild(contextMenuEl);
+}
+
 
 document.getElementById('ctx-rename').addEventListener('click', (e) => {
   e.stopPropagation();
@@ -355,60 +363,66 @@ document.getElementById('ctx-delete').addEventListener('click', (e) => {
 });
 
 function closeContextMenu() {
-  if (contextMenuEl) {
-    contextMenuEl.classList.remove('show');
-  }
+  contextMenuEl.classList.remove('show');
 
-  // remove highlight from whichever sidebar-board-item had the menu
+  // Clear highlight + 3-dot state on the last item
   if (openBoardContextItem) {
     openBoardContextItem.classList.remove('context-open');
+    const prevBtn = openBoardContextItem.querySelector('.sidebar-menu-btn');
+    if (prevBtn) prevBtn.classList.remove('active');
     openBoardContextItem = null;
   }
 }
+window.closeContextMenu = closeContextMenu;
 
 
-
-window.closeContextMenu = closeContextMenu; 
-
-function openContextMenu(e, board) {
+function openContextMenu(e, board, itemEl, menuBtn) {
   e.preventDefault();
   e.stopPropagation();
   currentModalBoard = board;
 
-  const itemDiv = e.currentTarget.closest(".sidebar-board-item");
-  if (!itemDiv) return;
+  const container = sidebarBoardsContainer || document.getElementById("sidebar-boards-container") || document.body;
 
-  const container = document.getElementById("sidebar-boards-container");
-  if (!container) return;
-
-  // 🔹 move the menu into the scrollable container so it scrolls with the list
+  // Move menu into the correct container if needed
   if (contextMenuEl.parentElement !== container) {
     container.appendChild(contextMenuEl);
   }
 
-  // 🔹 highlight the item that owns this menu
-  if (openBoardContextItem && openBoardContextItem !== itemDiv) {
-    openBoardContextItem.classList.remove("context-open");
+  // Clear old item highlight / active dots
+  if (openBoardContextItem && openBoardContextItem !== itemEl) {
+    openBoardContextItem.classList.remove('context-open');
+    const prevBtn = openBoardContextItem.querySelector('.sidebar-menu-btn');
+    if (prevBtn) prevBtn.classList.remove('active');
   }
-  openBoardContextItem = itemDiv;
-  itemDiv.classList.add("context-open");
 
-  const itemRect = itemDiv.getBoundingClientRect();
-  const containerRect = container.getBoundingClientRect();
+  // Track + highlight the current item and its 3-dots
+  openBoardContextItem = itemEl;
+  if (itemEl) itemEl.classList.add('context-open');
+  if (menuBtn) menuBtn.classList.add('active');
 
-  // vertical: just below the row, relative to the container
-  let top = itemRect.top - containerRect.top + itemDiv.offsetHeight + 6;
+  // Temporarily show menu (hidden) so we can measure its size
+  contextMenuEl.style.visibility = "hidden";
+  contextMenuEl.classList.add('show');
 
-  // horizontal: align to right side of the container
-  const menuWidth = contextMenuEl.offsetWidth || 160;
-  let left = 10;
-  // if (left < 8) left = 8;
+  requestAnimationFrame(() => {
+    const containerRect = container.getBoundingClientRect();
+    const itemRect = itemEl.getBoundingClientRect();
+    const menuRect = contextMenuEl.getBoundingClientRect();
+    const scrollY = container.scrollTop || 0;
 
-  contextMenuEl.style.top = `${top}px`;
-  contextMenuEl.style.right = `${left}px`;
+    // Position relative to the scrolling container:
+    //   - vertical: just under the item (with scroll offset)
+    //   - horizontal: right-aligned inside the container
+    let top = scrollY + (itemRect.bottom - containerRect.top) + 8;
+    let left = container.clientWidth - menuRect.width - 8;
+    if (left < 8) left = 8;
 
-  contextMenuEl.classList.add("show");
+    contextMenuEl.style.top = `${top}px`;
+    contextMenuEl.style.left = `${left}px`;
+    contextMenuEl.style.visibility = "visible";
+  });
 }
+
 
 
 // ==================== SIDEBAR RENDERING ====================
@@ -462,8 +476,9 @@ function renderSidebarBoards(boards) {
       menuBtn.innerHTML = `<span class="material-symbols-outlined" style="font-size:20px">more_horiz</span>`;
       
       menuBtn.onclick = (e) => {
-        openContextMenu(e, board);
+        openContextMenu(e, board, itemDiv, menuBtn);
       };
+
 
       itemDiv.appendChild(mainBtn);
       itemDiv.appendChild(menuBtn);
@@ -514,7 +529,7 @@ async function fetchBoardDetails(user, file) {
 async function loadBoards() {
   try {
     const user = currentUser;
-    renderStatus("Loading boards…");
+    // renderStatus("Loading boards…");
 
     if (!user) {
       renderStatus("Not signed in.");
@@ -698,12 +713,16 @@ async function createBoardFile(boardId) {
 
 
 // --- Upgrade Modal Logic (NEW) ---
-function openUpgradeModal() {
+function openUpgradeModal(reason) {
     if (upgradeModalBackdrop) {
         upgradeModalBackdrop.classList.remove("hidden");
         upgradeModalBackdrop.style.display = "flex";
+        // you can optionally use `reason` inside the modal later
     }
 }
+
+// Make it callable from script.js (board workspace)
+window.openUpgradeModal = openUpgradeModal;
 
 window.closeUpgradeModal = function() {
     if (upgradeModalBackdrop) {
@@ -712,10 +731,21 @@ window.closeUpgradeModal = function() {
     }
 }
 
-function handleUpgrade() {
-    closeUpgradeModal();
-    // Redirect to your paywall/checkout page
-    window.location.href = "../paywall.html";
+
+async function handleUpgrade() {
+  // Close the nice modal first
+  closeUpgradeModal();
+
+  try {
+    // Only using monthly right now, so hard-code monthly
+    await SubscriptionService.subscribe("monthly");
+    // RevenueCat SDK / your SubscriptionService should handle
+    // opening the hosted pay page or Stripe checkout.
+  } catch (err) {
+    console.error("Error starting subscription:", err);
+    // Optional: show a small toast or alert if you want
+    // alert("Something went wrong starting your subscription. Please try again.");
+  }
 }
 
 
@@ -786,14 +816,19 @@ async function handleAuthChange(user, valid = false) {
   if (user) {
     updateUserProfileUI(user);
 
-    await SubscriptionService.initAndCheck();
-    hasProCheckCompleted = true;        // ✅ we have now “checked” Pro status
+    // Ask RevenueCat / SubscriptionService via isProUser()
+    const isPro = await isProUser();
+    // Expose to the whole app (board page reads this)
+    window.BIBLEBOARD_IS_PRO = !!isPro;
+
+    hasProCheckCompleted = true;
 
     loadBoards();
   } else if (valid) {
     window.location = "../";
   }
 }
+
 
 
 // ==================== ADVANCED SEARCH LOGIC ====================
@@ -1130,97 +1165,243 @@ function updateFloatingAddButton() {
   }
 }
 
+
+/**
+ * Counts how many items are currently on the open board.
+ * It assumes each board item has the class .board-item
+ */
+function getCurrentBoardItemCount() {
+  const workspace = document.getElementById("workspace");
+  if (!workspace) return 0;
+  return workspace.querySelectorAll(".board-item").length;
+}
+
+/**
+ * Enforces the per-board item limit for FREE users.
+ * Returns true if the batch is allowed, false if we should block.
+ *
+ * This is used by the floating “Add N items” button.
+ */
+async function ensureCanAddBatch(batchSize) {
+  // If user is Pro, no limit.
+  if (window.BIBLEBOARD_IS_PRO) {
+    return true;
+  }
+
+  // Max items on FREE plan
+  const FREE_BOARD_ITEM_LIMIT = 100;
+
+  const currentCount = getCurrentBoardItemCount();
+  const projectedCount = currentCount + batchSize;
+
+  // Under or equal to limit → allow
+  if (projectedCount <= FREE_BOARD_ITEM_LIMIT) {
+    return true;
+  }
+
+  // Over limit → block and show upgrade flow
+  console.warn(
+    `Free plan limit is ${FREE_BOARD_ITEM_LIMIT} items per board. ` +
+    `Current: ${currentCount}, trying to add: ${batchSize}`
+  );
+
+  if (typeof window.openUpgradeModal === "function") {
+    // You already wired this modal in boards.js
+    window.openUpgradeModal("board-items-limit");
+  } else {
+    // Fallback in case modal isn't available for some reason
+    alert(
+      `On the free plan, you can have up to ${FREE_BOARD_ITEM_LIMIT} items per board.\n` +
+      `You currently have ${currentCount} items and are trying to add ${batchSize} more.`
+    );
+  }
+
+  return false;
+}
+
+
 // 4. Master Flush Function
 // Takes items from all queues and adds them to the board
-function handleFloatingAddClick() {
-  // Hide UI
-  clearSelection();
-  closeInterlinearPanel();
-  closeSearchQuery();
+async function handleFloatingAddClick() {
+  // Hide UI immediately
+  if (typeof clearSelection === "function") clearSelection();
+  if (typeof closeInterlinearPanel === "function") closeInterlinearPanel();
+  if (typeof closeSearchQuery === "function") closeSearchQuery();
 
   const verses = Array.from(window.pendingVerseAdds.values());
   const songs = Array.from(window.pendingSongAdds.values());
   const interlinear = Array.from(window.pendingInterlinearAdds.values());
 
-  if (verses.length === 0 && songs.length === 0 && interlinear.length === 0) return;
+  const totalToAdd = verses.length + songs.length + interlinear.length;
+  if (totalToAdd === 0) return;
 
-  // Clear Queues
+  // 🔒 Enforce free-plan limit ONLY on this bulk add
+  const canAdd = await ensureCanAddBatch(totalToAdd);
+  if (!canAdd) {
+    // Do NOT clear the queues; let the user upgrade and then click again.
+    return;
+  }
+
+  // Clear State (we're definitely adding them now)
   window.pendingVerseAdds.clear();
   window.pendingSongAdds.clear();
   window.pendingInterlinearAdds.clear();
-  
-  updateFloatingAddButton(); // Hide button immediately
 
-  let delay = 0.05;
+  // Immediately hide the floating button
+  updateFloatingAddButton();
 
-  // --- PROCESS VERSES (Group continuous ranges) ---
+  let delay = 0;
+
+  // --- ADD VERSES ---
   if (verses.length > 0) {
-    // Sort
-    const parseRef = (ref) => {
-      const m = ref.match(/:(\d+)$/);
-      return m ? parseInt(m[1]) : 0;
-    };
-    verses.sort((a, b) => parseRef(a.reference) - parseRef(b.reference));
+    // Sort by reference to make grouping predictable
+    verses.sort((a, b) => {
+      const pa = parseFullRef(a.reference);
+      const pb = parseFullRef(b.reference);
 
-    // Group
+      if (pa.book !== pb.book) return pa.book.localeCompare(pb.book);
+      if (pa.chapter !== pb.chapter) return pa.chapter - pb.chapter;
+      return pa.verse - pb.verse;
+    });
+
+    // Group continuous verses
     let groups = [[verses[0]]];
+
     for (let i = 1; i < verses.length; i++) {
-        const prev = groups[groups.length-1][groups[groups.length-1].length-1];
-        const curr = verses[i];
-        const prevNum = parseRef(prev.reference);
-        const currNum = parseRef(curr.reference);
-        
-        // Check if same book/chapter and sequential verse
-        const prevBase = prev.reference.split(":")[0];
-        const currBase = curr.reference.split(":")[0];
-        
-        if (prevBase === currBase && currNum === prevNum + 1) {
-            groups[groups.length-1].push(curr);
-        } else {
-            groups.push([curr]);
-        }
+      const prevGroup = groups[groups.length - 1];
+      const prev = prevGroup[prevGroup.length - 1];
+      const curr = verses[i];
+
+      const prevData = parseFullRef(prev.reference);
+      const currData = parseFullRef(curr.reference);
+
+      // Same Version + Book + Chapter + next verse?
+      if (
+        prev.version === curr.version &&
+        prevData.book === currData.book &&
+        prevData.chapter === currData.chapter &&
+        currData.verse === prevData.verse + 1
+      ) {
+        prevGroup.push(curr);
+      } else {
+        groups.push([curr]);
+      }
     }
 
-    // Add Groups
-    groups.forEach(group => {
-        if (group.length === 1) {
-            const v = group[0];
-            window.BoardAPI.addBibleVerse(v.reference, v.text, false, v.version, delay);
-        } else {
-            // Range
-            const first = group[0];
-            const last = group[group.length - 1];
-            const baseRef = first.reference.split(":")[0];
-            const startV = first.reference.split(":")[1];
-            const endV = last.reference.split(":")[1];
-            
-            // Combine text: Ensure [N] spacing
-            const combinedText = group.map(v => {
-                const vNum = v.reference.split(":")[1];
-                // Strip existing [N] to avoid double brackets
-                const clean = v.text.replace(/^\[\d+\]\s*/, "").replace(/^\d+\s+/, "");
-                return `[${vNum}] ${clean}`;
-            }).join(" ");
-            
-            window.BoardAPI.addBibleVerse(`${baseRef}:${startV}-${endV}`, combinedText, false, first.version, delay);
-        }
-        delay += 0.15;
+    // Add Groups to Board
+    groups.forEach((group) => {
+      if (group.length === 1) {
+        // Single Verse
+        const v = group[0];
+        window.BoardAPI.addBibleVerse(
+          v.reference,
+          v.text,
+          false,
+          v.version,
+          delay
+        );
+      } else {
+        // Verse Range
+        const first = group[0];
+        const last = group[group.length - 1];
+
+        const firstData = parseFullRef(first.reference);
+        const baseRef = `${firstData.book} ${firstData.chapter}`;
+
+        const startV = firstData.verse;
+        const endV = parseFullRef(last.reference).verse;
+
+        const combinedText = group.map((v) => v.text).join(" ");
+
+        window.BoardAPI.addBibleVerse(
+          `${baseRef}:${startV}-${endV}`,
+          combinedText,
+          false,
+          first.version,
+          delay
+        );
+      }
+      delay += 0.15;
     });
   }
 
-  // --- PROCESS SONGS ---
-  songs.forEach(song => {
+  // --- ADD SONGS ---
+  songs.forEach((song) => {
     window.BoardAPI.addSongElement(song, delay);
     delay += 0.15;
   });
 
-  // --- PROCESS INTERLINEAR ---
-  interlinear.forEach(item => {
+  // --- ADD INTERLINEAR ---
+  interlinear.forEach((item) => {
     window.BoardAPI.addInterlinearCard(item, delay);
     delay += 0.15;
   });
 
   // Cleanup Visuals
-  document.querySelectorAll(".selected-for-add").forEach(el => el.classList.remove("selected-for-add"));
-  document.querySelectorAll(".search-query-verse-add-button.selected").forEach(el => el.classList.remove("selected"));
+  document
+    .querySelectorAll(".selected-for-add")
+    .forEach((el) => el.classList.remove("selected-for-add"));
+  document
+    .querySelectorAll(".search-query-verse-add-button.selected")
+    .forEach((el) => el.classList.remove("selected"));
+}
+
+
+// Helper: figure out if the user is Pro and enforce the limit for batch adds
+async function canAddMoreBoardItems(batchSize) {
+  try {
+    // If you have a global SubscriptionService from your RevenueCat integration,
+    // try to use it to detect Pro users.
+    if (window.SubscriptionService) {
+      // 1) Preferred: async check
+      if (typeof window.SubscriptionService.hasActiveSubscription === "function") {
+        const hasSub = await window.SubscriptionService.hasActiveSubscription();
+        if (hasSub) return true; // Pro → no limit
+      }
+
+      // 2) Fallbacks: common flags/properties you might be using
+      if (
+        window.SubscriptionService.isProUser === true ||
+        window.SubscriptionService.hasProAccess === true ||
+        window.SubscriptionService.currentPlan === "pro" ||
+        window.SubscriptionService.currentPlan === "plus"
+      ) {
+        return true; // Pro → no limit
+      }
+    }
+
+    // 3) Optional: simple global flag you can set yourself after checking entitlements
+    if (window.BIBLEBOARD_PRO_ENABLED === true) {
+      return true; // Pro → no limit
+    }
+  } catch (err) {
+    console.warn("Error checking subscription status:", err);
+    // If we can't verify, we fall through and treat them as free
+  }
+
+  // At this point, we treat the user as FREE and enforce the 100-item limit.
+  const workspace = document.getElementById("workspace");
+  const currentCount = workspace
+    ? workspace.querySelectorAll(".board-item").length
+    : 0;
+
+  const projected = currentCount + batchSize;
+
+  if (currentCount >= FREE_BOARD_ITEM_LIMIT || projected > FREE_BOARD_ITEM_LIMIT) {
+    // Show your nice upgrade modal if available, otherwise fall back to alert
+    if (typeof window.openUpgradeModal === "function") {
+      // You can pass a reason string if your modal cares, or just call with no args.
+      window.openUpgradeModal("board-items-limit");
+    } else {
+      alert(
+        `Board item limit reached.\n\n` +
+        `On the free plan you can have up to ${FREE_BOARD_ITEM_LIMIT} items per board.\n` +
+        `You currently have ${currentCount} item${currentCount !== 1 ? "s" : ""}. ` +
+        `Remove some items or upgrade to Pro to add more.`
+      );
+    }
+    return false;
+  }
+
+  return true;
 }

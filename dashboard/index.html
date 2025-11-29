@@ -441,21 +441,57 @@
         <div id="did-you-mean-text">Did you mean ""?</div>
 
         <div class="search-mode-toggle">
-          <button id="search-mode-bible" class="search-mode-pill active">Bible</button>
+          <button id="search-mode-bible" class="search-mode-pill active">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-book">
+              <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+              <path d="M3 19a9 9 0 0 1 9 0a9 9 0 0 1 9 0"/>
+              <path d="M3 6a9 9 0 0 1 9 0a9 9 0 0 1 9 0"/>
+              <path d="M3 6l0 13"/>
+              <path d="M12 6l0 13"/>
+              <path d="M21 6l0 13"/>
+            </svg>
+            <span>Bible</span>
+          </button>
           <button
             id="search-mode-cross-reference"
             class="search-mode-pill"
             type="button"
             onclick="setSearchMode('crossref', { openDrawer: true })"
           >
-            Cross Reference
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-affiliate">
+            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+            <path d="M5.931 6.936l1.275 4.249m5.607 5.609l4.251 1.275"/>
+            <path d="M11.683 12.317l5.759 -5.759"/>
+            <path d="M5.5 5.5m-1.5 0a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0 -3 0"/>
+            <path d="M18.5 5.5m-1.5 0a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0 -3 0"/>
+            <path d="M18.5 18.5m-1.5 0a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0 -3 0"/>
+            <path d="M8.5 15.5m-4.5 0a4.5 4.5 0 1 0 9 0a4.5 4.5 0 1 0 -9 0"/>
+          </svg>
+            <span>Cross Reference</span>
           </button>
-          <button id="search-mode-interlinear" class="search-mode-pill">Interlinear</button>
-          <button id="search-mode-songs" class="search-mode-pill">Music</button>
-
+          <button id="search-mode-interlinear" class="search-mode-pill">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-language-katakana">
+              <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+              <path d="M5 5h6.586a1 1 0 0 1 .707 1.707l-1.293 1.293"/>
+              <path d="M8 8c0 1.5 .5 3 -2 5"/>
+              <path d="M12 20l4 -9l4 9"/>
+              <path d="M19.1 18h-6.2"/>
+            </svg>
+            <span>Interlinear</span>
+          </button>
+          <button id="search-mode-songs" class="search-mode-pill">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-music">
+              <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+              <path d="M3 17a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/>
+              <path d="M13 17a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/>
+              <path d="M9 17v-13h10v13"/>
+              <path d="M9 8h10"/>
+            </svg>
+            <span>Music</span>
+          </button>
         </div>
-
-
+          <div id="search-mode-panel-fade-left"></div>
+          <div id="search-mode-panel-fade-right"></div>
       </div>
 
       <div id="esc-btn" onclick="closeSearchQuery()">
@@ -595,39 +631,120 @@
   </div>
 
   <div id="upgrade-modal-backdrop" class="hidden">
-    <div class="modal-content delete-modal-content">
-      <div id="upgrade-modal-image-container"> 
-        <img id="upgrade-modal-image" src="../assets/Paywall image.png">
-      </div>
-      <h2>Unlock Unlimited Boards</h2>
-      
-      <p class="delete-modal-text">
-        Upgrade to <strong id="upgrade-board-name">BibleBoard Pro</strong> to create unlimited study boards.
-      </p>
-      
-      <p class="delete-modal-subtext">
-        You have reached the limit of 3 boards for your free plan.
-      </p>
+    <div class="upgrade-modal">
+      <button class="upgrade-close" onclick="closeUpgradeModal()" aria-label="Close upgrade modal">
+        <span class="material-symbols-outlined">close</span>
+      </button>
 
-      <div class="modal-actions">
-        <div style="flex:1"></div> 
-        <button onclick="closeUpgradeModal()" class="modal-btn cancel">Cancel</button>
-        <button type="button" id="upgrade-now-btn" class="modal-btn primary">Upgrade Now</button>
-        <!-- <div class="plan-card selected" id="plan-monthly">
-          <div style="display:flex; align-items:center; flex:1;">
-            <div class="radio-outer"><div class="radio-inner"></div></div>
-            <div class="plan-details">
-              <span class="plan-name">Billed monthly</span>
-            </div>
+      <div class="upgrade-header">
+        <p class="upgrade-eyebrow">BibleBoard plans</p>
+        <h2 style="margin: 0px;">Upgrade your plan</h2>
+        <p style="margin: 0px;margin-bottom:15px;color:var(--muted)">Turn scattered study into living boards.</p>
+        <!-- <div class="upgrade-toggle" role="group" aria-label="Plan type">
+          <button class="toggle-chip active" type="button">Personal</button>
+          <button class="toggle-chip" type="button" disabled>Business</button>
+        </div> -->
+      </div>
+
+      <div class="plan-grid">
+        <article class="plan-card free-plan">
+          <div class="plan-top">
+            <span class="plan-name">Free</span>
+            <span class="plan-pill muted">Current</span>
           </div>
           <div class="plan-price">
-            <span class="price-amount">$2.49</span>
-            <span class="price-period">Per month</span>
+            <span class="currency">$</span>
+            <span class="amount">0</span>
+            <span class="per">/mo</span>
           </div>
-        </div> -->
+          <p class="plan-subtitle">See what BibleBoard can do</p>
+          <button class="plan-cta ghost" type="button" disabled>Your current plan</button>
+          <ul class="plan-feature-list">
+            <li>
+              <!-- Tabler: book-2 -->
+              <svg class="plan-feature-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                <path d="M19 4v16h-12a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h12z" />
+                <path d="M19 16h-12a2 2 0 0 0 -2 2" />
+                <path d="M9 8h6" />
+              </svg>
+              <span>Up to 3 Bible study boards</span>
+            </li>
+            <li>
+              <!-- Tabler: infinity (but used as “core tools”) -->
+              <!-- <svg class="plan-feature-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                <path d="M9.828 9.172a4 4 0 1 0 0 5.656a10 10 0 0 0 2.172 -2.828a10 10 0 0 1 2.172 -2.828a4 4 0 1 1 0 5.656a10 10 0 0 1 -2.172 -2.828a10 10 0 0 0 -2.172 -2.828" />
+              </svg> -->
+
+              <svg class="plan-feature-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-number-100-small">
+                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                <path d="M4 8h1v8"/>
+                <path d="M9 10v4a2 2 0 1 0 4 0v-4a2 2 0 1 0 -4 0"/>
+                <path d="M16 10v4a2 2 0 1 0 4 0v-4a2 2 0 1 0 -4 0"/>
+              </svg>
+              <span>100 items per board</span>
+            </li>
+          </ul>
+          <!-- <p class="plan-footnote">Have an existing plan? <a class="plan-link" href="../paywall.html">See billing help</a></p> -->
+        </article>
+
+        <article class="plan-card">
+          <div class="plan-top">
+            <span class="plan-name">Plus</span>
+            <span class="plan-pill dark">Popular</span>
+          </div>
+          <div class="plan-price">
+            <span class="currency">$</span>
+            <span class="amount">2.49</span>
+            <span class="per">/mo</span>
+          </div>
+          <p class="plan-subtitle">Unlock the full experience</p>
+          <button class="plan-cta dark upgrade-cta" id="upgrade-now-btn" data-plan="monthly" type="button">Get Plus</button>
+          <ul class="plan-feature-list">
+            <li>
+              <!-- Tabler: infinity – “unlimited boards” -->
+              <svg class="plan-feature-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                <path d="M9.828 9.172a4 4 0 1 0 0 5.656a10 10 0 0 0 2.172 -2.828a10 10 0 0 1 2.172 -2.828a4 4 0 1 1 0 5.656a10 10 0 0 1 -2.172 -2.828a10 10 0 0 0 -2.172 -2.828" />
+              </svg>
+              <span>Unlimited BibleBoard study boards</span>
+            </li>
+            <li>
+              <!-- Tabler: book-2 – “advanced study tools” -->
+              <svg class="plan-feature-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                <path d="M19 4v16h-12a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h12z" />
+                <path d="M19 16h-12a2 2 0 0 0 -2 2" />
+                <path d="M9 8h6" />
+              </svg>
+              <span>Unlimited board items</span>
+            </li>
+            <li>
+              <!-- Tabler: sparkles – “priority / new features” -->
+              <!-- <svg class="plan-feature-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                <path d="M16 18a2 2 0 0 1 2 2a2 2 0 0 1 2 -2a2 2 0 0 1 -2 -2a2 2 0 0 1 -2 2zm0 -12a2 2 0 0 1 2 2a2 2 0 0 1 2 -2a2 2 0 0 1 -2 -2a2 2 0 0 1 -2 2zm-7 12a6 6 0 0 1 6 -6a6 6 0 0 1 -6 -6a6 6 0 0 1 -6 6a6 6 0 0 1 6 6z" />
+              </svg> -->
+
+              <svg class="plan-feature-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-palette">
+                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                <path d="M12 21a9 9 0 0 1 0 -18c4.97 0 9 3.582 9 8c0 1.06 -.474 2.078 -1.318 2.828c-.844 .75 -1.989 1.172 -3.182 1.172h-2.5a2 2 0 0 0 -1 3.75a1.3 1.3 0 0 1 -1 2.25"/>
+                <path d="M8.5 10.5m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/>
+                <path d="M12.5 7.5m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/>
+                <path d="M16.5 10.5m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/>
+              </svg>
+              <span>Priority access to new BibleBoard features</span>
+            </li>
+          </ul>
+          <!-- <p class="plan-footnote"><a class="plan-link" href="../paywall.html">Limits apply</a></p> -->
+        </article>
       </div>
     </div>
   </div>
+
+
+
 
   <script>
     function closeModal() {

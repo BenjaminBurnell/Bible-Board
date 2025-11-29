@@ -7018,95 +7018,83 @@ function toggleItemInQueue(btn, rowElement, data) {
  */
 async function flushItemsQueueToBoard() {
   const floatBtn = document.getElementById("floating-add-to-board-btn");
-  if (window.itemsToAddQueue.size === 0) return;
+  const queue = window.itemsToAddQueue;
+
+  // Nothing queued → nothing to do
+  if (!queue || queue.size === 0) return;
+
+  // 🔒 NEW: enforce the per-board limit ONLY on this bulk add action
+  if (typeof window.ensureCanAddBatch === "function") {
+    const canAdd = await window.ensureCanAddBatch(queue.size);
+    if (!canAdd) {
+      // IMPORTANT: do NOT clear the queue or selection.
+      // This lets a user upgrade and just click the button again
+      // without losing all the verses they’ve selected.
+      return;
+    }
+  }
 
   // 1. Hide the search/drawer UI
   const searchContainer = document.getElementById("search-query-container");
   const searchInput = document.getElementById("search-bar");
+  if (searchContainer) searchContainer.classList.remove("open");
+  if (searchInput) searchInput.value = "";
+  if (floatBtn) floatBtn.style.display = "none";
 
-  // Fade out search
-  if (searchContainer) {
-    searchContainer.style.opacity = "0";
-    setTimeout(() => {
-      searchContainer.style.width = "0px";
-      if (searchInput) searchInput.value = "";
-    }, 250);
-  }
+  // 2. Calculate where to place new items visually (centered around viewport center)
+  const viewportEl = document.querySelector(".viewport");
+  const viewportRect = viewportEl.getBoundingClientRect();
+  const workspaceRect = workspace.getBoundingClientRect();
 
-  // Hide Interlinear Panel if open
-  const interlinearPanel = document.getElementById("interlinear-panel");
-  if (interlinearPanel) interlinearPanel.classList.remove("open");
+  const centerX = viewport.scrollLeft + viewportRect.width / 2;
+  const centerY = viewport.scrollTop + viewportRect.height / 2;
 
-  // Reset floating button
-  if (floatBtn) {
-    floatBtn.style.display = "none";
-    floatBtn.innerHTML = ""; // Clear icon
-  }
-
-  // 2. Calculate center position for new items
-  const viewport = document.querySelector(".viewport");
-  const rect = viewport.getBoundingClientRect();
-  const centerX = rect.width / 2;
-  const centerY = rect.height / 2;
-
-  // Offset logic
-  let index = 0;
-  const offsetStep = 30;
-  const totalItems = window.itemsToAddQueue.size;
+  const offsetStep = 40;
+  const totalItems = queue.size;
   const startX = centerX - ((totalItems - 1) * offsetStep) / 2;
   const startY = centerY - ((totalItems - 1) * offsetStep) / 2;
 
+  // Take a snapshot so index math is stable even if the Set changes
+  const items = Array.from(queue);
+
   // 3. Iterate and Add
-  for (const item of window.itemsToAddQueue) {
+  items.forEach((item, idx) => {
     let newEl = null;
 
-    // --- CASE: VERSE ---
     if (item.type === "verse") {
+      // Add a verse card
       newEl = window.BoardAPI.addBibleVerse(
         item.reference,
         item.text,
-        false, // not from load
+        false,
         item.version
       );
-    }
-    // --- CASE: SONG ---
-    else if (item.type === "song") {
-      newEl = window.BoardAPI.addSongElement(item);
-    }
-    // --- NEW CASE: INTERLINEAR ---
-    else if (item.type === "interlinear") {
-      // This calls the existing BoardAPI function (wrapped by undo-redo.js)
-      newEl = window.BoardAPI.addInterlinearCard({
-        surface: item.surface,
-        english: item.english,
-        translit: item.translit,
-        morph: item.morph,
-        strong: item.strong,
-        reference: item.reference,
-      });
+    } else if (item.type === "song") {
+      newEl = window.BoardAPI.addSongElement(item.song);
+    } else if (item.type === "interlinear") {
+      newEl = window.BoardAPI.addInterlinearCard(item);
     }
 
-    // 4. Position & Animate
     if (newEl) {
-      const x = startX + index * offsetStep;
-      const y = startY + index * offsetStep;
+      const x = startX + idx * offsetStep;
+      const y = startY + idx * offsetStep;
 
-      newEl.style.left = `${x}px`;
-      newEl.style.top = `${y}px`;
+      newEl.style.left = `${Math.max(
+        0,
+        Math.min(x - workspaceRect.left, workspace.offsetWidth - newEl.offsetWidth)
+      )}px`;
+      newEl.style.top = `${Math.max(
+        0,
+        Math.min(y - workspaceRect.top, workspace.offsetHeight - newEl.offsetHeight)
+      )}px`;
 
-      // Add the "pop-in" animation class
-      newEl.classList.add("item-pop-in");
-
-      // Trigger a save/sync
-      if (window.BoardAPI.triggerAutosave) {
-        window.BoardAPI.triggerAutosave("items_flushed");
-      }
+      newEl.classList.add("highlight-flash");
+      setTimeout(() => newEl.classList.remove("highlight-flash"), 800);
     }
-    index++;
-  }
+  });
 
   // 5. Clean up
-  window.itemsToAddQueue.clear();
+  queue.clear();
 
   // Remove "selected" styling from all buttons in the DOM
   document
@@ -7118,6 +7106,7 @@ async function flushItemsQueueToBoard() {
     row.classList.remove("selected-for-add");
   });
 }
+
 
 /* =================================================================
    SINGLE INTERLINEAR HANDLER (Paste at bottom of script.js)

@@ -343,11 +343,11 @@ body.light {
   height: 50px;
   background: var(--bg-seethroug);
   backdrop-filter: blur(rem);
-  position: absolute;
+  position: fixed !important;
   display: flex;
   bottom: 15px;
-  left: 50%;
-  transform: translateX(-50%);
+  left: calc(50% + var(--sidebar-width));
+  transform: translateX(calc(-50% - (var(--sidebar-width) / 2)));
   border-radius: 20px;
   border: 1px solid var(--fg-seethrough);
   z-index: 300000;
@@ -1774,6 +1774,7 @@ body.read-only .connection-handle {
   justify-content: left;
   width:100%;
   overflow: scroll;
+  position:relative
 }
 
 .search-mode-pill {
@@ -1788,6 +1789,9 @@ body.read-only .connection-handle {
   cursor: pointer;
   transition: all 0.2s ease;
   white-space: nowrap;
+  display:flex;
+  gap:5px;
+  justify-content: center;
 }
 
 .search-mode-pill:hover {
@@ -1887,6 +1891,7 @@ body.read-only .connection-handle {
     margin-left: -20px;
     padding-left: 20px;
     overflow-x: scroll;
+    position:relative;
   }
 
   .search-mode-toggle > :last-child {
