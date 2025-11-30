@@ -255,7 +255,7 @@ body.light {
     transform: none;
     left: 0px;
     top:auto;
-    bottom:65px !important;
+    bottom:60px !important;
     background: var(--bg-seethroug);
     border: 1px solid var(--fg-seethrough);
     border: none;
@@ -328,12 +328,28 @@ body.light {
 
 .connection-line {
   stroke: var(--border);
-  stroke-width: 7;
+  stroke-width: 10;
   fill: none;
   opacity: 0.9;
   stroke-linecap: round;
   stroke-linejoin: round;
   pointer-events: stroke;
+}
+
+/* Invisible thick hitbox for each connection line */
+.connection-line-hit {
+  stroke: transparent;       /* not visible */
+  stroke-width: 100px;        /* BIG hitbox, tweak if you want */
+  fill: none;
+  pointer-events: stroke;    /* this is what makes it clickable */
+}
+
+/* When a line is selected, show a soft outline using the hit path */
+.connection-line-hit.connection-line-hit-selected {
+  stroke: var(--accent); /* outline color */
+  stroke-width: 20px;                /* keep same as hitbox so click area stays big */
+  /* Optional soft glow if you like: */
+  opacity: 0.5;
 }
 
 /* ==================== Search Drawer ==================== */
@@ -348,9 +364,10 @@ body.light {
   bottom: 15px;
   left: calc(50% + var(--sidebar-width));
   transform: translateX(calc(-50% - (var(--sidebar-width) / 2)));
-  border-radius: 20px;
+  border-radius: 50px;
   border: 1px solid var(--fg-seethrough);
   z-index: 300000;
+  overflow: hidden;
 }
 
 #search-bar {
@@ -2224,25 +2241,25 @@ body.read-only .connection-handle {
 
 /* Positions (unchanged) */
 .item-connector-handle.handle-top {
-  top: -50px;
+  top: -100px;
   left: 50%;
   transform: translateX(-50%);
 }
 
 .item-connector-handle.handle-bottom {
-  bottom: -50px;
+  bottom: -100px;
   left: 50%;
   transform: translateX(-50%);
 }
 
 .item-connector-handle.handle-left {
-  left: -50px;
+  left: -100px;
   top: 50%;
   transform: translateY(-50%);
 }
 
 .item-connector-handle.handle-right {
-  right: -50px;
+  right: -100px;
   top: 50%;
   transform: translateY(-50%);
 }
@@ -2500,6 +2517,7 @@ body.grouping-mode .board-item {
 }
 
 #connection-color-toolbar {
+  display:none;
   background:var(--bg-dots) !important;
 }
 

@@ -1800,3 +1800,78 @@ body {
     bottom:0px;
   }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+/* === Connection line mini context menu === */
+
+#connection-line-menu {
+  position: fixed;
+  z-index: 10010;
+  display: none;
+  flex-direction: row;
+  justify-content: center;
+  align-items:center;
+  gap: 4px;
+  padding: 6px 12px;
+  border-radius: 100px;
+  border: 1px solid var(--fg-seethrough, rgba(255, 255, 255, 0.18));
+  backdrop-filter: blur(10px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.45);
+  background:var(--bg);
+  font-size: 12px;
+}
+
+#connection-line-menu button {
+  border: none;
+  background: transparent;
+  color: var(--fg, #f9fafb);
+  padding: 4px 6px;
+  text-align: left;
+  border-radius: 100px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.connection-delete-button {
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  padding:7px !important;
+}
+
+#connection-line-menu .color-row {
+  display: flex;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+#connection-line-menu .color-swatch {
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  padding: 0;
+}
+
+#connection-line-menu .color-swatch.active {
+  box-shadow: 0 0 0 1px var(--fg);
+}
+
+.seperation-line {
+  width:2px;
+  height:30px;
+  margin-right: 10px;
+  border-radius: 100px;
+  background:var(--border);
+}

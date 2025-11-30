@@ -7,8 +7,8 @@
     "#FDE047", // Red (Default)
     "#BEF264", // Yellow
     "#67E8F9", // Blue
-    "#F9A8D4",  // Purple
-    "#FDBA74", // Green 
+    "#F9A8D4", // Purple
+    "#FDBA74", // Green
   ];
   const DEFAULT_COLOR = PRESET_COLORS[0];
   const STORAGE_KEY = "bb:connectionColor";
@@ -74,7 +74,8 @@
    */
   function buildPalette() {
     // Append to the main container or body, not the left-side actions
-    const mainContainer = document.getElementById("main-content-container") || document.body;
+    const mainContainer =
+      document.getElementById("main-content-container") || document.body;
     if (!mainContainer) return;
 
     g_paletteToolbar = document.createElement("div");
@@ -86,11 +87,11 @@
       swatch.className = "color-swatch";
       swatch.dataset.color = color;
       swatch.style.backgroundColor = color;
-  swatch.title = `Set connection color (${color})`;
+      swatch.title = `Set connection color (${color})`;
 
-  swatch.addEventListener("click", () => {
-    window.BoardAPI.setConnectionColor(color);
-  });
+      swatch.addEventListener("click", () => {
+        window.BoardAPI.setConnectionColor(color);
+      });
 
       g_paletteToolbar.appendChild(swatch);
     });
@@ -138,12 +139,77 @@
       localStorage.setItem(STORAGE_KEY, color);
       updatePaletteUI(color);
     };
+
+    /**
+     * Set the color for a specific connection line.
+     * `pathOrId` can be:
+     *  - the <path> DOM element for the connection, OR
+     *  - a string id matching the connection id / data-connection-id
+     */
+    api.setConnectionColorForPath = function (pathOrId, color) {
+      if (window.__readOnly) return;
+      if (!color || PRESET_COLORS.indexOf(color) === -1) {
+        console.warn(
+          "[Connections] Refusing to set color not in palette:",
+          color
+        );
+        return;
+      }
+
+      const all = api.getConnections ? api.getConnections() : [];
+      if (!all || !all.length) return;
+
+      let target = null;
+
+      if (typeof pathOrId === "string") {
+        target = all.find(
+          (c) =>
+            c.id === pathOrId ||
+            (c.path &&
+              c.path.dataset &&
+              c.path.dataset.connectionId === pathOrId)
+        );
+      } else if (pathOrId && pathOrId.nodeType === 1) {
+        // DOM element (<path>)
+        target = all.find((c) => c.path === pathOrId);
+      }
+
+      if (!target) {
+        console.warn(
+          "[Connections] setConnectionColorForPath: connection not found",
+          pathOrId
+        );
+        return;
+      }
+
+      target.color = color;
+
+      if (target.path) {
+        target.path.style.stroke = color;
+        target.path.dataset.color = color;
+      }
+
+      if (target.handle) {
+        updateHandleColor(target.handle, color);
+      }
+
+      // Also update the "current" color so new lines use this color
+      g_currentColor = color;
+      try {
+        window.localStorage.setItem(STORAGE_KEY, color);
+      } catch (err) {
+        // ignore
+      }
+
+      updatePaletteUI(color);
+    };
+
     // 2. --- Patch connectItems (wrapped by undo-redo) ---
     const undoRedoWrappedConnect = api.connectItems;
     api.connectItems = function (a, b, colorOverride = null) {
       const manager = window.UndoRedoManager;
       const isReplay = manager && manager.isApplyingHistory;
-      
+
       const color = colorOverride || api.getConnectionColor();
 
       // Call the original undo-redo wrapper
@@ -160,11 +226,17 @@
       }
 
       // Augment the undo stack entry
-      const shouldRecord = manager && !isReplay && !window.__readOnly && !window.__RESTORING_FROM_SUPABASE && a && b;
+      const shouldRecord =
+        manager &&
+        !isReplay &&
+        !window.__readOnly &&
+        !window.__RESTORING_FROM_SUPABASE &&
+        a &&
+        b;
       if (shouldRecord && manager.undoStack.length > 0) {
         const lastAction = manager.undoStack[manager.undoStack.length - 1];
         if (
-          lastAction.kind === 'connection_add' &&
+          lastAction.kind === "connection_add" &&
           lastAction.aKey === api.itemKey(a) &&
           lastAction.bKey === api.itemKey(b)
         ) {
@@ -178,11 +250,15 @@
     api.disconnectLine = function (path) {
       const manager = window.UndoRedoManager;
       const isReplay = manager && manager.isApplyingHistory;
-      const shouldRecord = manager && !isReplay && !window.__readOnly && !window.__RESTORING_FROM_SUPABASE;
+      const shouldRecord =
+        manager &&
+        !isReplay &&
+        !window.__readOnly &&
+        !window.__RESTORING_FROM_SUPABASE;
 
       let colorToSave = null;
       if (shouldRecord) {
-        const conn = api.getConnections().find(c => c.path === path);
+        const conn = api.getConnections().find((c) => c.path === path);
         if (conn) {
           colorToSave = conn.color || DEFAULT_COLOR;
         }
@@ -195,7 +271,7 @@
       if (shouldRecord && colorToSave && manager.undoStack.length > 0) {
         const lastAction = manager.undoStack[manager.undoStack.length - 1];
         // Note: We can't easily check keys, so we just trust the last action
-        if (lastAction.kind === 'connection_remove') {
+        if (lastAction.kind === "connection_remove") {
           lastAction.color = colorToSave;
         }
       }
@@ -211,7 +287,7 @@
       // Add connection colors
       const liveConns = api.getConnections();
       const keyToConnMap = new Map();
-      liveConns.forEach(c => {
+      liveConns.forEach((c) => {
         const k1 = api.itemKey(c.itemA);
         const k2 = api.itemKey(c.itemB);
         keyToConnMap.set(`${k1}|${k2}`, c);
@@ -219,13 +295,16 @@
       });
 
       if (data.connections) {
-        data.connections.forEach(serialConn => {
+        data.connections.forEach((serialConn) => {
           // Note: supabase-sync.js's internal serialize uses { a, b }
           // script.js's serialize uses { a, b }
           // My previous code used { aKey, bKey } - this was a bug.
-          const connKey = serialConn.a && serialConn.b ? `${serialConn.a}|${serialConn.b}` : null;
+          const connKey =
+            serialConn.a && serialConn.b
+              ? `${serialConn.a}|${serialConn.b}`
+              : null;
           const liveConn = connKey ? keyToConnMap.get(connKey) : null;
-          
+
           if (liveConn && liveConn.color) {
             serialConn.color = liveConn.color;
           } else {
@@ -233,7 +312,7 @@
           }
         });
       }
-      
+
       // Save current color choice
       data.settings = data.settings || {};
       data.settings.connectionColor = g_currentColor;
@@ -251,18 +330,21 @@
       if (data && data.connections) {
         const liveConns = api.getConnections();
         const keyToConnMap = new Map();
-        liveConns.forEach(c => {
+        liveConns.forEach((c) => {
           const k1 = api.itemKey(c.itemA);
           const k2 = api.itemKey(c.itemB);
           keyToConnMap.set(`${k1}|${k2}`, c);
           keyToConnMap.set(`${k2}|${k1}`, c);
         });
 
-        data.connections.forEach(serialConn => {
-          const connKey = serialConn.a && serialConn.b ? `${serialConn.a}|${serialConn.b}` : null;
+        data.connections.forEach((serialConn) => {
+          const connKey =
+            serialConn.a && serialConn.b
+              ? `${serialConn.a}|${serialConn.b}`
+              : null;
           const liveConn = connKey ? keyToConnMap.get(connKey) : null;
           const color = serialConn.color || DEFAULT_COLOR;
-          
+
           if (liveConn) {
             liveConn.color = color;
             liveConn.path.style.stroke = color;
@@ -272,32 +354,33 @@
           }
         });
       }
-      
+
       // Restore selected color
-      const savedColor = data?.viewport?.connectionColor || data?.settings?.connectionColor;
+      const savedColor =
+        data?.viewport?.connectionColor || data?.settings?.connectionColor;
       if (savedColor && PRESET_COLORS.includes(savedColor)) {
         api.setConnectionColor(savedColor);
       }
     };
-    
+
     // 6. --- Patch updateAllConnections ---
     const originalUpdateAll = api.updateAllConnections;
-    api.updateAllConnections = function(...args) {
-        originalUpdateAll.apply(this, args);
-        // After positions are updated, re-apply colors
-        try {
-            const conns = api.getConnections();
-            for (const conn of conns) {
-                if (conn.color && conn.path) {
-                    conn.path.style.stroke = conn.color;
+    api.updateAllConnections = function (...args) {
+      originalUpdateAll.apply(this, args);
+      // After positions are updated, re-apply colors
+      try {
+        const conns = api.getConnections();
+        for (const conn of conns) {
+          if (conn.color && conn.path) {
+            conn.path.style.stroke = conn.color;
 
-                    updateHandleColor(conn.handle, conn.color);
-                }
-            }
-        } catch (e) {
-            console.warn("Color update failed in updateAllConnections", e);
+            updateHandleColor(conn.handle, conn.color);
+          }
         }
-    }
+      } catch (e) {
+        console.warn("Color update failed in updateAllConnections", e);
+      }
+    };
   }
 
   /**
@@ -312,21 +395,21 @@
     manager.handleUndo = function () {
       const action = this.undoStack[this.undoStack.length - 1];
 
-      if (action && action.kind === 'connection_remove' && action.color) {
+      if (action && action.kind === "connection_remove" && action.color) {
         // Intercept and run our custom logic
         if (this.isApplyingHistory || window.__readOnly) return;
-        
+
         this.isApplyingHistory = true;
         this.undoStack.pop();
         const elA = this.findElementByKey(action.aKey);
         const elB = this.findElementByKey(action.bKey);
-        
+
         if (elA && elB) {
           // CALL WITH COLOR OVERRIDE
           window.BoardAPI.connectItems(elA, elB, action.color);
           this.redoStack.push(action);
         }
-        
+
         this.isApplyingHistory = false;
         this.refreshUndoRedoButtons();
       } else {
@@ -340,7 +423,7 @@
     manager.handleRedo = function () {
       const action = this.redoStack[this.redoStack.length - 1];
 
-      if (action && action.kind === 'connection_add' && action.color) {
+      if (action && action.kind === "connection_add" && action.color) {
         // Intercept and run our custom logic
         if (this.isApplyingHistory || window.__readOnly) return;
 
@@ -354,7 +437,7 @@
           window.BoardAPI.connectItems(elA, elB, action.color);
           this.undoStack.push(action);
         }
-        
+
         this.isApplyingHistory = false;
         this.refreshUndoRedoButtons();
       } else {
@@ -363,19 +446,19 @@
       }
     };
   }
-  
+
   /**
    * Patches the read-only guard to also disable our UI.
    */
   function patchReadOnlyGuard() {
-      if (!window.BoardAPI || !window.BoardAPI.applyReadOnlyGuards) return;
-      
-      const originalGuard = window.BoardAPI.applyReadOnlyGuards;
-      window.BoardAPI.applyReadOnlyGuards = function(isReadOnly) {
-          originalGuard(isReadOnly);
-          // Also update our UI
-          applyReadOnly(isReadOnly);
-      }
+    if (!window.BoardAPI || !window.BoardAPI.applyReadOnlyGuards) return;
+
+    const originalGuard = window.BoardAPI.applyReadOnlyGuards;
+    window.BoardAPI.applyReadOnlyGuards = function (isReadOnly) {
+      originalGuard(isReadOnly);
+      // Also update our UI
+      applyReadOnly(isReadOnly);
+    };
   }
 
   /**
@@ -388,9 +471,15 @@
       const api = window.BoardAPI;
       const manager = window.UndoRedoManager;
 
-      if (api && manager && api.connectItems && manager.handleUndo && api.serializeBoard) {
+      if (
+        api &&
+        manager &&
+        api.connectItems &&
+        manager.handleUndo &&
+        api.serializeBoard
+      ) {
         clearInterval(interval);
-        
+
         // Load saved color
         const savedColor = localStorage.getItem(STORAGE_KEY);
         if (savedColor && PRESET_COLORS.includes(savedColor)) {
@@ -402,23 +491,25 @@
         patchBoardAPI();
         patchUndoRedo();
         patchReadOnlyGuard();
-        
+
         // Final check on read-only status in case it was set before we loaded
         if (window.__readOnly) {
-            applyReadOnly(true);
+          applyReadOnly(true);
         }
-        
+
         console.log("✅ Connection Color module initialized.");
       } else if (attempts > 100) {
         clearInterval(interval);
-        console.error("Connection Color module failed to initialize. BoardAPI or UndoRedoManager not found.");
+        console.error(
+          "Connection Color module failed to initialize. BoardAPI or UndoRedoManager not found."
+        );
       }
     }, 100);
   }
 
   function updateHandleColor(handle, color) {
     if (!handle) return;
-    const circle = handle.querySelector('.handle-circle');
+    const circle = handle.querySelector(".handle-circle");
     if (circle) {
       circle.style.stroke = color;
     }
@@ -427,10 +518,9 @@
     // lines.forEach(line => line.style.stroke = color);
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', startPoller);
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", startPoller);
   } else {
     startPoller();
   }
-
 })();

@@ -964,6 +964,340 @@ if (!svg) {
 
 const connectionsSvg = svg;
 
+// ==================== Connection Line Mini Menu (edit/delete) ====================
+
+let activeConnectionPathForMenu = null;
+let connectionLineMenuEl = null;
+let rebuildConnectionMenuColors = null;
+
+let activeConnectionAnchor = null;
+
+function findConnectionPathNearPoint(clientX, clientY) {
+  const paths = Array.from(
+    connectionsSvg.querySelectorAll("path.connection-line")
+  );
+  if (!paths.length) return null;
+
+  // How much extra space around the visual line counts as a "hit"
+  const PADDING = 100; // increase if you want an even bigger invisible hitbox
+
+  for (const path of paths) {
+    if (path.classList.contains("draft")) continue;
+
+    const rect = path.getBoundingClientRect();
+
+    const expandedLeft = rect.left - PADDING;
+    const expandedRight = rect.right + PADDING;
+    const expandedTop = rect.top - PADDING;
+    const expandedBottom = rect.bottom + PADDING;
+
+    const inside =
+      clientX >= expandedLeft &&
+      clientX <= expandedRight &&
+      clientY >= expandedTop &&
+      clientY <= expandedBottom;
+
+    if (inside) {
+      return path;
+    }
+  }
+
+  return null;
+}
+
+
+
+function closeConnectionLineMenu() {
+  clearConnectionHighlight?.();
+
+  if (!connectionLineMenuEl) return;
+  connectionLineMenuEl.style.display = "none";
+  activeConnectionPathForMenu = null;
+  activeConnectionAnchor = null;
+}
+
+
+function updateConnectionLineMenuPosition() {
+  // If menu isn't open, nothing to do
+  if (!connectionLineMenuEl || connectionLineMenuEl.style.display === "none") {
+    return;
+  }
+
+  // If we don't have a path anymore, or it was removed from DOM, close the menu
+  if (
+    !activeConnectionPathForMenu ||
+    !document.body.contains(activeConnectionPathForMenu)
+  ) {
+    closeConnectionLineMenu();
+    return;
+  }
+
+  const rect = activeConnectionPathForMenu.getBoundingClientRect();
+  if (!rect || (!rect.width && !rect.height)) {
+    return;
+  }
+
+  const menuWidth = connectionLineMenuEl.offsetWidth || 140;
+  const menuHeight = connectionLineMenuEl.offsetHeight || 70;
+
+  // Use the stored anchor if we have one, else default to middle-right
+  let anchorX;
+  let anchorY;
+  if (activeConnectionAnchor) {
+    anchorX =
+      rect.left + rect.width * activeConnectionAnchor.relX;
+    anchorY =
+      rect.top + rect.height * activeConnectionAnchor.relY;
+  } else {
+    anchorX = rect.right;
+    anchorY = rect.top + rect.height / 2;
+  }
+
+  // Start with menu slightly to the right of the anchor
+  let x = anchorX + 8;
+  let y = anchorY - menuHeight / 2;
+
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+
+  // If going off right edge, flip to the left side of the anchor
+  if (x + menuWidth > vw - 8) {
+    x = anchorX - menuWidth - 8;
+  }
+
+  // Clamp to viewport
+  if (x < 8) x = 8;
+  if (y < 8) y = 8;
+  if (y + menuHeight > vh - 8) {
+    y = vh - menuHeight - 8;
+  }
+
+  connectionLineMenuEl.style.left = `${x}px`;
+  connectionLineMenuEl.style.top = `${y}px`;
+}
+
+
+
+
+function ensureConnectionLineMenu() {
+  if (connectionLineMenuEl) return;
+
+  const el = document.createElement("div");
+  el.id = "connection-line-menu";
+  el.innerHTML = `
+    <button type="button" data-action="delete" class="connection-delete-button">
+      <svg class="action-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-trash">
+        <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+        <path d="M4 7l16 0" fill="none"/>
+        <path d="M10 11l0 6" fill="none"/>
+        <path d="M14 11l0 6" fill="none"/>
+        <path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12" fill="none"/>
+        <path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3" fill="none"/>
+      </svg>
+    </button>
+    <div class="seperation-line"></div>
+    <div class="color-row" data-role="color-row"></div>
+  `;
+  document.body.appendChild(el);
+
+  const deleteBtn = el.querySelector("button[data-action='delete']");
+  deleteBtn.addEventListener("click", (ev) => {
+    ev.stopPropagation();
+    if (
+      activeConnectionPathForMenu &&
+      window.BoardAPI &&
+      typeof window.BoardAPI.disconnectLine === "function"
+    ) {
+      window.BoardAPI.disconnectLine(activeConnectionPathForMenu);
+    }
+    closeConnectionLineMenu();
+  });
+
+  const colorRow = el.querySelector("[data-role='color-row']");
+
+  rebuildConnectionMenuColors = () => {
+    colorRow.innerHTML = "";
+
+    let colors = [];
+    if (window.BoardAPI && typeof window.BoardAPI.getConnectionColors === "function") {
+      colors = window.BoardAPI.getConnectionColors() || [];
+    }
+    if (!colors.length) {
+      // fallback palette if connection-colors.js isn't present for some reason
+      colors = ["#4ade80", "#38bdf8", "#facc15", "#f97373", "#a855f7", "#ffffff"];
+    }
+
+    const currentColor = (window.BoardAPI &&
+      typeof window.BoardAPI.getConnectionColor === "function")
+      ? window.BoardAPI.getConnectionColor()
+      : null;
+
+    colors.forEach((color) => {
+      const swatch = document.createElement("button");
+      swatch.type = "button";
+      swatch.className =
+        "color-swatch" + (color === currentColor ? " active" : "");
+      swatch.style.backgroundColor = color;
+
+      swatch.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+
+        if (window.BoardAPI) {
+          // Prefer per-line recolor if available
+          if (
+            typeof window.BoardAPI.setConnectionColorForPath === "function" &&
+            activeConnectionPathForMenu
+          ) {
+            window.BoardAPI.setConnectionColorForPath(
+              activeConnectionPathForMenu,
+              color
+            );
+          } else if (
+            typeof window.BoardAPI.setConnectionColor === "function"
+          ) {
+            // Fallback: global color change
+            window.BoardAPI.setConnectionColor(color);
+          }
+        }
+
+        closeConnectionLineMenu();
+      });
+
+      colorRow.appendChild(swatch);
+    });
+  };
+
+  connectionLineMenuEl = el;
+}
+
+function openConnectionLineMenu(path, clientX, clientY) {
+  ensureConnectionLineMenu();
+  activeConnectionPathForMenu = path;
+
+  // Compute where inside the line's bounding box the user clicked (0–1 in both directions)
+  const rect = path.getBoundingClientRect();
+  if (rect && (rect.width || rect.height)) {
+    const relX = rect.width ? (clientX - rect.left) / rect.width : 0.5;
+    const relY = rect.height ? (clientY - rect.top) / rect.height : 0.5;
+    activeConnectionAnchor = {
+      relX: Math.min(1, Math.max(0, relX)),
+      relY: Math.min(1, Math.max(0, relY)),
+    };
+  } else {
+    // Fallback: middle of the line
+    activeConnectionAnchor = { relX: 0.5, relY: 0.5 };
+  }
+
+  // highlight the line if you have this helper
+  if (typeof highlightConnection === "function") {
+    highlightConnection(path);
+  }
+
+  // rebuild swatches each time in case palette / current color changed
+  if (typeof rebuildConnectionMenuColors === "function") {
+    rebuildConnectionMenuColors();
+  }
+
+  connectionLineMenuEl.style.display = "flex";
+
+  // Position based on the line's current on-screen position + anchor
+  updateConnectionLineMenuPosition();
+}
+
+
+
+// Click on a connection line → show mini menu
+connectionsSvg.addEventListener("click", (ev) => {
+  if (window.__readOnly) return;
+
+  // Don't interfere with your existing "disconnect mode"
+  if (typeof window.disconnectMode !== "undefined" && window.disconnectMode) {
+    return;
+  }
+
+  // Only react to clicks on a line or its hitbox
+  const lineEl = ev.target.closest(
+    "path.connection-line, path.connection-line-hit"
+  );
+  if (!lineEl) {
+    // Clicked empty space in the svg – just close the menu if open
+    closeConnectionLineMenu();
+    return;
+  }
+
+  // Ignore the little X handle
+  if (ev.target.closest(".handle-circle")) {
+    return;
+  }
+
+  // Map the clicked element (path or hitPath) back to its connection
+  let canonicalPath = null;
+
+  if (window.BoardAPI && typeof window.BoardAPI.getConnections === "function") {
+    const conns = window.BoardAPI.getConnections() || [];
+    const match = conns.find(
+      (c) => c.path === lineEl || c.hitPath === lineEl
+    );
+    if (match && match.path) {
+      canonicalPath = match.path;
+    }
+  }
+
+  // Fallback: if we didn't find anything, only allow real connection-line
+  if (!canonicalPath && lineEl.classList.contains("connection-line")) {
+    canonicalPath = lineEl;
+  }
+
+  if (!canonicalPath) {
+    return;
+  }
+
+  ev.stopPropagation();
+  openConnectionLineMenu(canonicalPath, ev.clientX, ev.clientY);
+});
+
+function clearConnectionHighlight() {
+  if (!window.BoardAPI || typeof window.BoardAPI.getConnections !== "function") {
+    return;
+  }
+  const conns = window.BoardAPI.getConnections() || [];
+  conns.forEach((c) => {
+    if (c.hitPath) {
+      c.hitPath.classList.remove("connection-line-hit-selected");
+    }
+  });
+}
+
+function highlightConnection(path) {
+  if (!window.BoardAPI || typeof window.BoardAPI.getConnections !== "function") {
+    return;
+  }
+  const conns = window.BoardAPI.getConnections() || [];
+  conns.forEach((c) => {
+    if (!c.hitPath) return;
+    if (c.path === path) {
+      c.hitPath.classList.add("connection-line-hit-selected");
+    } else {
+      c.hitPath.classList.remove("connection-line-hit-selected");
+    }
+  });
+}
+
+
+
+// Click anywhere else on the page → close the menu
+document.addEventListener("click", (ev) => {
+  if (!connectionLineMenuEl || connectionLineMenuEl.style.display === "none") {
+    return;
+  }
+  if (connectionLineMenuEl.contains(ev.target)) {
+    // clicks inside the menu are handled above
+    return;
+  }
+  closeConnectionLineMenu();
+});
+
+
 // --- Viewport bars: DOM bootstrap ---
 let viewbarX = document.getElementById("viewbar-x");
 let viewbarY = document.getElementById("viewbar-y");
@@ -1886,9 +2220,14 @@ function applyZoom(e, deltaScale) {
   viewport.scrollTop = worldY * scale - vpY;
 
   clampScroll();
-  throttledUpdateAllConnections(); // OPTIMIZATION: Use throttled version
+  throttledUpdateAllConnections();
   throttledUpdateViewportBars();
-  onBoardMutated("zoom_end"); // AUTOSAVE on zoom
+
+  if (typeof updateConnectionLineMenuPosition === "function") {
+    updateConnectionLineMenuPosition();
+  }
+
+  onBoardMutated("zoom_end");
   return true;
 }
 
@@ -1988,11 +2327,17 @@ viewport.addEventListener(
 viewport.addEventListener(
   "scroll",
   () => {
-    throttledUpdateAllConnections(); // OPTIMIZATION: Use throttled version
+    throttledUpdateAllConnections(); // keeps lines in sync
     throttledUpdateViewportBars();
+
+    // Also keep the line editor menu near the selected line
+    if (typeof updateConnectionLineMenuPosition === "function") {
+      updateConnectionLineMenuPosition();
+    }
   },
   { passive: true }
 );
+
 
 // Center only on a fresh board (Supabase restore sets __RESTORING / __RESTORED flags)
 window.addEventListener("load", () => {
@@ -2019,6 +2364,9 @@ window.addEventListener("load", () => {
 window.addEventListener("resize", () => {
   throttledUpdateAllConnections();
   throttledUpdateViewportBars();
+  if (typeof updateConnectionLineMenuPosition === "function") {
+    updateConnectionLineMenuPosition();
+  }
 });
 // Touch pan + pinch
 // ... (getTouchDistance, getTouchMidpoint unchanged) ...
@@ -2381,7 +2729,7 @@ function connectionExists(a, b) {
  */
 function updateConnection(conn) {
   if (!conn) return;
-  const { path, itemA, itemB, handle } = conn;
+  const { path, hitPath, itemA, itemB, handle } = conn;
   if (!path || !itemA || !itemB) return;
 
   const vpRect = viewport.getBoundingClientRect();
@@ -2436,6 +2784,9 @@ function updateConnection(conn) {
   }
 
   path.setAttribute("d", d);
+  if (hitPath) {
+    hitPath.setAttribute("d", d);
+  }
 
   // Keep handle at midpoint of current path
   if (handle) {
@@ -2455,7 +2806,12 @@ function updateConnection(conn) {
 
 function updateAllConnections() {
   connections.forEach((c) => updateConnection(c));
+  // After all paths have been repositioned, keep the menu glued to the line
+  if (typeof updateConnectionLineMenuPosition === "function") {
+    updateConnectionLineMenuPosition();
+  }
 }
+
 
 // --- Connection drag / ghost line + snap-to-nearest-item (DEBUG) ---
 const SNAP_RADIUS = 200; // px distance in screen space
@@ -2666,9 +3022,18 @@ function connectItems(a, b) {
 
   const SVG_NS = "http://www.w3.org/2000/svg";
 
+  // Visible line
   const path = document.createElementNS(SVG_NS, "path");
   path.classList.add("connection-line");
-  path.style.pointerEvents = "stroke";
+  // Let CSS control pointer-events; clicks will go to the hit path.
+  // path.style.pointerEvents = "stroke";
+
+  // Invisible hitbox line (fatter, transparent)
+  const hitPath = document.createElementNS(SVG_NS, "path");
+  hitPath.classList.add("connection-line-hit");
+
+  // Append hitPath first so the visible stroke is on top
+  svg.appendChild(hitPath);
   svg.appendChild(path);
 
   // Midpoint delete handle (only shown in disconnect mode via CSS)
@@ -2706,12 +3071,13 @@ function connectItems(a, b) {
 
   svg.appendChild(handleGroup);
 
-  const conn = { path, itemA: a, itemB: b, handle: handleGroup };
+  const conn = { path, hitPath, itemA: a, itemB: b, handle: handleGroup };
   connections.push(conn);
 
   updateConnection(conn);
   onBoardMutated("connect_items");
 }
+
 
 /**
  * Remove a single connection by its path element.
@@ -2719,7 +3085,9 @@ function connectItems(a, b) {
 function disconnectLine(path) {
   if (window.__readOnly) return;
 
-  const idx = connections.findIndex((c) => c.path === path);
+  let idx = connections.findIndex(
+    (c) => c.path === path || c.hitPath === path
+  );
   if (idx === -1) return;
 
   const conn = connections[idx];
@@ -2729,6 +3097,13 @@ function disconnectLine(path) {
       svg.removeChild(conn.handle);
     } catch (_e) {}
   }
+
+  if (conn.hitPath) {
+    try {
+      svg.removeChild(conn.hitPath);
+    } catch (_e) {}
+  }
+
   try {
     svg.removeChild(conn.path);
   } catch (_e) {}
@@ -2736,6 +3111,7 @@ function disconnectLine(path) {
   connections.splice(idx, 1);
   onBoardMutated("disconnect_line");
 }
+
 
 /**
  * Remove all connections touching the given element.
@@ -2751,6 +3127,11 @@ function removeConnectionsFor(el) {
           svg.removeChild(c.handle);
         } catch (_e) {}
       }
+      if (c.hitPath) {
+        try {
+          svg.removeChild(c.hitPath);
+        } catch (_e) {}
+      }
       try {
         svg.removeChild(c.path);
       } catch (_e) {}
@@ -2762,6 +3143,7 @@ function removeConnectionsFor(el) {
 
   if (changed) onBoardMutated("remove_connections_for_item");
 }
+
 
 // --- Expose to other modules (undo-redo, colors, supabase, UI, etc.) ---
 
