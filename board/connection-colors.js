@@ -37,6 +37,7 @@
         backdrop-filter: blur(1rem);
         justify-content: center;
         align-items: center;
+        display:none;
         padding: 10px 4px; /* Match left bar */
         border-radius: 15px; /* Match left bar */
         z-index: 10001; /* Match left bar */

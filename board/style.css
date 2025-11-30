@@ -2517,7 +2517,7 @@ body.grouping-mode .board-item {
 }
 
 #connection-color-toolbar {
-  display:none;
+  /* display:none; */
   background:var(--bg-dots) !important;
 }
 

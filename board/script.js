@@ -6381,14 +6381,14 @@ function buildBoardTourSteps() {
       placement: "right",
       allowPointerThrough: true, // <-- ADD THIS LINE
     },
-    {
-      id: "colors",
-      target: () => document.getElementById("connection-color-toolbar"),
-      title: "Colors for your connections",
-      text: "If you want to add some color to your board select a color and when connecting ideas the 'Connection Lines' will be the selected color.",
-      placement: "left",
-      allowPointerThrough: true,
-    },
+    // {
+    //   id: "colors",
+    //   target: () => document.getElementById("connection-color-toolbar"),
+    //   title: "Colors for your connections",
+    //   text: "If you want to add some color to your board select a color and when connecting ideas the 'Connection Lines' will be the selected color.",
+    //   placement: "left",
+    //   allowPointerThrough: true,
+    // },
     {
       id: "finish",
       title: "You're All Set!",
