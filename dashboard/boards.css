@@ -702,7 +702,7 @@ body {
   background: var(--bg-alt);
   color: var(--fg);
   font-size: 1rem;
-  margin-bottom: 20px;
+  /* margin-bottom: 20px; */
   box-sizing: border-box; /* Important for width */
 }
 
@@ -748,7 +748,7 @@ body {
   inset: 0;
   background: rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(4px);
-  z-index: 400000;
+  z-index: 6000000;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -760,6 +760,7 @@ body {
   width: 90%; /* Make it responsive */
   height: 80vh; 
   max-height: 500px;
+  gap:0px !important;
   display: flex;
   flex-direction: column;
   justify-content:center;
@@ -906,7 +907,7 @@ body {
   margin-bottom: 4px; /* Space between items */
 }
 .search-result-item:hover {
-  background: var(--bg-alt);
+  background: var(--fg-seethrough);
 }
 
 /* Icon for chat/board item */

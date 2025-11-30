@@ -15,8 +15,14 @@ let activeDropdown = null;
 let loadedBoards = [];
 let boardToDelete = null;
 
-// Global: assume FREE until subscription check says otherwise
+// New: track whether we've finished loading the user's boards
+let boardsLoaded = false;
+
+// Assume FREE until proved Pro
 window.BIBLEBOARD_IS_PRO = false;
+
+// Also keep your isCreatingBoard flag if you added one:
+let isCreatingBoard = false;
 
 // Track the currently open context menu + its parent sidebar-board-item
 let openBoardContextMenu = null;
@@ -553,14 +559,25 @@ async function fetchBoardDetails(user, file) {
   }
 }
 
+// --- Load all boards for the current user ---
 async function loadBoards() {
   try {
+    boardsLoaded = false;
+    if (typeof updateBoardCreateButtonState === "function") {
+      updateBoardCreateButtonState();
+    }
+
     const user = currentUser;
-    // renderStatus("Loading boards…");
+    renderStatus("Loading boards…");
 
     if (!user) {
       renderStatus("Not signed in.");
+      loadedBoards = [];
       renderSidebarBoards([]);
+      boardsLoaded = true;
+      if (typeof updateBoardCreateButtonState === "function") {
+        updateBoardCreateButtonState();
+      }
       return;
     }
 
@@ -571,113 +588,178 @@ async function loadBoards() {
     if (listErr) {
       console.error("List error:", listErr);
       renderStatus("Error loading boards.");
+      loadedBoards = [];
+      renderSidebarBoards([]);
+      boardsLoaded = true;
+      if (typeof updateBoardCreateButtonState === "function") {
+        updateBoardCreateButtonState();
+      }
       return;
     }
 
     // Only count files that are board JSONs
-    const boardFiles = files.filter(f => f.name.endsWith(".json"));
+    const boardFiles = Array.isArray(files)
+      ? files.filter((f) => f.name.endsWith(".json"))
+      : [];
 
     if (!boardFiles || boardFiles.length === 0) {
       renderStatus("Creating your first board...");
-      // This is the case where a user is starting fresh, so we allow creation.
-      await handleNewBoard(true); 
+      boardsLoaded = true;
+      if (typeof updateBoardCreateButtonState === "function") {
+        updateBoardCreateButtonState();
+      }
+      // Fresh user → allow first board creation, then loadBoards will be called again
+      await handleNewBoard(true);
       return;
     }
 
-    const promises = boardFiles
-      .map(file => fetchBoardDetails(user, file));
-
-    const boardResults = await Promise.all(promises);
+    // Download and parse all boards
+    const boardResults = await Promise.all(
+      boardFiles.map((file) => fetchBoardDetails(user, file))
+    );
     const boards = boardResults.filter(Boolean);
 
     if (boards.length === 0) {
       renderStatus("Creating your first board...");
-      // Should not happen, but if it does, allow initial creation.
-      await handleNewBoard(true); 
+      boardsLoaded = true;
+      if (typeof updateBoardCreateButtonState === "function") {
+        updateBoardCreateButtonState();
+      }
+      await handleNewBoard(true);
       return;
     }
 
+    // Sort boards by most recently updated/created
     const sorted = boards.sort(
-      (a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt)
+      (a, b) =>
+        new Date(b.updatedAt || b.createdAt) -
+        new Date(a.updatedAt || a.createdAt)
     );
 
     loadedBoards = sorted;
     renderSidebarBoards(sorted);
     renderStatus("");
 
-    const params = new URLSearchParams(window.location.search);
-    if (!params.get('board') && sorted.length > 0) {
-        console.log("Auto-opening most recent board:", sorted[0].id);
-        switchBoard(sorted[0].id, user.id);
+    boardsLoaded = true;
+    if (typeof updateBoardCreateButtonState === "function") {
+      updateBoardCreateButtonState();
     }
 
+    // Auto-open board from URL if present, otherwise open most recent
+    const params = new URLSearchParams(window.location.search);
+    const targetBoardId = params.get("board");
+    const ownerFromUrl = params.get("owner");
+
+    if (targetBoardId) {
+      const owner = ownerFromUrl || user.id;
+      console.log("Opening board from URL params:", targetBoardId, owner);
+      switchBoard(targetBoardId, owner);
+    } else if (sorted.length > 0) {
+      console.log("Auto-opening most recent board:", sorted[0].id);
+      switchBoard(sorted[0].id, user.id);
+    }
   } catch (err) {
-    console.error("loadBoards error:", err);
+    console.error("Failed to load boards:", err);
     renderStatus("Error loading boards.");
+    loadedBoards = [];
+    renderSidebarBoards([]);
+    boardsLoaded = true;
+    if (typeof updateBoardCreateButtonState === "function") {
+      updateBoardCreateButtonState();
+    }
   }
 }
+
 
 // --- New Board Creation ---
 
 /**
  * Handles the user action to create a new board.
- * @param {boolean} isInitialLoad (kept for compatibility; logic no longer relies on it)
+ * @param {boolean} isInitialLoad (true only when called from loadBoards() for first-time users)
+ */
+/**
+ * Handles the user action to create a new board.
+ * @param {boolean} isInitialLoad (true only when called from loadBoards() for first-time users)
  */
 async function handleNewBoard(isInitialLoad = false) {
-  // 1. Robust auth check: try cached user first
-  let user = currentUser;
-
-  // If our cache is empty, ask Supabase directly
-  if (!user) {
-    try {
-      const { data, error } = await sb.auth.getSession();
-      if (error) {
-        console.error("handleNewBoard: getSession error", error);
-      }
-      user = data?.session?.user || null;
-
-      // If we found a user, update the cache + UI
-      if (user) {
-        currentUser = user;
-        try {
-          updateUserProfileUI(user);
-        } catch (e) {
-          console.warn("handleNewBoard: updateUserProfileUI failed", e);
-        }
-      }
-    } catch (e) {
-      console.error("handleNewBoard: unexpected auth error", e);
-    }
-  }
-
-  // If we *still* don't have a user, they are genuinely not signed in
-  if (!user) {
-    alert("Please sign in first.");
-    return;
-  }
-
-  // 2. Subscription status
-  const isPro = await isProUser();
-  const status = isPro ? "PRO" : "FREE";
-  const currentCount = loadedBoards.length;
-  console.log(
-    `User Subscription Status: ${status} (Boards: ${currentCount})`
-  );
-
-  // 3. Enforce FREE limit using your existing logic
-  if (!isPro && currentCount >= FREE_BOARD_LIMIT) {
-    if (currentCount === 0 && isInitialLoad) {
-      // Allow very first board on initial bootstrap if you still want this special case
-    } else {
-      console.warn("LIMIT REACHED: Showing upgrade modal.");
-      openUpgradeModal();
+  // 1) For manual clicks, require BOTH:
+  //    - subscription check done
+  //    - boards list fully loaded
+  if (!isInitialLoad) {
+    if (!hasProCheckCompleted || !boardsLoaded) {
+      console.log(
+        "Blocking new board: plan/boards not ready yet",
+        { hasProCheckCompleted, boardsLoaded }
+      );
       return;
     }
   }
 
-  // 4. Proceed with creation
-  await createBoardFile(crypto.randomUUID());
+  // 2) Don’t allow spamming while a create is in-flight
+  if (isCreatingBoard) {
+    return;
+  }
+
+  isCreatingBoard = true;
+  updateBoardCreateButtonState();
+
+  try {
+    // 3) Robust auth check: use cached user first, then Supabase
+    let user = currentUser;
+
+    if (!user) {
+      try {
+        const { data, error } = await sb.auth.getSession();
+        if (error) {
+          console.error("handleNewBoard: getSession error", error);
+        }
+        user = data?.session?.user || null;
+
+        if (user) {
+          currentUser = user;
+          try {
+            updateUserProfileUI(user);
+          } catch (e) {
+            console.warn("handleNewBoard: updateUserProfileUI failed", e);
+          }
+        }
+      } catch (e) {
+        console.error("handleNewBoard: unexpected auth error", e);
+      }
+    }
+
+    // Still no user → not signed in
+    if (!user) {
+      alert("Please sign in first.");
+      return;
+    }
+
+    // 4) Use known Pro/Free flag + loadedBoards length
+    const isPro = !!window.BIBLEBOARD_IS_PRO;
+    const status = isPro ? "PRO" : "FREE";
+    const currentCount = loadedBoards.length;
+
+    console.log(
+      `User Subscription Status: ${status} (Boards: ${currentCount})`
+    );
+
+    // 5) Enforce FREE board limit using *loadedBoards*
+    if (!isPro && currentCount >= FREE_BOARD_LIMIT) {
+      // Auto-creation for truly new users is handled by loadBoards + isInitialLoad
+      // so if we get here with currentCount >= FREE_BOARD_LIMIT, block.
+      console.warn("LIMIT REACHED: Showing upgrade modal.");
+      openUpgradeModal();
+      return;
+    }
+
+    // 6) Actually create the board file in Supabase
+    await createBoardFile(crypto.randomUUID());
+  } finally {
+    isCreatingBoard = false;
+    updateBoardCreateButtonState();
+  }
 }
+
 
 
 
@@ -843,18 +925,24 @@ async function handleAuthChange(user, valid = false) {
   if (user) {
     updateUserProfileUI(user);
 
-    // Ask RevenueCat / SubscriptionService via isProUser()
+    hasProCheckCompleted = false;
+    boardsLoaded = false;
+    updateBoardCreateButtonState?.();
+
     const isPro = await isProUser();
-    // Expose to the whole app (board page reads this)
     window.BIBLEBOARD_IS_PRO = !!isPro;
 
-    hasProCheckCompleted = true;
+    await loadBoards();          // 👈 important: wait for boardsLoaded
 
-    loadBoards();
+    hasProCheckCompleted = true;
+    updateBoardCreateButtonState?.();
   } else if (valid) {
     window.location = "../";
   }
 }
+
+
+
 
 
 
@@ -1074,9 +1162,13 @@ async function init() {
 
   // 5. Buttons
   if (newBoardBtn) newBoardBtn.onclick = handleNewBoard;
+
+  // Initialize create button state (will show "Checking plan…" at first)
+  updateBoardCreateButtonState();
   
   // Wire up new upgrade button
   if (upgradeNowBtn) upgradeNowBtn.onclick = handleUpgrade;
+
   
   // --- FIX IS HERE ---
   const delConfirm = document.getElementById("confirm-delete-btn");
@@ -1106,6 +1198,38 @@ async function init() {
 }
 
 init();
+
+function updateBoardCreateButtonState() {
+  // This is the label span in your sidebar button
+  const btn = document.getElementById("new-board-btn-sidebar-text");
+
+  if (!btn) return;
+
+  // While a board is actively being created
+  if (isCreatingBoard) {
+    btn.disabled = true;
+    btn.classList.add("busy");
+    btn.textContent = "Creating…";
+    return;
+  }
+
+  // NEW: require BOTH plan + boards list to be ready
+  if (!hasProCheckCompleted || !boardsLoaded) {
+    btn.disabled = true;
+    btn.classList.add("busy");
+    btn.textContent = "Loading boards…";
+    return;
+  }
+
+  // Ready for normal use
+  btn.disabled = false;
+  btn.classList.remove("busy");
+  btn.textContent = "New Board"; // or whatever label you want
+}
+
+
+
+
 
 
 
