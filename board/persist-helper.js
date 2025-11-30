@@ -74,6 +74,17 @@
    * @param {string} reason
    */
   async function performSave(reason) {
+    // NEW: if the current board is being deleted, do NOT save it again
+    if (window.__BOARD_BEING_DELETED__) {
+      console.log(
+        "[Persist] SKIP performSave because board is being deleted:",
+        reason
+      );
+      logSave(reason, "skip", "board_being_deleted");
+      updateBadge("idle");
+      return;
+    }
+
     // Guard: Don't save if the persistence layer isn't hooked up
     if (window.BoardAPI.saveBoard === null) {
       logSave(reason, "skip", "saveBoard not implemented");
@@ -131,29 +142,57 @@
    * @param {string} reason
    */
   function triggerAutosave(reason = "unknown_mutation") {
+    console.log("[Persist] triggerAutosave called:", reason, {
+      restoring: window.__RESTORING_FROM_SUPABASE,
+      deletingFlag: window.__BOARD_BEING_DELETED__,
+    });
+
     if (window.__RESTORING_FROM_SUPABASE) {
       logSave(reason, "skip", "Restoring");
       return;
     }
 
-    clearTimeout(debounceTimer);
-    updateBadge("saving"); // Show "Saving..." immediately on schedule
+    // NEW: ignore autosave while a board is being deleted
+    if (window.__BOARD_BEING_DELETED__) {
+      logSave(reason, "skip", "board_being_deleted");
+      console.log(
+        "[Persist] SKIP triggerAutosave because board is being deleted"
+      );
+      return;
+    }
 
+    clearTimeout(debounceTimer);
+    updateBadge("saving");
     debounceTimer = setTimeout(() => {
       performSave(reason);
-    }, 1200); // 1.2 second debounce
+    }, 1200);
   }
+
+
 
   /**
    * Immediately performs a save, bypassing the debounce.
    * @param {string} reason
    */
   function forceFlushSave(reason = "flush") {
+    console.log("[Persist] forceFlushSave called:", reason, {
+      deletingFlag: window.__BOARD_BEING_DELETED__,
+    });
+
+    // NEW: don't flush saves while deleting
+    if (window.__BOARD_BEING_DELETED__) {
+      logSave(reason, "skip", "board_being_deleted");
+      console.log(
+        "[Persist] SKIP forceFlushSave because board is being deleted"
+      );
+      return;
+    }
+
     clearTimeout(debounceTimer);
     logSave(reason, "force_flush");
-    // Don't await, just run. beforeunload has no time.
     performSave(reason);
   }
+
 
   // --- Export to BoardAPI ---
   // Overwrite the null/placeholder functions in script.js

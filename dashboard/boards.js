@@ -110,6 +110,47 @@ const body = document.body;
 const moonIcon = document.getElementById("moon-icon");
 const sunIcon = document.getElementById("sun-icon");
 
+async function ensureUser() {
+  if (currentUser) return currentUser;
+
+  try {
+    const { data, error } = await sb.auth.getSession();
+    if (error) {
+      console.error("ensureUser: getSession error", error);
+      return null;
+    }
+    let user = data?.session?.user || null;
+
+    // If we have no active session but do have a refresh token, try to refresh once.
+    if (!user) {
+      try {
+        const { data: refreshed, error: refreshErr } = await sb.auth.refreshSession();
+        if (refreshErr) {
+          console.error("ensureUser: refreshSession error", refreshErr);
+        } else {
+          user = refreshed?.session?.user || null;
+        }
+      } catch (refreshCatch) {
+        console.error("ensureUser: unexpected refresh error", refreshCatch);
+      }
+    }
+
+    if (user) {
+      currentUser = user;
+      try {
+        updateUserProfileUI(user);
+      } catch (e) {
+        console.warn("ensureUser: failed to update profile UI", e);
+      }
+    }
+    return user;
+  } catch (e) {
+    console.error("ensureUser: unexpected error", e);
+    return null;
+  }
+}
+
+
 function setTheme(isLight) {
   body.classList.toggle("light", isLight);
   localStorage.setItem("theme", isLight ? "light" : "dark");
@@ -299,17 +340,14 @@ window.closeDeleteModal = function() {
   boardToDelete = null;
 };
 
-// FIXED: Safely capture ID before clearing state
+// Safely delete a board, with a small delay when deleting the currently open one
 async function performDelete() {
   if (!boardToDelete) {
-    console.error("No board selected for deletion.");
     return;
   }
 
-  // Capture values locally before `boardToDelete` is nulled
   const idToDelete = boardToDelete.id;
   const pathToDelete = boardToDelete.path;
-  const titleToDelete = boardToDelete.title;
 
   const btn = document.getElementById("confirm-delete-btn");
   if (btn) {
@@ -318,27 +356,76 @@ async function performDelete() {
   }
 
   try {
-    // 1. Delete from Supabase Storage
-    const { error } = await sb.storage.from(BUCKET).remove([pathToDelete]);
-    if (error) throw error;
+    // 1. Make sure we are actually signed in before deleting
+    const user = await ensureUser();
 
-    // 2. Update Local State
-    loadedBoards = loadedBoards.filter(b => b.id !== idToDelete);
-    
-    // 3. Refresh UI
-    renderSidebarBoards(loadedBoards);
-    closeDeleteModal(); // This sets boardToDelete = null
-
-    // 4. If we deleted the active board, redirect home
-    // Use the captured `idToDelete` instead of `boardToDelete.id`
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('board') === idToDelete) {
-       window.location.replace("../dashboard/");
+    if (!user) {
+      renderStatus("Not signed in.");
+      throw new Error("NOT_SIGNED_IN");
     }
 
+    // 2. Figure out which board is currently open
+    const params = new URLSearchParams(window.location.search);
+    const currentBoardIdFromUrl = params.get("board");
+    const currentOwnerFromUrl = params.get("owner");
+
+    const activeSidebarItem = document.querySelector(
+      ".sidebar-board-item.active"
+    );
+    const currentBoardIdFromSidebar = activeSidebarItem
+      ? activeSidebarItem.dataset.id
+      : null;
+
+    const deletingCurrentBoard =
+      currentBoardIdFromUrl === idToDelete ||
+      currentBoardIdFromSidebar === idToDelete;
+
+    // 3. If we're deleting the current board, SWITCH AWAY FIRST and wait a bit
+    if (deletingCurrentBoard) {
+      const fallbackBoard =
+        loadedBoards.find((b) => b.id !== idToDelete) || null;
+
+      if (fallbackBoard) {
+        const ownerId =
+          (currentUser && currentUser.id) || currentOwnerFromUrl || user.id;
+
+        // Update URL to point at fallback
+        const newUrl = new URL(window.location);
+        newUrl.searchParams.set("board", fallbackBoard.id);
+        newUrl.searchParams.set("owner", ownerId);
+        window.history.replaceState({}, "", newUrl.toString());
+
+        // Tell supabase-sync / viewport to switch context NOW
+        if (typeof switchBoard === "function") {
+          switchBoard(fallbackBoard.id, ownerId);
+        }
+
+        // 🔑 Important: give the board viewer + supabase-sync
+        // a tiny moment to fully detach from the board we're deleting
+        await new Promise((resolve) => setTimeout(resolve, 300));
+      }
+    }
+
+    // 4. Delete the file in Supabase Storage
+    const { data, error } = await sb.storage.from(BUCKET).remove([pathToDelete]);
+
+    if (error) {
+      throw error;
+    }
+
+    // 5. Close the delete modal
+    closeDeleteModal();
+
+    // 6. Reload boards from Supabase and let loadBoards() drive sidebar + URL
+    await loadBoards();
   } catch (err) {
-    console.error("Delete failed:", err);
-    alert("Failed to delete board: " + err.message);
+    if (err?.message === "NOT_SIGNED_IN") {
+      alert(
+        "Your session has expired. Please sign in again before deleting boards."
+      );
+    } else {
+      alert("Failed to delete board: " + (err?.message || err));
+    }
   } finally {
     if (btn) {
       btn.textContent = "Delete";
@@ -347,6 +434,17 @@ async function performDelete() {
     boardToDelete = null;
   }
 }
+
+
+
+
+
+
+
+
+
+
+
 
 // ==================== GLOBAL CONTEXT MENU ====================
 
@@ -603,13 +701,14 @@ async function loadBoards() {
       : [];
 
     if (!boardFiles || boardFiles.length === 0) {
-      renderStatus("Creating your first board...");
+      // No boards in storage yet – just show an empty list
+      renderStatus("No boards yet. Click \"New Board\" to get started.");
+      loadedBoards = [];
+      renderSidebarBoards([]);
       boardsLoaded = true;
       if (typeof updateBoardCreateButtonState === "function") {
         updateBoardCreateButtonState();
       }
-      // Fresh user → allow first board creation, then loadBoards will be called again
-      await handleNewBoard(true);
       return;
     }
 
@@ -620,14 +719,17 @@ async function loadBoards() {
     const boards = boardResults.filter(Boolean);
 
     if (boards.length === 0) {
-      renderStatus("Creating your first board...");
+      // Files existed but none parsed correctly – treat as "no boards"
+      renderStatus("No boards yet. Click \"New Board\" to get started.");
+      loadedBoards = [];
+      renderSidebarBoards([]);
       boardsLoaded = true;
       if (typeof updateBoardCreateButtonState === "function") {
         updateBoardCreateButtonState();
       }
-      await handleNewBoard(true);
       return;
     }
+
 
     // Sort boards by most recently updated/created
     const sorted = boards.sort(
@@ -652,12 +754,35 @@ async function loadBoards() {
 
     if (targetBoardId) {
       const owner = ownerFromUrl || user.id;
-      console.log("Opening board from URL params:", targetBoardId, owner);
-      switchBoard(targetBoardId, owner);
+      const exists = sorted.some(b => b.id === targetBoardId);
+
+      if (exists) {
+        switchBoard(targetBoardId, owner);
+      } else if (sorted.length > 0) {
+        // Deleted or invalid board id in URL – fall back to first board
+        const fallback = sorted[0];
+        const newUrl = new URL(window.location);
+        newUrl.searchParams.set("board", fallback.id);
+        newUrl.searchParams.set("owner", owner);
+        window.history.replaceState({}, "", newUrl);
+        switchBoard(fallback.id, owner);
+      } else {
+        // No boards left at all – clear params and workspace
+        const newUrl = new URL(window.location);
+        newUrl.searchParams.delete("board");
+        newUrl.searchParams.delete("owner");
+        window.history.replaceState({}, "", newUrl);
+
+        const workspace = document.getElementById("workspace");
+        if (workspace) {
+          workspace.innerHTML = '<svg id="connections" class="connections"></svg>';
+        }
+        renderStatus("No boards yet. Click \"New Board\" to get started.");
+      }
     } else if (sorted.length > 0) {
-      console.log("Auto-opening most recent board:", sorted[0].id);
       switchBoard(sorted[0].id, user.id);
     }
+
   } catch (err) {
     console.error("Failed to load boards:", err);
     renderStatus("Error loading boards.");
@@ -687,10 +812,6 @@ async function handleNewBoard(isInitialLoad = false) {
   //    - boards list fully loaded
   if (!isInitialLoad) {
     if (!hasProCheckCompleted || !boardsLoaded) {
-      console.log(
-        "Blocking new board: plan/boards not ready yet",
-        { hasProCheckCompleted, boardsLoaded }
-      );
       return;
     }
   }
@@ -739,10 +860,6 @@ async function handleNewBoard(isInitialLoad = false) {
     const status = isPro ? "PRO" : "FREE";
     const currentCount = loadedBoards.length;
 
-    console.log(
-      `User Subscription Status: ${status} (Boards: ${currentCount})`
-    );
-
     // 5) Enforce FREE board limit using *loadedBoards*
     if (!isPro && currentCount >= FREE_BOARD_LIMIT) {
       // Auto-creation for truly new users is handled by loadBoards + isInitialLoad
@@ -770,55 +887,64 @@ async function handleNewBoard(isInitialLoad = false) {
  * @param {string} boardId The ID for the new board.
  */
 async function createBoardFile(boardId) {
-    let originalContent = "";
+  let originalContent = "";
+  if (newBoardBtn) {
+    originalContent = newBoardBtn.innerHTML;
+    newBoardBtn.disabled = true;
+    newBoardBtn.textContent = "Creating...";
+  }
+
+  try {
+    const path = `${currentUser.id}/boards/${boardId}.json`;
+    const now = new Date().toISOString();
+
+    const defaultBoard = {
+      id: boardId,
+      title: "Untitled Board",
+      description: "",
+      createdAt: now,
+      updatedAt: now,
+      background: { type: "solid", color: "#020617" },
+      elements: [],
+      connections: [],
+    };
+
+    const blob = new Blob([JSON.stringify(defaultBoard, null, 2)], {
+      type: "application/json",
+    });
+
+    const { error } = await sb.storage.from(BUCKET).upload(path, blob, {
+      contentType: "application/json",
+      cacheControl: "0",
+      upsert: false,
+    });
+    if (error) throw error;
+
+    // 👉 Tell the app which board we WANT to be active
+    const newUrl = new URL(window.location);
+    newUrl.searchParams.set("board", boardId);
+    newUrl.searchParams.set("owner", currentUser.id);
+    window.history.replaceState({}, "", newUrl.toString());
+
+    // 👉 Reload boards; loadBoards() sees the URL param and:
+    //    - finds the new board
+    //    - calls switchBoard(boardId, owner)
+    //    - dispatches bibleboard:load so the viewport updates
+    await loadBoards();
+
+    return true;
+  } catch (error) {
+    console.error("Failed to create new board file:", error);
+    throw error;
+  } finally {
     if (newBoardBtn) {
-        originalContent = newBoardBtn.innerHTML;
-        newBoardBtn.disabled = true;
-        newBoardBtn.textContent = "Creating...";
+      newBoardBtn.disabled = false;
+      if (originalContent) newBoardBtn.innerHTML = originalContent;
+      else newBoardBtn.textContent = "New Board";
     }
-    
-    try {
-        const path = `${currentUser.id}/boards/${boardId}.json`;
-        const now = new Date().toISOString();
-
-        const defaultBoard = {
-            id: boardId,
-            title: "Untitled Board",
-            description: "",
-            createdAt: now,
-            updatedAt: now,
-            background: { type: "solid", color: "#020617" },
-            elements: [], 
-            connections: [],
-        };
-
-        const blob = new Blob([JSON.stringify(defaultBoard, null, 2)], {
-            type: "application/json",
-        });
-
-        const { error } = await sb.storage.from(BUCKET).upload(path, blob, {
-            contentType: "application/json",
-            cacheControl: "0",
-            upsert: false,
-        });
-        if (error) throw error;
-        
-        await loadBoards();
-        switchBoard(boardId, currentUser.id);
-
-        return true;
-        
-    } catch (error) {
-        console.error("Failed to create new board file:", error);
-        throw error;
-    } finally {
-        if (newBoardBtn) {
-            newBoardBtn.disabled = false;
-            if (originalContent) newBoardBtn.innerHTML = originalContent;
-            else newBoardBtn.textContent = "New Board"; 
-        }
-    }
+  }
 }
+
 
 
 // --- Upgrade Modal Logic (NEW) ---
@@ -1124,8 +1250,6 @@ function highlightText(text, term) {
 // ==================== APP INIT ====================
 
 async function init() {
-  console.log("Initializing Dashboard...");
-
   // 1. Close menus on outside click
   document.addEventListener("click", (e) => {
     if (contextMenuEl && contextMenuEl.contains(e.target)) return;
@@ -1146,7 +1270,6 @@ async function init() {
     manageBtn.onclick = (e) => {
         e.preventDefault();
         closeProfileMenu();
-        // console.log(SubscriptionService)
         SubscriptionService.manage();
     };
   }
