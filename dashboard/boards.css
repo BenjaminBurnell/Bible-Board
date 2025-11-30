@@ -1745,6 +1745,9 @@ body {
     width: 100vw;
     min-height: 100vh;
     border-radius: 24px 24px 0 0;
+    border: none;
+    border-radius: 0px !important;
+    padding-top: 50px !important;
     padding: 22px;
   }
 
