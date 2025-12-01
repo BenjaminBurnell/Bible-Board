@@ -1971,7 +1971,7 @@ body {
 .connection-color-palette-modal {
   position: fixed;
   width: calc(100vw - 50px);
-  max-width:500px;
+  max-width:600px;
   background: var(--bg);
   border-radius: 25px;
   border: 1px solid var(--fg-seethrough, rgba(148,163,184,0.5));
