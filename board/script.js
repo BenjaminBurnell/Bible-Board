@@ -1662,7 +1662,7 @@ function ensureConnectionLineMenu() {
   el.id = "connection-line-menu";
   el.innerHTML = `
     <button type="button" data-action="delete" class="connection-delete-button">
-      <svg class="action-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" fill="none">
+      <svg class="action-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-trash">
         <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
         <path d="M4 7l16 0" fill="none"/>
         <path d="M10 11l0 6" fill="none"/>
@@ -1672,7 +1672,11 @@ function ensureConnectionLineMenu() {
       </svg>
     </button>
     <div class="seperation-line"></div>
-    <div class="color-row" data-role="color-row"></div>
+    <div class="color-row-container">
+      <div class="color-row" data-role="color-row"></div>
+      <div class="color-row-fade-right"></div>
+      <div class="color-row-fade-left"></div>
+    </div>
   `;
   document.body.appendChild(el);
 

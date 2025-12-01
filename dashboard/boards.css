@@ -1821,15 +1821,16 @@ body {
   display: none;
   flex-direction: row;
   justify-content: center;
-  align-items:center;
+  align-items: center;
   gap: 4px;
   padding: 6px 12px;
   border-radius: 100px;
   border: 1px solid var(--fg-seethrough, rgba(255, 255, 255, 0.18));
   backdrop-filter: blur(10px);
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.45);
-  background:var(--bg-dots);
+  background: var(--bg-dots);
   font-size: 12px;
+  overflow: hidden;
 }
 
 #connection-line-menu button {
@@ -1851,32 +1852,59 @@ body {
   padding:7px !important;
 }
 
+.color-row-container {
+  width:fit-content;
+  max-width: 200px !important;      /* cap width of the pill strip */
+  overflow-x: auto;      /* scroll horizontally when too many colors */
+  overflow-y: hidden;
+  position:relative;
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+.color-row-fade-left {
+  width:15px;
+  height:100%;
+  background:linear-gradient(to right, var(--bg-dots), var(--bg-trasparent));
+  position:fixed;
+  left:50px;
+  top:0px;
+}
+
+.color-row-fade-right {
+  width:15px;
+  height:100%;
+  background:linear-gradient(to left, var(--bg-dots), var(--bg-trasparent));
+  position:fixed;
+  right:10px;
+  top:0px;
+}
+
 #connection-line-menu .color-row {
   display: flex;
   gap: 4px;
   margin-top: 2px;
 
-  /* NEW: horizontal scrolling + width cap */
-  max-width: 350px;
-  overflow-x: auto;
-  overflow-y: hidden;
+  /* 👇 Key bits */ 
+  width:fit-content;
   flex: 1 1 auto;
   padding: 2px 0;
 }
 
-/* Optional: nice tiny scrollbar */
+/* Optional: small scrollbar styling */
 #connection-line-menu .color-row::-webkit-scrollbar {
   height: 4px;
 }
 
 #connection-line-menu .color-row::-webkit-scrollbar-thumb {
   border-radius: 999px;
-  background: var(--fg-seethrough, rgba(148,163,184,0.5));
+  background: var(--fg-seethrough, rgba(148, 163, 184, 0.5));
 }
 
 #connection-line-menu .color-row::-webkit-scrollbar-track {
   background: transparent;
 }
+
 
 #connection-color-picker-input {
   width:100px;
@@ -1899,7 +1927,7 @@ body {
 .seperation-line {
   width:2px;
   height:30px;
-  margin-right: 10px;
+  /* margin-right: 10px; */
   border-radius: 100px;
   background:var(--border);
 }
@@ -1947,7 +1975,7 @@ body {
   border-radius: 25px;
   border: 1px solid var(--fg-seethrough, rgba(148,163,184,0.5));
   box-shadow: 0 18px 60px rgba(0,0,0,0.8);
-  max-height: 400px !important;
+  height: 400px !important;
   background: var(--bg); /* Or #202020 to match image specifically */
   border: 1px solid var(--border);
   box-shadow: 0 20px 40px rgba(0,0,0,0.5);
@@ -2056,26 +2084,32 @@ body {
   margin: 0 0 6px;
 }
 .connection-color-palette-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  display: grid;
+  align-items: center;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); /* 2–4 per row */
+  gap: 15px;
 }
 .connection-color-pill {
+  width:100px;
+  height:100px;
   display: inline-flex;
+  justify-self: center;
   align-items: center;
   gap: 5px;
-  border-radius: 999px;
+  border-radius: 20px;
   border: 1px solid var(--border, #374151);
   padding: 0px !important;
   background: var(--bg-alt);
   cursor: pointer;
   font-size: 11px;
   color: var(--fg, #e5e7eb);
+  overflow:hidden;
+  position:relative;
 }
 .connection-color-pill-dot {
-  width: 30px;
-  height: 30px;
-  border-radius: 999px;
+  width: 100%;
+  height: 100%;
+  border-radius: 0px;
   border: 1px solid rgba(15,23,42,0.7);
   flex-shrink: 0;
 }
@@ -2084,6 +2118,15 @@ body {
   margin-right: 10px;
   font-size: 20px;
   opacity: 0.7;
+  position:absolute;
+  top:5px;
+  right:-5px;
+  z-index: 1;
+  background:var(--bg-seethroug);
+  height:25px;
+  width:25px;
+  padding:0px;
+  border-radius: 100px;
 }
 .connection-color-pill-remove:hover {
   opacity: 1;
@@ -2091,4 +2134,30 @@ body {
 .connection-color-palette-empty {
   font-size: 11px;
   color: var(--muted, #9ca3af);
+}
+
+@media (max-width:900px) {
+  .connection-color-palette-modal {
+    position: fixed;
+    width: calc(100vw - 48px);
+    bottom:0px;
+    top:25px;
+    max-width:500px;
+    height: auto !important;
+    background: var(--bg);
+    border-radius: 25px;
+    border-bottom-left-radius: 0px;
+    border-bottom-right-radius: 0px;
+    border: none;
+    box-shadow: 0 18px 60px rgba(0,0,0,0.8);
+    background: var(--bg); /* Or #202020 to match image specifically */
+    border: 1px solid var(--border);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    overflow-y: scroll;
+    gap: 12px;
+    color: var(--fg, #e5e7eb);
+  }
 }
