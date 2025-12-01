@@ -966,11 +966,64 @@ const connectionsSvg = svg;
 
 // ==================== Connection Line Mini Menu (edit/delete) ====================
 
+// ==================== Connection Line Mini Menu (edit/delete) ====================
+
 let activeConnectionPathForMenu = null;
 let connectionLineMenuEl = null;
 let rebuildConnectionMenuColors = null;
+let connectionColorPlusButton = null;
+
+// NEW: track if we've attached list click listeners yet
+let connectionColorPaletteListBound = false;
+
+// Modal state for the premium connection color palette
+let connectionColorPaletteBackdrop = null;
+let connectionColorPaletteModal = null;
+let connectionColorPaletteListEl = null;
+let connectionColorPaletteColorInput = null;
+let connectionColorPaletteHexInput = null;
 
 let activeConnectionAnchor = null;
+
+// Small helper so we can reuse the same hex validation in a few places
+function normalizeConnectionHex(color) {
+  if (!color || typeof color !== "string") return null;
+  let c = color.trim();
+  if (!c) return null;
+  if (c[0] !== "#") c = "#" + c;
+  if (!/^#([0-9a-fA-F]{6})$/.test(c)) return null;
+  return c.toUpperCase();
+}
+
+function isProAccount() {
+  return !!window.BIBLEBOARD_IS_PRO;
+}
+
+
+function handleConnectionColorPlusClick(ev) {
+  ev?.stopPropagation?.();
+
+  const isReadOnly = !!window.__readOnly;
+  const isPro = isProAccount();
+
+  // Read-only: no changes allowed, but non-pro users can still see the upgrade paywall
+  if (isReadOnly) {
+    if (!isPro && typeof window.openUpgradeModal === "function") {
+      window.openUpgradeModal("connection-colors");
+    }
+    return;
+  }
+
+  if (!isPro) {
+    if (typeof window.openUpgradeModal === "function") {
+      window.openUpgradeModal("connection-colors");
+    }
+    return;
+  }
+
+  // Pro + not read-only → open the palette
+  openConnectionColorPaletteModal();
+}
 
 function findConnectionPathNearPoint(clientX, clientY) {
   const paths = Array.from(
@@ -1007,6 +1060,529 @@ function findConnectionPathNearPoint(clientX, clientY) {
 
 
 
+// Injects the small bit of CSS needed for the color palette modal
+function ensureConnectionColorPaletteStyles() {
+  if (document.getElementById("connection-color-palette-styles")) return;
+
+  const style = document.createElement("style");
+  style.id = "connection-color-palette-styles";
+  style.textContent = `
+    .connection-color-palette-backdrop {
+      position: relative;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(16px);
+      z-index: 6000000;
+    }
+    .connection-color-palette-backdrop.visible {
+      display: flex;
+    }
+    .connection-color-palette-modal {
+      width: calc(100vw - 50px);
+      max-width:500px;
+      background: var(--bg);
+      border-radius: 25px;
+      border: 1px solid var(--fg-seethrough, rgba(148,163,184,0.5));
+      box-shadow: 0 18px 60px rgba(0,0,0,0.8);
+      max-width: 400px;
+      background: var(--bg); /* Or #202020 to match image specifically */
+      border: 1px solid var(--border);
+      box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      color: var(--fg, #e5e7eb);
+    }
+    .connection-color-palette-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 4px;
+    }
+    .connection-color-palette-title-group h3 {
+      font-size: 1.1rem;
+      margin-bottom: 12px;
+      color: var(--fg);
+      margin-top:0px;
+    }
+    .connection-color-palette-title-group p {
+      font-size: 0.95rem;
+      color: var(--fg);
+      margin:0px;
+      padding:0px;
+    }
+    .connection-color-palette-close-btn {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      border: 1px solid var(--border);
+      background: var(--bg-dots);
+      color: var(--muted);
+      border-radius: 50%;
+      width: 38px;
+      height: 38px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+    .connection-color-picker-row {
+      display: flex;
+      align-items: center;
+      // gap: 8px;
+    }
+    .connection-color-picker-row input[type="color"] {
+      -webkit-appearance: none;
+      border-radius: 999px;
+      border: 1px solid var(--border, #374151);
+      width: 32px;
+      height: 32px;
+      padding: 0;
+      background: transparent;
+      cursor: pointer;
+    }
+    .connection-color-picker-row input[type="color"]::-webkit-color-swatch {
+      border-radius: 999px;
+      border: none;
+    }
+    .connection-color-hex-group {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .connection-color-hex-group label {
+      font-size: 11px;
+      color: var(--muted, #9ca3af);
+    }
+    .connection-color-hex-group input[type="text"] {
+      width: 100%;
+      border-radius: 999px;
+      border: 1px solid var(--border, #374151);
+      background: var(--bg-alt, #020617);
+      color: var(--fg, #e5e7eb);
+      padding: 6px 10px;
+      font-size: 12px;
+      outline: none;
+    }
+    .connection-color-hex-group input[type="text"]:focus {
+      border-color: var(--accent, #22c55e);
+    }
+    .connection-color-add-btn {
+      border-radius: 999px;
+      border: 1px solid var(--accent, #22c55e);
+      background: linear-gradient(135deg, var(--accent, #22c55e), #4ade80);
+      color: #020617;
+      font-size: 12px;
+      font-weight: 500;
+      padding: 6px 10px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .connection-color-palette-saved {
+      border-top: 1px solid var(--bg-seethrough, rgba(148,163,184,0.25));
+      padding-top: 10px;
+      margin-top: 4px;
+    }
+    .connection-color-palette-subtitle {
+      font-size: 11px;
+      color: var(--muted, #9ca3af);
+      margin: 0 0 6px;
+    }
+  `;
+  document.head.appendChild(style);
+}
+
+function ensureConnectionColorPaletteModal() {
+  if (connectionColorPaletteBackdrop) return;
+
+  ensureConnectionColorPaletteStyles();
+
+  const backdrop = document.createElement("div");
+  backdrop.className = "connection-color-palette-backdrop";
+  backdrop.id = "connection-color-palette-backdrop";
+
+  const modal = document.createElement("div");
+  modal.className = "connection-color-palette-modal";
+  modal.innerHTML = `
+    <div class="connection-color-palette-header">
+      <div class="connection-color-palette-title-group">
+        <h3>Connection colors</h3>
+        <p class="delete-modal-text">Save colors you reuse across boards.</p>
+      </div>
+      <button type="button" class="connection-color-palette-close-btn" aria-label="Close">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+    <div class="connection-color-picker-row">
+      <input type="color" id="connection-color-picker-input" aria-label="Pick color" />
+      <div class="connection-color-hex-group" style="display:none;">
+        <label for="connection-color-hex-input">Hex</label>
+        <input id="connection-color-hex-input" type="text" maxlength="7" placeholder="#F97316" />
+      </div>
+      <button type="button" class="connection-color-add-btn">Add color</button>
+    </div>
+    <div class="connection-color-palette-saved">
+      <p class="connection-color-palette-subtitle">Added colors</p>
+      <div class="connection-color-palette-list" data-role="connection-color-list"></div>
+    </div>
+  `;
+
+  backdrop.appendChild(modal);
+  document.body.appendChild(backdrop);
+
+  connectionColorPaletteBackdrop = backdrop;
+  connectionColorPaletteModal = modal;
+  connectionColorPaletteListEl = modal.querySelector("[data-role='connection-color-list']");
+  connectionColorPaletteColorInput = modal.querySelector("#connection-color-picker-input");
+  connectionColorPaletteHexInput = modal.querySelector("#connection-color-hex-input");
+
+  const closeBtn = modal.querySelector(".connection-color-palette-close-btn");
+  closeBtn.addEventListener("click", () => {
+    closeConnectionColorPaletteModal();
+  });
+
+  backdrop.addEventListener("click", (ev) => {
+    if (ev.target === backdrop) {
+      closeConnectionColorPaletteModal();
+    }
+  });
+
+  // Sync picker -> hex
+  connectionColorPaletteColorInput.addEventListener("input", () => {
+    const hex = normalizeConnectionHex(connectionColorPaletteColorInput.value);
+    if (!hex) return;
+    connectionColorPaletteHexInput.value = hex;
+  });
+
+  // Sync hex -> picker
+  connectionColorPaletteHexInput.addEventListener("blur", () => {
+    const hex = normalizeConnectionHex(connectionColorPaletteHexInput.value);
+    if (!hex) return;
+    connectionColorPaletteHexInput.value = hex;
+    connectionColorPaletteColorInput.value = hex;
+  });
+
+  const addBtn = modal.querySelector(".connection-color-add-btn");
+  addBtn.addEventListener("click", () => {
+    handleAddConnectionUserColor();
+  });
+
+  // Escape closes the modal
+  document.addEventListener("keydown", (ev) => {
+    if (ev.key === "Escape") {
+      closeConnectionColorPaletteModal();
+    }
+  });
+}
+
+function openConnectionColorPaletteModal() {
+  ensureConnectionColorPaletteModal();
+  if (!connectionColorPaletteBackdrop) return;
+
+  let initial = "#F97316";
+  if (
+    window.BoardAPI &&
+    typeof window.BoardAPI.getConnectionColor === "function"
+  ) {
+    const current = window.BoardAPI.getConnectionColor();
+    const normalized = normalizeConnectionHex(current);
+    if (normalized) {
+      initial = normalized;
+    }
+  }
+
+  connectionColorPaletteColorInput.value = initial;
+  connectionColorPaletteHexInput.value = initial;
+
+  refreshConnectionColorPaletteList();
+  connectionColorPaletteBackdrop.classList.add("visible");
+}
+
+function closeConnectionColorPaletteModal() {
+  if (!connectionColorPaletteBackdrop) return;
+  connectionColorPaletteBackdrop.classList.remove("visible");
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// --- Custom user connection colors (shared with board/) ---
+
+// Same key used by board/connection-colors.js
+const CONNECTION_USER_COLORS_KEY = "bb:connectionUserColors";
+
+// Load saved user colors from localStorage
+function loadConnectionUserColors() {
+  try {
+    const raw = localStorage.getItem(CONNECTION_USER_COLORS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+
+    const seen = new Set();
+    const out = [];
+
+    for (const c of parsed) {
+      const hex = normalizeConnectionHex(c);
+      if (!hex) continue;
+      if (seen.has(hex)) continue;
+      seen.add(hex);
+      out.push(hex);
+    }
+
+    return out;
+  } catch (err) {
+    console.warn("[Connections] Failed to load user colors", err);
+    return [];
+  }
+}
+
+// Save user colors back to localStorage
+function saveConnectionUserColors(colors) {
+  try {
+    const seen = new Set();
+    const cleaned = [];
+
+    for (const c of colors) {
+      const hex = normalizeConnectionHex(c);
+      if (!hex) continue;
+      if (seen.has(hex)) continue;
+      seen.add(hex);
+      cleaned.push(hex);
+    }
+
+    localStorage.setItem(CONNECTION_USER_COLORS_KEY, JSON.stringify(cleaned));
+  } catch (err) {
+    console.warn("[Connections] Failed to save user colors", err);
+  }
+}
+
+// Rebuild the list in the "Connection Color Palette" modal
+function refreshConnectionColorPaletteList() {
+  if (!connectionColorPaletteListEl) return;
+
+  // Lazy-attach click handlers once
+  if (!connectionColorPaletteListBound) {
+    connectionColorPaletteListEl.addEventListener("click", (ev) => {
+      const pill = ev.target.closest(".connection-color-pill");
+      if (!pill) return;
+
+      const color = pill.getAttribute("data-color");
+      if (!color) return;
+
+      // Remove button
+      if (ev.target.closest(".connection-color-pill-remove")) {
+        handleRemoveConnectionUserColor(color);
+        ev.stopPropagation();
+        return;
+      }
+
+      // Apply color to the current connection
+      applyConnectionColorFromPalette(color);
+    });
+
+    connectionColorPaletteListBound = true;
+  }
+
+  // Clear current contents
+  connectionColorPaletteListEl.innerHTML = "";
+
+  const colors = loadConnectionUserColors();
+  if (!colors.length) {
+    const empty = document.createElement("div");
+    empty.className = "connection-color-palette-empty";
+    empty.textContent = 'No saved colors yet. Pick a color and click "Add".';
+    connectionColorPaletteListEl.appendChild(empty);
+    return;
+  }
+
+  // Render color pills
+  for (const raw of colors) {
+    const hex = normalizeConnectionHex(raw);
+    if (!hex) continue;
+
+    const pill = document.createElement("button");
+    pill.type = "button";
+    pill.className = "connection-color-pill";
+    pill.setAttribute("data-color", hex);
+
+    const dot = document.createElement("span");
+    dot.className = "connection-color-pill-dot";
+    dot.style.backgroundColor = hex;
+
+    const label = document.createElement("span");
+    label.className = "connection-color-pill-hex";
+    // label.textContent = hex;
+
+    const remove = document.createElement("span");
+    remove.className = "connection-color-pill-remove";
+    remove.setAttribute("aria-label", "Remove color");
+    remove.textContent = "×";
+
+    pill.appendChild(dot);
+    pill.appendChild(label);
+    pill.appendChild(remove);
+
+    connectionColorPaletteListEl.appendChild(pill);
+  }
+}
+
+// "Add color" button in the modal
+function handleAddConnectionUserColor() {
+  if (window.__readOnly) return;
+
+  const fromHex = normalizeConnectionHex(
+    connectionColorPaletteHexInput?.value || ""
+  );
+  const fromPicker = normalizeConnectionHex(
+    connectionColorPaletteColorInput?.value || ""
+  );
+  const color = fromHex || fromPicker;
+  if (!color) return;
+
+  const existing = loadConnectionUserColors();
+  // Move to front if already in list
+  const filtered = existing.filter(
+    (c) => normalizeConnectionHex(c) !== color
+  );
+  filtered.unshift(color);
+
+  // Optional limit
+  const limited = filtered.slice(0, 24);
+  saveConnectionUserColors(limited);
+
+  // Keep inputs in sync
+  if (connectionColorPaletteHexInput) {
+    connectionColorPaletteHexInput.value = color;
+  }
+  if (connectionColorPaletteColorInput) {
+    connectionColorPaletteColorInput.value = color;
+  }
+
+  refreshConnectionColorPaletteList();
+
+  // Also let the small connection line menu refresh its swatches
+  try {
+    if (typeof rebuildConnectionMenuColors === "function") {
+      rebuildConnectionMenuColors();
+    }
+  } catch {
+    // ignore
+  }
+}
+
+// Remove a color from the palette
+function handleRemoveConnectionUserColor(colorToRemove) {
+  const target = normalizeConnectionHex(colorToRemove);
+  if (!target) return;
+
+  const colors = loadConnectionUserColors();
+  const filtered = colors.filter(
+    (c) => normalizeConnectionHex(c) !== target
+  );
+  saveConnectionUserColors(filtered);
+  refreshConnectionColorPaletteList();
+
+  try {
+    if (typeof rebuildConnectionMenuColors === "function") {
+      rebuildConnectionMenuColors();
+    }
+  } catch {
+    // ignore
+  }
+}
+
+// Apply a palette color to the currently selected connection
+function applyConnectionColorFromPalette(color) {
+  const hex = normalizeConnectionHex(color);
+  if (!hex || !window.BoardAPI) return;
+
+  // 1) Change the color of the currently selected connection line
+  try {
+    if (
+      activeConnectionPathForMenu &&
+      typeof window.BoardAPI.setConnectionColorForPath === "function"
+    ) {
+      // ✅ Pass the actual <path> element, not an id
+      window.BoardAPI.setConnectionColorForPath(
+        activeConnectionPathForMenu,
+        hex
+      );
+    } else if (typeof window.BoardAPI.setConnectionColor === "function") {
+      // Fallback: set current color globally
+      window.BoardAPI.setConnectionColor(hex);
+    }
+  } catch (err) {
+    console.warn(
+      "[Connections] Failed to apply color from palette:",
+      err
+    );
+  }
+
+  // 2) Make sure this color is part of the small connection-line-menu list
+  try {
+    if (
+      typeof window.BoardAPI.addUserConnectionColor === "function"
+    ) {
+      window.BoardAPI.addUserConnectionColor(hex);
+    }
+  } catch (err) {
+    console.warn(
+      "[Connections] Failed to add palette color to menu list:",
+      err
+    );
+  }
+
+  // 3) Rebuild the swatches in the mini connection menu
+  try {
+    if (typeof rebuildConnectionMenuColors === "function") {
+      rebuildConnectionMenuColors();
+    }
+  } catch {
+    // ignore
+  }
+
+  // Close the palette modal but leave the mini menu open
+  closeConnectionColorPaletteModal();
+}
+
+
+
+
+
 function closeConnectionLineMenu() {
   clearConnectionHighlight?.();
 
@@ -1037,8 +1613,8 @@ function updateConnectionLineMenuPosition() {
     return;
   }
 
-  const menuWidth = connectionLineMenuEl.offsetWidth || 140;
-  const menuHeight = connectionLineMenuEl.offsetHeight || 70;
+  const menuWidth = (connectionLineMenuEl.offsetWidth - 400) || 0;
+  const menuHeight = connectionLineMenuEl.offsetHeight || 0;
 
   // Use the stored anchor if we have one, else default to middle-right
   let anchorX;
@@ -1086,7 +1662,7 @@ function ensureConnectionLineMenu() {
   el.id = "connection-line-menu";
   el.innerHTML = `
     <button type="button" data-action="delete" class="connection-delete-button">
-      <svg class="action-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-trash">
+      <svg class="action-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" fill="none">
         <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
         <path d="M4 7l16 0" fill="none"/>
         <path d="M10 11l0 6" fill="none"/>
@@ -1115,60 +1691,78 @@ function ensureConnectionLineMenu() {
 
   const colorRow = el.querySelector("[data-role='color-row']");
 
+  // Persistent "+" button at the far right of the color row
+  connectionColorPlusButton = document.createElement("button");
+  connectionColorPlusButton.type = "button";
+  connectionColorPlusButton.className = "color-swatch connection-color-plus-btn";
+  connectionColorPlusButton.setAttribute("aria-label", "More connection colors");
+  connectionColorPlusButton.textContent = "+";
+  connectionColorPlusButton.style.display = "flex";
+  connectionColorPlusButton.style.alignItems = "center";
+  connectionColorPlusButton.style.justifyContent = "center";
+  connectionColorPlusButton.style.fontSize = "14px";
+  connectionColorPlusButton.style.color = "var(--fg)";
+  connectionColorPlusButton.addEventListener("click", handleConnectionColorPlusClick);
+
   rebuildConnectionMenuColors = () => {
     colorRow.innerHTML = "";
 
     let colors = [];
-    if (window.BoardAPI && typeof window.BoardAPI.getConnectionColors === "function") {
+    if (
+      window.BoardAPI &&
+      typeof window.BoardAPI.getConnectionColors === "function"
+    ) {
       colors = window.BoardAPI.getConnectionColors() || [];
     }
     if (!colors.length) {
-      // fallback palette if connection-colors.js isn't present for some reason
-      colors = ["#4ade80", "#38bdf8", "#facc15", "#f97373", "#a855f7", "#ffffff"];
+      // fallback palette if connection-colors.js isn't loaded
+      colors = ["#F97316", "#22C55E", "#3B82F6", "#A855F7"];
     }
-
-    const currentColor = (window.BoardAPI &&
-      typeof window.BoardAPI.getConnectionColor === "function")
-      ? window.BoardAPI.getConnectionColor()
-      : null;
 
     colors.forEach((color) => {
       const swatch = document.createElement("button");
       swatch.type = "button";
-      swatch.className =
-        "color-swatch" + (color === currentColor ? " active" : "");
+      swatch.className = "color-swatch";
+      swatch.dataset.color = color;
       swatch.style.backgroundColor = color;
+      swatch.title = `Set connection color (${color})`;
 
       swatch.addEventListener("click", (ev) => {
         ev.stopPropagation();
 
-        if (window.BoardAPI) {
-          // Prefer per-line recolor if available
-          if (
-            typeof window.BoardAPI.setConnectionColorForPath === "function" &&
-            activeConnectionPathForMenu
-          ) {
-            window.BoardAPI.setConnectionColorForPath(
-              activeConnectionPathForMenu,
-              color
-            );
-          } else if (
-            typeof window.BoardAPI.setConnectionColor === "function"
-          ) {
-            // Fallback: global color change
-            window.BoardAPI.setConnectionColor(color);
-          }
-        }
+        if (!window.BoardAPI) return;
 
-        closeConnectionLineMenu();
+        if (
+          typeof window.BoardAPI.setConnectionColorForPath === "function" &&
+          activeConnectionPathForMenu
+        ) {
+          // Prefer per-line recolor if available
+          window.BoardAPI.setConnectionColorForPath(
+            activeConnectionPathForMenu,
+            color
+          );
+        } else if (typeof window.BoardAPI.setConnectionColor === "function") {
+          // Fallback: just update the global current color
+          window.BoardAPI.setConnectionColor(color);
+        }
       });
 
       colorRow.appendChild(swatch);
     });
+
+    // Always keep the "+" button on the far right
+    if (connectionColorPlusButton) {
+      colorRow.appendChild(connectionColorPlusButton);
+    }
   };
 
   connectionLineMenuEl = el;
+
+  // Expose so connection-colors.js can ask the menu to rebuild its swatches
+  window.rebuildConnectionMenuColors = rebuildConnectionMenuColors;
 }
+
+
 
 function openConnectionLineMenu(path, clientX, clientY) {
   ensureConnectionLineMenu();
@@ -1464,7 +2058,7 @@ const MIN_SCALE = 0.15,
 
 function syncHandleScaleVar() {
   const s =
-    (typeof scale === "number" && isFinite(scale) && scale > 0 ? scale : 1) / .8;
+    (typeof scale === "number" && isFinite(scale) && scale > 0 ? scale : 1) / .75;
   const inverse = 1 / s;
   document.documentElement.style.setProperty(
     "--bb-handle-scale",

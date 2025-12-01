@@ -12,9 +12,183 @@
   ];
   const DEFAULT_COLOR = PRESET_COLORS[0];
   const STORAGE_KEY = "bb:connectionColor";
+  // NEW: shared user-colors key (same as dashboard)
+  const USER_COLORS_KEY = "bb:connectionUserColors";
+
+  // Simple normalizer for hex colors
+  function normalizeUserHex(color) {
+    if (typeof color !== "string") return null;
+    let c = color.trim();
+    if (!c) return null;
+    if (c[0] !== "#") c = "#" + c;
+    if (c.length !== 7) return null;
+    const hexPart = c.slice(1);
+    if (!/^[0-9a-fA-F]{6}$/.test(hexPart)) return null;
+    return "#" + hexPart.toUpperCase();
+  }
+
+  // Load user colors from localStorage
+  function loadUserConnectionColors() {
+    try {
+      const raw = localStorage.getItem(USER_COLORS_KEY);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return [];
+
+      const seen = new Set();
+      const out = [];
+      for (const c of parsed) {
+        const hex = normalizeUserHex(c);
+        if (!hex) continue;
+        if (seen.has(hex)) continue;
+        seen.add(hex);
+        out.push(hex);
+      }
+      return out;
+    } catch (err) {
+      console.warn("[Connections] Failed to load user colors in board", err);
+      return [];
+    }
+  }
+
+  // Merge presets + user colors
+    // Collect extra colors from the current board's connections
+  function collectBoardConnectionColors() {
+    const extras = [];
+    const seen = new Set();
+    const api = window.BoardAPI;
+
+    if (!api || typeof api.getConnections !== "function") {
+      return extras;
+    }
+
+    try {
+      const conns = api.getConnections() || [];
+      for (const conn of conns) {
+        if (!conn) continue;
+
+        // Try a few possible places the color might live
+        const rawColor =
+          conn.color ||
+          (conn.path &&
+            (conn.path.dataset.color ||
+              conn.path.getAttribute("stroke") ||
+              conn.path.style.stroke)) ||
+          null;
+
+        const hex = normalizeColor(rawColor);
+        if (!hex) continue;
+
+        // Skip the 5 main preset colors
+        if (PRESET_COLORS.includes(hex)) continue;
+        if (seen.has(hex)) continue;
+
+        seen.add(hex);
+        extras.push(hex);
+      }
+    } catch (err) {
+      console.warn(
+        "[Connections] Failed to collect board connection colors:",
+        err
+      );
+    }
+
+    return extras;
+  }
+
+  // Main palette used by the connection-line menu:
+  //  - the 5 preset colors
+  //  - plus any extra unique colors actually used on this board
+  function getAllConnectionColors() {
+    const all = PRESET_COLORS.slice();
+    const extras = collectBoardConnectionColors();
+
+    for (const c of extras) {
+      if (!all.includes(c)) {
+        all.push(c);
+      }
+    }
+
+    return all;
+  }
+
 
   let g_currentColor = DEFAULT_COLOR;
   let g_paletteToolbar = null;
+  let g_userColors = []; // NEW: in-memory user palette
+
+
+    // Sync any colors found on this board's connections into the user palette
+  function syncUserColorsFromConnections() {
+    const extras = collectBoardConnectionColors();
+    if (!extras.length) return;
+
+    const seen = new Set(g_userColors);
+    let changed = false;
+
+    for (const hex of extras) {
+      if (PRESET_COLORS.includes(hex)) continue;
+      if (seen.has(hex)) continue;
+
+      seen.add(hex);
+      g_userColors.push(hex);
+      changed = true;
+    }
+
+    if (changed) {
+      saveUserColorsToStorage();
+    }
+  }
+
+
+  // --- Helpers for user-defined colors ---------------------------------------
+
+  function normalizeColor(color) {
+    if (!color || typeof color !== "string") return null;
+    let c = color.trim();
+    if (!c) return null;
+    if (c[0] !== "#") c = "#" + c;
+    if (!/^#([0-9a-fA-F]{6})$/.test(c)) return null;
+    return c.toUpperCase();
+  }
+
+  function loadUserColorsFromStorage() {
+    try {
+      const raw = window.localStorage.getItem(USER_COLORS_KEY);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return [];
+
+      const seen = new Set();
+      const result = [];
+
+      for (const item of parsed) {
+        const hex = normalizeColor(item);
+        if (!hex) continue;
+        // Don't duplicate built-ins in the user list
+        if (PRESET_COLORS.includes(hex)) continue;
+        if (seen.has(hex)) continue;
+        seen.add(hex);
+        result.push(hex);
+      }
+
+      return result;
+    } catch (err) {
+      console.warn("[Connections] Failed to load user colors:", err);
+      return [];
+    }
+  }
+
+  function saveUserColorsToStorage() {
+    try {
+      window.localStorage.setItem(
+        USER_COLORS_KEY,
+        JSON.stringify(g_userColors)
+      );
+    } catch (err) {
+      console.warn("[Connections] Failed to save user colors:", err);
+    }
+  }
 
   /**
    * Injects the CSS for the color palette into the document head.
@@ -130,15 +304,78 @@
     if (!api) return;
 
     // 1. --- Add new color API functions ---
+    // 1. --- Color API functions (now aware of custom colors) ------------------
     api.getConnectionColor = () => g_currentColor;
-    api.getConnectionColors = () => PRESET_COLORS;
-    api.setConnectionColor = (color) => {
-      if (window.__readOnly || !PRESET_COLORS.includes(color)) {
-        return;
+
+    // Default palette + user-defined colors (used by dashboard connection menu)
+    api.getConnectionColors = () => getAllConnectionColors();
+
+    // The raw user palette (for the palette modal)
+    api.getUserConnectionColors = () => g_userColors.slice();
+
+    api.addUserConnectionColor = (color) => {
+      const normalized = normalizeColor(color);
+      if (!normalized) return false;
+
+      // Don't store built-in colors again
+      if (PRESET_COLORS.includes(normalized)) {
+        return true;
       }
-      g_currentColor = color;
-      localStorage.setItem(STORAGE_KEY, color);
-      updatePaletteUI(color);
+
+      if (!g_userColors.includes(normalized)) {
+        g_userColors.push(normalized);
+        saveUserColorsToStorage();
+      }
+
+      // Nudge the dashboard connection-line menu to rebuild its swatches
+      try {
+        if (typeof window.rebuildConnectionMenuColors === "function") {
+          window.rebuildConnectionMenuColors();
+        }
+      } catch (err) {
+        // non-fatal
+      }
+
+      return true;
+    };
+
+    api.removeUserConnectionColor = (color) => {
+      const normalized = normalizeColor(color);
+      if (!normalized) return false;
+
+      const idx = g_userColors.indexOf(normalized);
+      if (idx === -1) return false;
+
+      g_userColors.splice(idx, 1);
+      saveUserColorsToStorage();
+
+      try {
+        if (typeof window.rebuildConnectionMenuColors === "function") {
+          window.rebuildConnectionMenuColors();
+        }
+      } catch (err) {
+        // non-fatal
+      }
+
+      return true;
+    };
+
+    api.setConnectionColor = (color) => {
+      if (window.__readOnly) return;
+
+      const normalized = normalizeColor(color);
+      if (!normalized) return;
+
+      g_currentColor = normalized;
+
+      try {
+        window.localStorage.setItem(STORAGE_KEY, normalized);
+      } catch (err) {
+        // ignore storage errors
+      }
+
+      // Keep the palette toolbar highlight in sync
+      updatePaletteUI(normalized);
     };
 
     /**
@@ -149,9 +386,11 @@
      */
     api.setConnectionColorForPath = function (pathOrId, color) {
       if (window.__readOnly) return;
-      if (!color || PRESET_COLORS.indexOf(color) === -1) {
+
+      const normalized = normalizeColor(color);
+      if (!normalized) {
         console.warn(
-          "[Connections] Refusing to set color not in palette:",
+          "[Connections] Refusing to set invalid connection color:",
           color
         );
         return;
@@ -162,17 +401,19 @@
 
       let target = null;
 
+      // pathOrId can be an id string, a <path> element, or the connection object
       if (typeof pathOrId === "string") {
         target = all.find(
           (c) =>
             c.id === pathOrId ||
             (c.path &&
-              c.path.dataset &&
-              c.path.dataset.connectionId === pathOrId)
+              (c.path.dataset.connectionId === pathOrId ||
+                c.path.dataset.connectionid === pathOrId))
         );
-      } else if (pathOrId && pathOrId.nodeType === 1) {
-        // DOM element (<path>)
+      } else if (pathOrId && pathOrId.tagName === "path") {
         target = all.find((c) => c.path === pathOrId);
+      } else if (pathOrId && typeof pathOrId === "object" && pathOrId.path) {
+        target = pathOrId;
       }
 
       if (!target) {
@@ -183,26 +424,27 @@
         return;
       }
 
-      target.color = color;
+      // Update the live connection object
+      target.color = normalized;
 
       if (target.path) {
-        target.path.style.stroke = color;
-        target.path.dataset.color = color;
+        target.path.style.stroke = normalized;
+        target.path.dataset.color = normalized;
       }
 
       if (target.handle) {
-        updateHandleColor(target.handle, color);
+        updateHandleColor(target.handle, normalized);
       }
 
-      // Also update the "current" color so new lines use this color
-      g_currentColor = color;
+      // Also update the "current" color so new lines match this choice
+      g_currentColor = normalized;
       try {
-        window.localStorage.setItem(STORAGE_KEY, color);
+        window.localStorage.setItem(STORAGE_KEY, normalized);
       } catch (err) {
         // ignore
       }
 
-      updatePaletteUI(color);
+      updatePaletteUI(normalized);
     };
 
     // 2. --- Patch connectItems (wrapped by undo-redo) ---
@@ -357,11 +599,13 @@
       }
 
       // Restore selected color
-      const savedColor =
+      const savedColorRaw =
         data?.viewport?.connectionColor || data?.settings?.connectionColor;
-      if (savedColor && PRESET_COLORS.includes(savedColor)) {
-        api.setConnectionColor(savedColor);
+      const normalizedSaved = normalizeColor(savedColorRaw);
+      if (normalizedSaved) {
+        api.setConnectionColor(normalizedSaved);
       }
+
     };
 
     // 6. --- Patch updateAllConnections ---
@@ -483,15 +727,21 @@
 
         // Load saved color
         const savedColor = localStorage.getItem(STORAGE_KEY);
-        if (savedColor && PRESET_COLORS.includes(savedColor)) {
-          g_currentColor = savedColor;
+        const normalizedSaved = normalizeColor(savedColor || "");
+        if (normalizedSaved) {
+          g_currentColor = normalizedSaved;
         }
 
+        // Load any custom colors once on boot (global across boards)
+        g_userColors = loadUserColorsFromStorage();
+
+        syncUserColorsFromConnections();
         injectStyles();
         buildPalette();
         patchBoardAPI();
         patchUndoRedo();
         patchReadOnlyGuard();
+
 
         // Final check on read-only status in case it was set before we loaded
         if (window.__readOnly) {

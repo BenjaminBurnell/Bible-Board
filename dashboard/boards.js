@@ -701,14 +701,18 @@ async function loadBoards() {
       : [];
 
     if (!boardFiles || boardFiles.length === 0) {
-      // No boards in storage yet – just show an empty list
-      renderStatus("No boards yet. Click \"New Board\" to get started.");
+      console.log("[Boards] No board files found; auto-creating first board...");
       loadedBoards = [];
       renderSidebarBoards([]);
       boardsLoaded = true;
       if (typeof updateBoardCreateButtonState === "function") {
         updateBoardCreateButtonState();
       }
+
+      // Auto-create a first board for this user.
+      // handleNewBoard(true) skips the “plan not ready yet” block,
+      // but still respects FREE_BOARD_LIMIT / PRO rules.
+      await handleNewBoard(true);
       return;
     }
 
@@ -716,19 +720,23 @@ async function loadBoards() {
     const boardResults = await Promise.all(
       boardFiles.map((file) => fetchBoardDetails(user, file))
     );
+    
     const boards = boardResults.filter(Boolean);
 
     if (boards.length === 0) {
       // Files existed but none parsed correctly – treat as "no boards"
-      renderStatus("No boards yet. Click \"New Board\" to get started.");
+      console.warn("[Boards] Board files found but none parsed; auto-creating new board.");
       loadedBoards = [];
       renderSidebarBoards([]);
       boardsLoaded = true;
       if (typeof updateBoardCreateButtonState === "function") {
         updateBoardCreateButtonState();
       }
+
+      await handleNewBoard(true);
       return;
     }
+
 
 
     // Sort boards by most recently updated/created
