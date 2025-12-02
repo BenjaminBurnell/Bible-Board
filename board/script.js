@@ -8350,6 +8350,13 @@ async function openCrossRefForReference(reference) {
           <div class="crossref-ref">${displayRef}</div>
           <div class="crossref-text">${cleanText}</div>
         </div>
+        <button
+          type="button"
+          class="search-query-verse-add-button"
+          aria-label="Add ${displayRef} to board"
+        >
+          +
+        </button>
       `);
     }
 
