@@ -706,23 +706,23 @@ function setVersion(version) {
 
       // If we're in CrossRef mode, keep the same reference but reload the verses
       if (mode === "crossref") {
-        // If we already have crossRefResults, just re-render them with the new version
         if (Array.isArray(crossRefResults) && crossRefResults.length > 0) {
-          // true = first page → clears container and resets counters
           renderCrossRefPage(true);
         } else if (searchBar && searchBar.value.trim()) {
-          // No cached results yet: re-run the crossref search using the current query
           updateCrossrefsFromCurrentContext(true); // force = true
         }
       }
-
-      // (Optional) If you ever want Bible search results to also auto-refresh on version change:
-      // else if (mode === "bible" && searchBar && searchBar.value.trim().length >= 3) {
-      //   searchForQuery(searchBar.value.trim());
-      // }
+      // 🔁 Bible mode: re-run the current query so the chapter text updates
+      else if (mode === "bible" && searchBar && searchBar.value.trim()) {
+        if (typeof window.__bbMarkBibleQueryNeedsSync === "function") {
+          window.__bbMarkBibleQueryNeedsSync();
+        }
+        searchForQuery(null);
+      }
     } catch (err) {
       console.warn("Version change refresh failed:", err);
     }
+
   });
 })();
 
@@ -2157,142 +2157,144 @@ async function fetchChapterText(book, chapter, signal, version = "KJV") {
   // ==================================================
   // 1. OFFICIAL ESV HANDLER (DEFINITIVE FIX)
   // ==================================================
-  if (version === "ESV") {
-    const ESV_API_KEY = "4fb585d0388365ed4f7273b1adcbcdad71575a37";
-    // NOTE: Requires ESV_API_KEY constant defined elsewhere in script.js
-    if (
-      typeof ESV_API_KEY === "undefined" ||
-      ESV_API_KEY === "YOUR_ESV_API_KEY_HERE"
-    ) {
-      throw new Error("ESV API key not set.");
-    }
+  // if (version === "ESV") {
+  //   const ESV_API_KEY = "4fb585d0388365ed4f7273b1adcbcdad71575a37";
+  //   // NOTE: Requires ESV_API_KEY constant defined elsewhere in script.js
+  //   if (
+  //     typeof ESV_API_KEY === "undefined" ||
+  //     ESV_API_KEY === "YOUR_ESV_API_KEY_HERE"
+  //   ) {
+  //     throw new Error("ESV API key not set.");
+  //   }
 
-    const ESV_MAP = {
-      "1 Kings": "1KI",
-      "2 Kings": "2KI",
-      "1 Samuel": "1SA",
-      "2 Samuel": "2SA",
-      "1 Corinthians": "1CO",
-      "2 Corinthians": "2CO",
-      "1 Chronicles": "1CH",
-      "2 Chronicles": "2CH",
-      "1 Thessalonians": "1TH",
-      "2 Thessalonians": "2TH",
-      "1 Timothy": "1TI",
-      "2 Timothy": "2TI",
-      "1 Peter": "1PE",
-      "2 Peter": "2PE",
-      "1 John": "1JN",
-      "2 John": "2JN",
-      "3 John": "3JN",
-    };
+  //   const ESV_MAP = {
+  //     "1 Kings": "1KI",
+  //     "2 Kings": "2KI",
+  //     "1 Samuel": "1SA",
+  //     "2 Samuel": "2SA",
+  //     "1 Corinthians": "1CO",
+  //     "2 Corinthians": "2CO",
+  //     "1 Chronicles": "1CH",
+  //     "2 Chronicles": "2CH",
+  //     "1 Thessalonians": "1TH",
+  //     "2 Thessalonians": "2TH",
+  //     "1 Timothy": "1TI",
+  //     "2 Timothy": "2TI",
+  //     "1 Peter": "1PE",
+  //     "2 Peter": "2PE",
+  //     "1 John": "1JN",
+  //     "2 John": "2JN",
+  //     "3 John": "3JN",
+  //   };
 
-    if (ESV_MAP[book]) book = ESV_MAP[book];
+  //   if (ESV_MAP[book]) book = ESV_MAP[book];
 
-    console.log(book);
+  //   console.log(book);
 
-    // ESV API uses a slightly different book naming convention (e.g., '1 John' -> '1-John')
-    const ref = `${book} ${chapter}`.replace(/\s/g, "-");
+  //   // ESV API uses a slightly different book naming convention (e.g., '1 John' -> '1-John')
+  //   const ref = `${book} ${chapter}`.replace(/\s/g, "-");
 
-    // Applying the correct API options to return full chapter content for parsing
-    const apiUrl = `https://api.esv.org/v3/passage/html/?q=${encodeURIComponent(
-      ref
-    )}&include-verse-numbers=true&include-heading=false&include-footnotes=false&include-passage-references=false&include-short-copyright=false`;
-    // const apiUrl = `https://api.esv.org/v3/passage/html/?q=1JN1&include-verse-numbers=true&include-heading=false&include-footnotes=false&include-passage-references=false&include-short-copyright=false`;
+  //   // Applying the correct API options to return full chapter content for parsing
+  //   const apiUrl = `https://api.esv.org/v3/passage/html/?q=${encodeURIComponent(
+  //     ref
+  //   )}&include-verse-numbers=true&include-heading=false&include-footnotes=false&include-passage-references=false&include-short-copyright=true`;
+  //   // const apiUrl = `https://api.esv.org/v3/passage/html/?q=1JN1&include-verse-numbers=true&include-heading=false&include-footnotes=false&include-passage-references=false&include-short-copyright=false`;
 
-    try {
-      const resp = await fetch(apiUrl, {
-        signal,
-        headers: { Authorization: `Token ${ESV_API_KEY}` },
-      });
+  //   try {
+  //     const resp = await fetch(apiUrl, {
+  //       signal,
+  //       headers: { Authorization: `Token ${ESV_API_KEY}` },
+  //     });
 
-      if (!resp.ok) {
-        throw new Error(`ESV API Error: ${resp.status}`);
-      }
+  //     if (!resp.ok) {
+  //       throw new Error(`ESV API Error: ${resp.status}`);
+  //     }
 
-      const data = await resp.json();
-      if (!data.passages || data.passages.length === 0) {
-        throw new Error("No verses found for ESV.");
-      }
+  //     const data = await resp.json();
+  //     if (!data.passages || data.passages.length === 0) {
+  //       throw new Error("No verses found for ESV.");
+  //     }
 
-      const html = data.passages[0];
-      const parser = new DOMParser();
-      // Parse the HTML content returned by the ESV API
-      const doc = parser.parseFromString(html, "text/html");
-      const textContainer = doc.querySelector(".passage-text") || doc.body;
+  //     const html = data.passages[0];
 
-      // 1. Clean up junk elements/headings, including the overall chapter heading
-      textContainer
-        .querySelectorAll(
-          ".esv-passage-heading, .footnotes, .p-end-paragraph, .chapter-num, .chapter-num-break, h3, .heading-paragraph"
-        )
-        .forEach((el) => el.remove());
+  //     console.log(data)
+  //     const parser = new DOMParser();
+  //     // Parse the HTML content returned by the ESV API
+  //     const doc = parser.parseFromString(html, "text/html");
+  //     const textContainer = doc.querySelector(".passage-text") || doc.body;
 
-      console.log(textContainer);
-      let currentVerseNum = 1;
-      const versesMap = new Map();
-      versesMap.set(1, ""); // Initialize Verse 1 to capture leading text
+  //     // 1. Clean up junk elements/headings, including the overall chapter heading
+  //     textContainer
+  //       .querySelectorAll(
+  //         ".esv-passage-heading, .footnotes, .p-end-paragraph, .chapter-num, .chapter-num-break, h3, .heading-paragraph"
+  //       )
+  //       .forEach((el) => el.remove());
 
-      // 2. Walk the DOM and extract verses
-      function walk(node) {
-        if (node.nodeType === Node.ELEMENT_NODE) {
-          // Check for the ESV verse number marker
-          if (node.classList.contains("verse-num")) {
-            // Found a verse number, switch context
-            const num = parseInt(
-              node.textContent.trim().replace(/[\[\]]/g, "")
-            );
-            if (!isNaN(num)) {
-              currentVerseNum = num;
-              if (!versesMap.has(num)) versesMap.set(num, "");
-            }
-            // Do NOT recursively process children of the versenum span/bold tag
-          }
+  //     console.log(textContainer);
+  //     let currentVerseNum = 1;
+  //     const versesMap = new Map();
+  //     versesMap.set(1, ""); // Initialize Verse 1 to capture leading text
 
-          // Continue recursive walk for all child elements
-          node.childNodes.forEach(walk);
-        } else if (node.nodeType === Node.TEXT_NODE) {
-          // Aggregate text content
-          const text = node.textContent.replace(/\s+/g, " ").trim();
+  //     // 2. Walk the DOM and extract verses
+  //     function walk(node) {
+  //       if (node.nodeType === Node.ELEMENT_NODE) {
+  //         // Check for the ESV verse number marker
+  //         if (node.classList.contains("verse-num")) {
+  //           // Found a verse number, switch context
+  //           const num = parseInt(
+  //             node.textContent.trim().replace(/[\[\]]/g, "")
+  //           );
+  //           if (!isNaN(num)) {
+  //             currentVerseNum = num;
+  //             if (!versesMap.has(num)) versesMap.set(num, "");
+  //           }
+  //           // Do NOT recursively process children of the versenum span/bold tag
+  //         }
 
-          if (text && currentVerseNum !== null) {
-            let currentText = versesMap.get(currentVerseNum) || "";
+  //         // Continue recursive walk for all child elements
+  //         node.childNodes.forEach(walk);
+  //       } else if (node.nodeType === Node.TEXT_NODE) {
+  //         // Aggregate text content
+  //         const text = node.textContent.replace(/\s+/g, " ").trim();
 
-            // Append text, ensuring a single space separator if needed
-            const prefix =
-              currentText.length > 0 && !currentText.endsWith(" ") ? " " : "";
-            versesMap.set(currentVerseNum, currentText + prefix + text);
-          }
-        }
-      }
+  //         if (text && currentVerseNum !== null) {
+  //           let currentText = versesMap.get(currentVerseNum) || "";
 
-      walk(textContainer);
+  //           // Append text, ensuring a single space separator if needed
+  //           const prefix =
+  //             currentText.length > 0 && !currentText.endsWith(" ") ? " " : "";
+  //           versesMap.set(currentVerseNum, currentText + prefix + text);
+  //         }
+  //       }
+  //     }
 
-      // 3. Final formatting and cleanup
-      const finalVerses = [];
-      for (const [vn, rawText] of versesMap.entries()) {
-        // Remove leading number if it snuck in and trim excess space
-        let cleanText = rawText.trim().replace(new RegExp(`^${vn}\\s*`), "");
-        if (cleanText) {
-          finalVerses.push({
-            verse: vn,
-            text: `[${vn}] ${cleanText}`, // Explicitly wrap in brackets
-          });
-        }
-      }
+  //     walk(textContainer);
 
-      finalVerses.sort((a, b) => a.verse - b.verse);
+  //     // 3. Final formatting and cleanup
+  //     const finalVerses = [];
+  //     for (const [vn, rawText] of versesMap.entries()) {
+  //       // Remove leading number if it snuck in and trim excess space
+  //       let cleanText = rawText.trim().replace(new RegExp(`^${vn}\\s*`), "");
+  //       if (cleanText) {
+  //         finalVerses.push({
+  //           verse: vn,
+  //           text: `[${vn}] ${cleanText}`, // Explicitly wrap in brackets
+  //         });
+  //       }
+  //     }
 
-      if (finalVerses.length === 0)
-        throw new Error("No verses parsed from ESV.");
+  //     finalVerses.sort((a, b) => a.verse - b.verse);
 
-      chapterCache.set(cacheKey, finalVerses);
-      return finalVerses;
-    } catch (err) {
-      if (signal?.aborted) throw err;
-      throw new Error(`ESV content unavailable: ${err.message}`);
-    }
-  }
+  //     if (finalVerses.length === 0)
+  //       throw new Error("No verses parsed from ESV.");
+
+  //     chapterCache.set(cacheKey, finalVerses);
+  //     return finalVerses;
+  //   } catch (err) {
+  //     if (signal?.aborted) throw err;
+  //     throw new Error(`ESV content unavailable: ${err.message}`);
+  //   }
+  // }
 
   // ==================================================
   // 2. OFFICIAL NLT (via api.nlt.to) - Retaining original logic structure
@@ -2712,6 +2714,159 @@ function toggleInterlinearSelection(btn, row, data) {
     updateFloatingAddButton();
   }
 }
+
+// RENDER INTERLINEAR WORDS INSIDE THE VERSE-STUDY MODAL
+// Uses the same queue + selection behavior as the search-query container.
+function renderVerseStudyInterlinearTokens(tokens, referenceTitle) {
+  const container = document.getElementById("interlinear-section-content");
+  if (!container) return;
+
+  container.innerHTML = "";
+
+  tokens.forEach((t, index) => {
+    const surface = t.surface || "";
+    const english =
+      t.translation ||
+      t.resolved_gloss ||
+      t.gloss ||
+      t.english ||
+      "";
+    const translit = t.resolved_translit || t.translit || "";
+    const morph = t.morph || "";
+    const strong = t.strong || "";
+
+    // --- ROW ---
+    const row = document.createElement("div");
+    row.className = "interlinear-row";
+
+    const surfaceEl = document.createElement("div");
+    surfaceEl.className = "interlinear-surface";
+    surfaceEl.textContent = surface;
+
+    const englishEl = document.createElement("div");
+    englishEl.className = "interlinear-english";
+    englishEl.textContent = english;
+
+    const metaEl = document.createElement("div");
+    metaEl.className = "interlinear-meta";
+    if (translit) metaEl.innerHTML += `<span class="meta-chip">${translit}</span>`;
+    if (morph) metaEl.innerHTML += `<span class="meta-chip">${morph}</span>`;
+    if (strong) metaEl.innerHTML += `<span class="meta-chip">${strong}</span>`;
+
+    // --- THE ADD BUTTON (same class as search-query) ---
+    const addBtn = document.createElement("div");
+    addBtn.className = "search-query-verse-add-button";
+
+    // Data payload that gets added to the queue
+    const cardData = {
+      type: "interlinear",
+      surface,
+      english,
+      translit,
+      morph,
+      strong,
+      // e.g. "Genesis 1:1 · word 1"
+      reference: `${referenceTitle} · word ${index + 1}`,
+    };
+
+    // Match how we store keys in toggleInterlinearSelection
+    const key = `${cardData.reference}::${surface}`;
+    if (window.pendingInterlinearAdds && window.pendingInterlinearAdds.has(key)) {
+      row.classList.add("selected-for-add");
+      addBtn.classList.add("selected");
+    }
+
+    // --- CLICK HANDLERS (same behavior as search) ---
+    addBtn.onclick = (e) => {
+      e.stopPropagation();
+      toggleInterlinearSelection(addBtn, row, cardData);
+    };
+
+    row.onclick = () => {
+      toggleInterlinearSelection(addBtn, row, cardData);
+    };
+
+    // Assemble
+    row.appendChild(surfaceEl);
+    row.appendChild(englishEl);
+    row.appendChild(metaEl);
+    row.appendChild(addBtn);
+
+    container.appendChild(row);
+  });
+}
+
+// Fetch + render interlinear specifically for the verse-study modal
+async function openVerseStudyInterlinear(referenceString) {
+  // These are the modal-specific elements
+  const interSec = document.getElementById("interlinear-section");
+  const loader = document.getElementById("interlinear-section-loader");
+  const content = document.getElementById("interlinear-section-content");
+
+  if (!interSec || !loader || !content) return;
+
+  // Show only the interlinear section in the modal
+  if (typeof resetVerseStudySections === "function") {
+    resetVerseStudySections();
+  }
+  interSec.style.display = "block";
+  loader.style.display = "flex";
+  content.innerHTML = "";
+
+  // Parse "Genesis 1:1", "Hebrews 1:3", etc.
+  let ref = null;
+
+  if (typeof parseFullRef === "function") {
+    ref = parseFullRef(referenceString);
+  } else if (window.findBibleVerseReference) {
+    ref = window.findBibleVerseReference(referenceString);
+  }
+
+  if (!ref || !ref.book || !ref.chapter || !ref.verse) {
+    loader.style.display = "none";
+    content.innerHTML = `<div style="color:var(--muted)">Couldn’t parse "${referenceString}".</div>`;
+    return;
+  }
+
+  // Map full book name → API code (e.g., "Genesis" → "GEN")
+  let bookCode = ref.book;
+  if (window.bibleBookCodes && window.bibleBookCodes[ref.book]) {
+    bookCode = window.bibleBookCodes[ref.book]; // e.g. GEN, REV, JHN
+  }
+
+  const apiUrl = `https://full-bible-api.onrender.com/interlinear/${encodeURIComponent(
+    bookCode
+  )}/${ref.chapter}/${ref.verse}`;
+
+  try {
+    const resp = await fetch(apiUrl, { mode: "cors" });
+    if (!resp.ok) throw new Error(`Bad status ${resp.status}`);
+
+    const data = await resp.json();
+    const tokens = Array.isArray(data?.tokens)
+      ? data.tokens
+      : Array.isArray(data)
+      ? data
+      : [];
+
+    loader.style.display = "none";
+
+    if (!tokens.length) {
+      content.innerHTML = `<div style="color:var(--muted)">No interlinear data found for ${referenceString}.</div>`;
+      return;
+    }
+
+    // Use the same header text we display to the user
+    const refTitle = `${ref.book} ${ref.chapter}:${ref.verse}`;
+    renderVerseStudyInterlinearTokens(tokens, refTitle);
+  } catch (err) {
+    console.error("Verse-study interlinear fetch failed:", err);
+    loader.style.display = "none";
+    content.innerHTML = `<div style="color:red;">Error loading interlinear data.</div>`;
+  }
+}
+
+
 
 // --- NEW: Add global click listener for the floating button ---
 floatingAddBtn?.addEventListener("click", function () {
@@ -5405,13 +5560,33 @@ async function searchForQuery(event) {
 function closeSearchQuery() {
   searchDrawerOpen = false;
 
+  // 🔹 Close the Bible Query reader with the same fade/slide animation
+  const bibleReader = document.getElementById("bible-query-reader");
+  const bibleReaderHeader = document.getElementById("bible-query-reader-header");
+  const bibleReaderContent = document.getElementById("bible-query-reader-content");
+
+  if (bibleReader) {
+    // Animate out
+    bibleReader.style.opacity = "0";
+    bibleReader.style.top = "12px";
+
+    // After the animation, hide and clear content
+    setTimeout(() => {
+      bibleReader.style.display = "none";
+      if (bibleReaderHeader) bibleReaderHeader.innerHTML = "";
+      if (bibleReaderContent) bibleReaderContent.innerHTML = "";
+    }, 250);
+  }
+
   // Reset crossref mode back to bible so reopening works
   // if (window.currentSearchMode === "crossref") {
   //   window.setSearchMode("bible", { openDrawer: false, suppressSave: true });
   // }
 
   applyLayout(true);
-  if (searchBar) searchQuery.textContent = `Search for "${searchBar.value}"`;
+  if (searchBar) {
+    searchQuery.textContent = `Search for "${searchBar.value}"`;
+  }
 
   if (globalSearchController) {
     globalSearchController.abort();
@@ -5427,6 +5602,8 @@ function closeSearchQuery() {
   }
   clearTimeout(searchDebounceTimer);
 }
+
+
 
 // ==================== Theme Toggle ====================
 // ... (Theme toggle logic unchanged) ...
@@ -6651,9 +6828,65 @@ function applyReadOnlyGuards(isReadOnly) {
     });
     // --- END NEW ---
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     // 5. Restore search and tour (NEW)
-    if (searchForm) searchForm.style.display = ""; // Use '' to reset to CSS default
-    if (tourBtn) tourBtn.style.display = "inline-block"; // Match supabase-sync.js logic
+    // if (searchForm) searchForm.style.display = ""; // Use '' to reset to CSS default
+    // if (tourBtn) tourBtn.style.display = "inline-block"; // Match supabase-sync.js logic
 
     // 6. Show Export button
     // if (exportBtn) exportBtn.style.display = "inline-block";
@@ -6845,156 +7078,157 @@ function deserializeBoard(data) {
 function buildBoardTourSteps() {
   let tempVerse = null;
 
-  const steps = [
-    {
-      id: "welcome",
-      title: "Welcome to Bible Board",
-      text: "This quick tour shows you how to add verses, arrange them, connect ideas, and view interlinear details.",
-      placement: "bottom", // Will be centered as it has no target
-    },
-    {
-      id: "workspace",
-      target: () => document.getElementById("viewport"),
-      title: "Your Workspace",
-      text: "This is your canvas. Drag with your mouse or finger to pan, and use the scroll wheel or pinch to zoom.",
-      placement: "right",
-      allowPointerThrough: true,
-    },
-    {
-      id: "search",
-      target: () => document.getElementById("search-bar"),
-      title: "Search anything",
-      text: "Use this search bar to find verses, topics, and songs. It's your quick entry into the board.",
-      placement: "top",
-      allowPointerThrough: true,
-      beforeStep: () => {
-        const el = document.getElementById("search-bar");
-        if (el) el.focus();
-      },
-    },
-    {
-      id: "choose-version",
-      target: () => document.getElementById("version-select"),
-      title: "Choose your version",
-      text: "Use this menu beside the search bar to choose your Bible version. Searches and added verses use this selection.",
-      placement: "top",
-      allowPointerThrough: true,
-      beforeStep: () => {
-        const select = document.getElementById("version-select");
-        if (select) {
-          // small UX touch so it's obvious this is interactive
-          select.focus();
-        }
-      },
-    },
-    {
-      id: "board-element",
-      target: () => document.querySelector(".board-item.bible-verse"),
-      title: "Arrange Your Cards",
-      text: "Drag any card on the workspace to arrange your thoughts. You can create notes and add songs, too.",
-      placement: "bottom",
-      allowPointerThrough: true,
-      beforeStep: async () => {
-        // If no verse *on the board* exists, fake one
-        if (!document.querySelector(".board-item.bible-verse")) {
-          tempVerse = addBibleVerse(
-            "John 3:16 KJV",
-            "For God so loved the world...",
-            true
-          );
-          tempVerse.id = "temp-tour-board-verse";
-          // Position it in view
-          const vpRect = viewport.getBoundingClientRect();
-          tempVerse.style.left = `${
-            (viewport.scrollLeft + vpRect.width / 2 - 150) / scale
-          }px`;
-          tempVerse.style.top = `${
-            (viewport.scrollTop + vpRect.height / 2 - 100) / scale
-          }px`;
-        }
-      },
-      afterStep: () => {
-        const tempBoardVerse = document.getElementById("temp-tour-board-verse");
-        if (tempBoardVerse) {
-          tempBoardVerse.remove();
-        }
-        tempVerse = null;
-      },
-    },
-    {
-      id: "undo",
-      target: () => document.getElementById("undo-btn"),
-      title: "Undo Your Last Action",
-      text: "Made a mistake? Tap this button to undo your last action, like adding an item or making a connection. You can also use the shortcut Ctrl+Z.",
-      placement: "right",
-      allowPointerThrough: true,
-    },
-    {
-      id: "redo",
-      target: () => document.getElementById("redo-btn"),
-      title: "Redo an Action",
-      text: "If you undo too far, tap this button to bring your action back. The shortcut for this is Ctrl+Shift+Z.",
-      placement: "right",
-      allowPointerThrough: true,
-    },
-    {
-      id: "connect",
-      target: () => document.getElementById("mobile-action-button"),
-      title: "Connect Ideas",
-      text: "Select a card, then tap this 'Connect' button. Tap another card to draw a line between them.",
-      placement: "right",
-      padding: 8, // <-- ADDED THIS LINE for extra padding
-      allowPointerThrough: true, // <-- ADD THIS LINE
-    },
-    {
-      id: "disconnect",
-      target: () => document.getElementById("disconnect-mode-btn"),
-      title: "Disconnect Ideas",
-      text: "Made a mistake? Connecting some ideas just click this and enter 'Disconnect Mode' allowing you to disconnect any connections.",
-      placement: "right",
-      allowPointerThrough: true,
-    },
-    {
-      id: "notes",
-      target: () => document.getElementById("text-action-button"),
-      title: "Add Notes",
-      text: "Tap this 'note' button to add a blank note card to your board. You can type anything you want!",
-      placement: "right",
-      allowPointerThrough: true, // <-- ADD THIS LINE
-    },
-    // {
-    //   id: "interlinear",
-    //   target: () => document.getElementById("interlinear-action-button"),
-    //   title: "Go Deeper",
-    //   text: "Select a verse card, then tap the 'Interlinear' button to open a word-by-word breakdown of the original language.",
-    //   placement: "right",
-    //   allowPointerThrough: true, // <-- ADD THIS LINE
-    // },
+  // const steps = [
+  //   {
+  //     id: "welcome",
+  //     title: "Welcome to Bible Board",
+  //     text: "This quick tour shows you how to add verses, arrange them, connect ideas, and view interlinear details.",
+  //     placement: "bottom", // Will be centered as it has no target
+  //   },
+  //   {
+  //     id: "workspace",
+  //     target: () => document.getElementById("viewport"),
+  //     title: "Your Workspace",
+  //     text: "This is your canvas. Drag with your mouse or finger to pan, and use the scroll wheel or pinch to zoom.",
+  //     placement: "right",
+  //     allowPointerThrough: true,
+  //   },
+  //   {
+  //     id: "search",
+  //     target: () => document.getElementById("search-bar"),
+  //     title: "Search anything",
+  //     text: "Use this search bar to find verses, topics, and songs. It's your quick entry into the board.",
+  //     placement: "top",
+  //     allowPointerThrough: true,
+  //     beforeStep: () => {
+  //       const el = document.getElementById("search-bar");
+  //       if (el) el.focus();
+  //     },
+  //   },
+  //   {
+  //     id: "choose-version",
+  //     target: () => document.getElementById("version-select"),
+  //     title: "Choose your version",
+  //     text: "Use this menu beside the search bar to choose your Bible version. Searches and added verses use this selection.",
+  //     placement: "top",
+  //     allowPointerThrough: true,
+  //     beforeStep: () => {
+  //       const select = document.getElementById("version-select");
+  //       if (select) {
+  //         // small UX touch so it's obvious this is interactive
+  //         select.focus();
+  //       }
+  //     },
+  //   },
+  //   {
+  //     id: "board-element",
+  //     target: () => document.querySelector(".board-item.bible-verse"),
+  //     title: "Arrange Your Cards",
+  //     text: "Drag any card on the workspace to arrange your thoughts. You can create notes and add songs, too.",
+  //     placement: "bottom",
+  //     allowPointerThrough: true,
+  //     beforeStep: async () => {
+  //       // If no verse *on the board* exists, fake one
+  //       if (!document.querySelector(".board-item.bible-verse")) {
+  //         tempVerse = addBibleVerse(
+  //           "John 3:16 KJV",
+  //           "For God so loved the world...",
+  //           true
+  //         );
+  //         tempVerse.id = "temp-tour-board-verse";
+  //         // Position it in view
+  //         const vpRect = viewport.getBoundingClientRect();
+  //         tempVerse.style.left = `${
+  //           (viewport.scrollLeft + vpRect.width / 2 - 150) / scale
+  //         }px`;
+  //         tempVerse.style.top = `${
+  //           (viewport.scrollTop + vpRect.height / 2 - 100) / scale
+  //         }px`;
+  //       }
+  //     },
+  //     afterStep: () => {
+  //       const tempBoardVerse = document.getElementById("temp-tour-board-verse");
+  //       if (tempBoardVerse) {
+  //         tempBoardVerse.remove();
+  //       }
+  //       tempVerse = null;
+  //     },
+  //   },
+  //   {
+  //     id: "undo",
+  //     target: () => document.getElementById("undo-btn"),
+  //     title: "Undo Your Last Action",
+  //     text: "Made a mistake? Tap this button to undo your last action, like adding an item or making a connection. You can also use the shortcut Ctrl+Z.",
+  //     placement: "right",
+  //     allowPointerThrough: true,
+  //   },
+  //   {
+  //     id: "redo",
+  //     target: () => document.getElementById("redo-btn"),
+  //     title: "Redo an Action",
+  //     text: "If you undo too far, tap this button to bring your action back. The shortcut for this is Ctrl+Shift+Z.",
+  //     placement: "right",
+  //     allowPointerThrough: true,
+  //   },
+  //   {
+  //     id: "connect",
+  //     target: () => document.getElementById("mobile-action-button"),
+  //     title: "Connect Ideas",
+  //     text: "Select a card, then tap this 'Connect' button. Tap another card to draw a line between them.",
+  //     placement: "right",
+  //     padding: 8, // <-- ADDED THIS LINE for extra padding
+  //     allowPointerThrough: true, // <-- ADD THIS LINE
+  //   },
+  //   {
+  //     id: "disconnect",
+  //     target: () => document.getElementById("disconnect-mode-btn"),
+  //     title: "Disconnect Ideas",
+  //     text: "Made a mistake? Connecting some ideas just click this and enter 'Disconnect Mode' allowing you to disconnect any connections.",
+  //     placement: "right",
+  //     allowPointerThrough: true,
+  //   },
+  //   {
+  //     id: "notes",
+  //     target: () => document.getElementById("text-action-button"),
+  //     title: "Add Notes",
+  //     text: "Tap this 'note' button to add a blank note card to your board. You can type anything you want!",
+  //     placement: "right",
+  //     allowPointerThrough: true, // <-- ADD THIS LINE
+  //   },
+  //   // {
+  //   //   id: "interlinear",
+  //   //   target: () => document.getElementById("interlinear-action-button"),
+  //   //   title: "Go Deeper",
+  //   //   text: "Select a verse card, then tap the 'Interlinear' button to open a word-by-word breakdown of the original language.",
+  //   //   placement: "right",
+  //   //   allowPointerThrough: true, // <-- ADD THIS LINE
+  //   // },
 
-    {
-      id: "delete",
-      target: () => document.getElementById("delete-action-button"),
-      title: "Delete Item",
-      text: "Select a item on the bible board, then tap the 'Delete' button to delete the selected item.",
-      placement: "right",
-      allowPointerThrough: true, // <-- ADD THIS LINE
-    },
-    // {
-    //   id: "colors",
-    //   target: () => document.getElementById("connection-color-toolbar"),
-    //   title: "Colors for your connections",
-    //   text: "If you want to add some color to your board select a color and when connecting ideas the 'Connection Lines' will be the selected color.",
-    //   placement: "left",
-    //   allowPointerThrough: true,
-    // },
-    {
-      id: "finish",
-      title: "You're All Set!",
-      text: "You're ready to build your board. Try searching for a verse now to get started.",
-      // allowPointerThrough: true, // <-- ADD THIS LINE
-    },
-  ];
+  //   {
+  //     id: "delete",
+  //     target: () => document.getElementById("delete-action-button"),
+  //     title: "Delete Item",
+  //     text: "Select a item on the bible board, then tap the 'Delete' button to delete the selected item.",
+  //     placement: "right",
+  //     allowPointerThrough: true, // <-- ADD THIS LINE
+  //   },
+  //   // {
+  //   //   id: "colors",
+  //   //   target: () => document.getElementById("connection-color-toolbar"),
+  //   //   title: "Colors for your connections",
+  //   //   text: "If you want to add some color to your board select a color and when connecting ideas the 'Connection Lines' will be the selected color.",
+  //   //   placement: "left",
+  //   //   allowPointerThrough: true,
+  //   // },
+  //   {
+  //     id: "finish",
+  //     title: "You're All Set!",
+  //     text: "You're ready to build your board. Try searching for a verse now to get started.",
+  //     // allowPointerThrough: true, // <-- ADD THIS LINE
+  //   },
+  // ];
 
+  const steps = []
   return steps;
 }
 
@@ -7411,55 +7645,49 @@ function renderCrossRefPage(isFirstPage) {
 }
 
 // Fetch API → parse → render
-async function fetchAndRenderCrossrefs(ref) {
-  const cleaned = cleanRefForApi(ref);
-  console.log("[Crossref] Fetching for:", cleaned);
+async function fetchAndRenderCrossrefs(reference) {
+  resetVerseStudySections();
+  const crossSec = document.getElementById("crossref-section");
+  const loader = document.getElementById("crossref-section-loader");
+  const content = document.getElementById("crossref-section-content");
 
-  const wrap = $("search-query-crossref-container");
-
-  if (!cleaned) {
-    renderCrossrefsMessage("Enter a valid verse reference.");
-    return;
-  }
-
-  const url = buildCrossrefUrl(cleaned);
-
-  if (crossRefAbortController) {
-    try {
-      crossRefAbortController.abort();
-    } catch (_) {}
-  }
-  crossRefAbortController = new AbortController();
-
-  $("crossref-loader").style.display = "block";
-  wrap.innerHTML = "";
+  if (!crossSec) return;
+  crossSec.style.display = "block";
+  loader.style.display = "flex";
+  content.innerHTML = "";
 
   try {
-    const res = await fetch(url, { signal: crossRefAbortController.signal });
-    if (!res.ok) throw new Error("Crossref API error " + res.status);
+    const url = `https://api.bibleboard.app/crossref?verse=${encodeURIComponent(reference)}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("CrossRef API error " + res.status);
 
     const data = await res.json();
+    loader.style.display = "none";
 
-    // important: Extract results array
-    crossRefResults = Array.isArray(data.results) ? data.results : [];
-
-    if (crossRefResults.length === 0) {
-      renderCrossrefsMessage(
-        'No cross references for "' + searchBar.value + '".'
-      );
+    if (!data.results || data.results.length === 0) {
+      content.innerHTML = `<div style="color:var(--muted)">No cross references for ${reference}.</div>`;
       return;
     }
 
-    renderCrossRefPage(true);
+    content.innerHTML = data.results
+      .map(
+        (r) => `
+        <div class="crossref-result-row">
+          <div class="crossref-main">
+            <div class="crossref-ref">${r.cross_ref}</div>
+            <div class="crossref-text">${r.text || ""}</div>
+          </div>
+          <button class="crossref-add-button" onclick="addBibleVerse('${r.cross_ref}')">Add</button>
+        </div>`
+      )
+      .join("");
   } catch (err) {
-    if (err.name !== "AbortError") {
-      console.error("Crossref fetch error:", err);
-      renderCrossrefsMessage("Error loading cross references.", "error");
-    }
-  } finally {
-    $("crossref-loader").style.display = "none";
+    console.error("CrossRef fetch failed:", err);
+    loader.style.display = "none";
+    content.innerHTML = `<div style="color:red;">Error loading cross references.</div>`;
   }
 }
+
 
 // Update from context (entry point)
 function updateCrossrefsFromCurrentContext(force = false) {
@@ -7835,112 +8063,317 @@ window.openInterlinearFromCurrentQuery = openInterlinearFromCurrentQuery;
 // Global variable to track what is currently on screen
 let _lastLoadedInterlinearRef = null;
 
-async function openInterlinearForReference(refString) {
-  // Ensure panel visible/inline
-  try {
-    mountInterlinearInline && mountInterlinearInline();
-  } catch {}
+async function openInterlinearForReference(reference) {
+  console.log("[Interlinear] incoming reference:", reference);
 
-  const interPanel = document.getElementById("interlinear-panel");
-  const interList = document.getElementById("interlinear-list");
-  const interLoader = document.getElementById("interlinear-loader");
-  const interError = document.getElementById("interlinear-error");
+  resetVerseStudySections();
+  const interSec = document.getElementById("interlinear-section");
+  const loader = document.getElementById("interlinear-section-loader");
+  const content = document.getElementById("interlinear-section-content");
 
-  // 1. Parse the requested reference
-  const ref = parseReferenceString(refString);
-
-  if (!ref) {
-    // Handle invalid reference logic
-    if (interPanel) interPanel.setAttribute("aria-busy", "false");
-    if (interLoader) interLoader.style.display = "none";
-    if (interList)
-      interList.innerHTML = `<div class="search-query-no-verse-found-container" style="text-align:center; color:var(--muted); padding: 12px;">No interlinear for "${refString}". Please search for a verse(John 3:16, e.g)</div>`;
+  if (!interSec || !loader || !content) {
+    console.warn("[Interlinear] Missing interlinear DOM elements");
     return;
   }
 
-  // 2. CACHE CHECK: Construct a unique ID for this request
-  const requestKey = `${ref.book.toUpperCase()}_${ref.chapter}:${ref.verse}`;
-  const hasContent = interList && interList.children.length > 0;
-
-  // If we are already showing this exact chapter/verse, STOP here.
-  if (_lastLoadedInterlinearRef === requestKey && hasContent) {
-    // Just ensure UI is in "Ready" state (hide loader, show content)
-    if (interPanel) interPanel.setAttribute("aria-busy", "false");
-    if (interLoader) interLoader.style.display = "none";
-    if (interError) interError.style.display = "none";
-    if (interList) interList.style.display = "block";
-    return; // <--- EXIT EARLY
-  }
-
-  // 3. New request proceeding... update cache key
-  _lastLoadedInterlinearRef = requestKey;
-
-  // Show Loading UI
-  if (interPanel) interPanel.setAttribute("aria-busy", "true");
-  if (interLoader) interLoader.style.display = "flex";
-  if (interError) interError.style.display = "none";
-  if (interList) interList.innerHTML = "";
-
-  // Map to code if bibleBookCodes exists
-  let bookCode = ref.book;
-  try {
-    if (typeof bibleBookCodes === "object" && bibleBookCodes[ref.book]) {
-      bookCode = bibleBookCodes[ref.book];
-    }
-  } catch (_) {}
-
-  // Build API URL
-  const apiUrl = `https://full-bible-api.onrender.com/interlinear/${encodeURIComponent(
-    bookCode
-  )}/${ref.chapter}/${ref.verse}`;
-
-  // Abort previous in-flight request
-  if (window.__interlinearAbortController) {
-    try {
-      window.__interlinearAbortController.abort();
-    } catch (_) {}
-  }
-  const controller = new AbortController();
-  window.__interlinearAbortController = controller;
+  interSec.style.display = "block";
+  loader.style.display = "flex";
+  content.innerHTML = "";
 
   try {
-    // Fetch
-    let resp;
-    if (typeof safeFetchWithFallbacks === "function") {
-      resp = await safeFetchWithFallbacks(apiUrl, controller.signal);
-    } else {
-      resp = await fetch(apiUrl, {
-        signal: controller.signal,
-        mode: "cors",
-        credentials: "omit",
-      });
+    // --- 1️⃣ Normalize reference into { book, chapter, verse } ---
+    let refObj = null;
+
+    // Case A: already an object { book, chapter, verse }
+    if (
+      reference &&
+      typeof reference === "object" &&
+      reference.book &&
+      reference.chapter &&
+      reference.verse
+    ) {
+      refObj = {
+        book: reference.book,
+        chapter: Number(reference.chapter),
+        verse: Number(reference.verse),
+      };
+    }
+    // Case B: string like "Genesis 1:1"
+    else if (typeof reference === "string") {
+      let parsed = null;
+
+      // Prefer your existing helper if available
+      if (typeof window.findBibleVerseReference === "function") {
+        const result = window.findBibleVerseReference(reference);
+        if (result && result.book && result.chapter && result.verse) {
+          parsed = {
+            book: result.book,
+            chapter: result.chapter,
+            verse: result.verse,
+          };
+        } else if (result && result.reference) {
+          const m = result.reference.match(/^(.+?)\s+(\d+):(\d+)$/);
+          if (m) {
+            parsed = {
+              book: m[1].trim(),
+              chapter: parseInt(m[2], 10),
+              verse: parseInt(m[3], 10),
+            };
+          }
+        }
+      }
+
+      // Regex fallback if helper fails
+      if (!parsed) {
+        const m = reference.match(/^(.+?)\s+(\d+):(\d+)$/);
+        if (m) {
+          parsed = {
+            book: m[1].trim(),
+            chapter: parseInt(m[2], 10),
+            verse: parseInt(m[3], 10),
+          };
+        }
+      }
+
+      refObj = parsed;
     }
 
-    const data = await resp.json();
-    const tokens = Array.isArray(data?.tokens)
+    if (!refObj || !refObj.book || !refObj.chapter || !refObj.verse) {
+      loader.style.display = "none";
+      content.innerHTML = `<div style="color:var(--muted);">
+        Couldn’t understand reference: <code>${String(reference)}</code>
+      </div>`;
+      console.warn("[Interlinear] Failed to parse reference:", reference);
+      return;
+    }
+
+    const { book, chapter, verse } = refObj;
+
+    // --- 2️⃣ Map full book name → API code (e.g., "Genesis" → "GEN") ---
+    let bookCode = book;
+    if (typeof bibleBookCodes === "object" && bibleBookCodes[book]) {
+      bookCode = bibleBookCodes[book]; // e.g. "GEN", "REV", "JHN"
+    }
+
+    // --- 3️⃣ Build the API URL ---
+    const apiUrl = `https://full-bible-api.onrender.com/interlinear/${encodeURIComponent(
+      bookCode
+    )}/${chapter}/${verse}`;
+
+    console.log("[Interlinear] Fetching:", apiUrl);
+
+    const res = await fetch(apiUrl);
+    if (!res.ok) throw new Error("Failed to load interlinear");
+
+    const data = await res.json();
+    loader.style.display = "none";
+
+    // 🔴 Your API uses "tokens", not "words"
+    const tokens = Array.isArray(data.tokens)
       ? data.tokens
-      : Array.isArray(data)
-      ? data
+      : Array.isArray(data.words)
+      ? data.words
       : [];
 
-    // Render
-    renderInterlinearTokens(tokens, `${ref.book} ${ref.chapter}:${ref.verse}`);
-  } catch (err) {
-    if (controller.signal.aborted) return;
-
-    // Reset cache on error so user can try again
-    _lastLoadedInterlinearRef = null;
-
-    console.warn("Interlinear fetch failed:", err);
-    if (interError) {
-      interError.textContent = "Couldn’t load interlinear data.";
-      interError.style.display = "block";
+    if (!tokens.length) {
+      content.innerHTML = `<div style="color:var(--muted);">
+        No interlinear data found for ${book} ${chapter}:${verse}.
+      </div>`;
+      return;
     }
-  } finally {
-    if (interPanel) interPanel.setAttribute("aria-busy", "false");
-    if (interLoader) interLoader.style.display = "none";
+
+    content.innerHTML = tokens
+      .map((w) => {
+        const surface = w.surface ?? "";
+        const english =
+          w.english ||
+          w.translation ||
+          w.resolved_gloss ||
+          "";
+        const translit = w.translit || w.resolved_translit || "";
+        const morph = w.morph || "";
+        const strong = w.strong || "";
+
+        return `
+          <div class="interlinear-row">
+            <div class="interlinear-surface">${surface}</div>
+            <div class="interlinear-english">${english}</div>
+            <div class="interlinear-meta">
+              <span class="meta-chip">${translit}</span>
+              <span class="meta-chip">${morph}</span>
+              <span class="meta-chip">${strong}</span>
+            </div>
+          </div>
+        `;
+      })
+      .join("");
+  } catch (err) {
+    console.error("Interlinear fetch failed:", err);
+    loader.style.display = "none";
+    content.innerHTML = `<div style="color:red;">
+      Error loading interlinear data.
+    </div>`;
   }
 }
+
+
+
+// Load cross references into the verse-study modal
+async function openCrossRefForReference(reference) {
+  console.log("[VerseStudy Crossref] incoming reference:", reference);
+
+  const crossSec = document.getElementById("crossref-section");
+  const loader = document.getElementById("crossref-section-loader");
+  const content = document.getElementById("crossref-section-content");
+
+  if (!crossSec || !loader || !content) {
+    console.warn("[VerseStudy Crossref] Missing DOM elements");
+    return;
+  }
+
+  // Show the section + loader
+  crossSec.style.display = "block";
+  loader.style.display = "flex";
+  content.innerHTML = "";
+
+  try {
+    // 1️⃣ Normalize the base verse (e.g. "Genesis 1:1")
+    const baseRef = typeof cleanRefForApi === "function"
+      ? cleanRefForApi(reference)
+      : String(reference || "").trim();
+
+    if (!baseRef) {
+      loader.style.display = "none";
+      content.innerHTML = `<div style="color:var(--muted);">
+        Couldn't understand reference: <code>${String(reference)}</code>
+      </div>`;
+      return;
+    }
+
+    // Abort any previous modal crossref request
+    if (window.__verseStudyCrossrefAbortController) {
+      try {
+        window.__verseStudyCrossrefAbortController.abort();
+      } catch (_) {}
+    }
+    const controller = new AbortController();
+    window.__verseStudyCrossrefAbortController = controller;
+
+    // 2️⃣ Build API URL (this uses CROSSREF_API_BASE = "https://full-bible-api.onrender.com/crossref")
+    const url = typeof buildCrossrefUrl === "function"
+      ? buildCrossrefUrl(baseRef)
+      : `https://full-bible-api.onrender.com/crossref/?verse=${encodeURIComponent(baseRef)}`;
+
+    console.log("[VerseStudy Crossref] Fetching:", url);
+
+    const res = await fetch(url, { signal: controller.signal });
+    if (!res.ok) throw new Error("Crossref API error " + res.status);
+
+    const data = await res.json();
+
+    // Your API shape: { query, normalized, results: [...] }
+    const rawResults = Array.isArray(data.results) ? data.results : [];
+
+    if (!rawResults.length) {
+      loader.style.display = "none";
+      content.innerHTML = `<div style="color:var(--muted);">
+        No cross references found.
+      </div>`;
+      return;
+    }
+
+    const version =
+      typeof safeGetSelectedVersion === "function"
+        ? safeGetSelectedVersion()
+        : (typeof getSelectedVersion === "function"
+            ? getSelectedVersion()
+            : "KJV");
+
+    const rows = [];
+    const MAX_RESULTS = 15; // you can tweak this
+
+    for (let i = 0; i < rawResults.length && rows.length < MAX_RESULTS; i++) {
+      if (controller.signal.aborted) return;
+
+      const item = rawResults[i];
+      if (!item) continue;
+
+      // The crossref dataset uses `cross_ref`
+      const rawRef = item.cross_ref || item.reference || item.verse || "";
+      if (!rawRef) continue;
+
+      // Normalize to something like "John 1:1"
+      const cleanedCross = typeof cleanRefForApi === "function"
+        ? cleanRefForApi(rawRef)
+        : String(rawRef);
+
+      if (!cleanedCross) continue;
+
+      // Skip multi-verse refs like "John 1:1-3"
+      if (typeof isMultiVerseReference === "function" &&
+          isMultiVerseReference(cleanedCross)) {
+        continue;
+      }
+
+      const parts = parseReferenceToParts(cleanedCross);
+      if (!parts) continue;
+
+      let text;
+      try {
+        text = await fetchVerseText(
+          parts.book,
+          parts.chapter,
+          parts.verse,
+          controller.signal,
+          version
+        );
+      } catch (err) {
+        if (controller.signal.aborted) return;
+        console.warn("Failed to load crossref verse", cleanedCross, err);
+        continue;
+      }
+
+      if (!text || /not\s*found|unavailable|error/i.test(String(text))) {
+        continue;
+      }
+
+      const displayRef = typeof expandReferenceAbbrev === "function"
+        ? expandReferenceAbbrev(cleanedCross)
+        : cleanedCross;
+
+      const cleanText = typeof cleanDisplayVerse === "function"
+        ? cleanDisplayVerse(text)
+        : text;
+
+      rows.push(`
+        <div class="crossref-row">
+          <div class="crossref-ref">${displayRef}</div>
+          <div class="crossref-text">${cleanText}</div>
+        </div>
+      `);
+    }
+
+    loader.style.display = "none";
+
+    if (!rows.length) {
+      content.innerHTML = `<div style="color:var(--muted);">
+        No cross references with text found.
+      </div>`;
+      return;
+    }
+
+    content.innerHTML = rows.join("");
+  } catch (err) {
+    if (err.name === "AbortError") return;
+    console.error("[VerseStudy Crossref] error:", err);
+    loader.style.display = "none";
+    content.innerHTML = `<div style="color:red;">
+      Error loading cross references.
+    </div>`;
+  }
+}
+
+
 
 // This should already be in your script.js, but ensure
 // it handles the visual toggling for the parent row correctly.
@@ -8727,7 +9160,7 @@ window.pendingInterlinearAdds = window.pendingInterlinearAdds || new Map();
 // 2. UNIFIED VERSE TOGGLE
 // Handles logic for BOTH Chapter View (Ref Search) AND List View (Text Search)
 function toggleVerseSelection(verseData, btnElement) {
-  // Composite key ensures we track specific versions (e.g. "John 3:16::KJV")
+  // Create a unique key including version to prevent collisions
   const key = `${verseData.reference}::${verseData.version}`;
 
   if (window.pendingVerseAdds.has(key)) {
@@ -8735,9 +9168,9 @@ function toggleVerseSelection(verseData, btnElement) {
     window.pendingVerseAdds.delete(key);
     if (btnElement) btnElement.classList.remove("selected");
 
-    // Visually unselect the row too
+    // Row can be a normal verse row or an interlinear row
     const row = btnElement
-      ? btnElement.closest(".search-query-verse-container, .verse")
+      ? btnElement.closest(".search-query-verse-container, .interlinear-row")
       : null;
     if (row) row.classList.remove("selected-for-add");
   } else {
@@ -8746,14 +9179,15 @@ function toggleVerseSelection(verseData, btnElement) {
     if (btnElement) btnElement.classList.add("selected");
 
     const row = btnElement
-      ? btnElement.closest(".search-query-verse-container, .verse")
+      ? btnElement.closest(".search-query-verse-container, .interlinear-row")
       : null;
     if (row) row.classList.add("selected-for-add");
   }
 
-  // Update the single floating button shared by all modes
+  // Trigger the master button update
   updateFloatingAddButton();
 }
+
 
 // 3. UNIFIED FLOATING BUTTON UPDATE
 // Counts items from ALL maps to show the total.
@@ -9170,3 +9604,20 @@ document.getElementById("grouping-mode-btn")?.addEventListener("click", (e) => {
   e.stopPropagation();
   toggleGroupingMode();
 });
+
+
+
+function resetVerseStudySections() {
+  const interSec = document.getElementById("interlinear-section");
+  const crossSec = document.getElementById("crossref-section");
+
+  if (interSec) interSec.style.display = "none";
+  if (crossSec) crossSec.style.display = "none";
+
+  const interBtn = document.getElementById("verse-study-open-interlinear");
+  const crossBtn = document.getElementById("verse-study-open-crossref");
+
+  if (interBtn) interBtn.classList.remove("verse-study-tab-active");
+  if (crossBtn) crossBtn.classList.remove("verse-study-tab-active");
+}
+

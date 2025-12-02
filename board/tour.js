@@ -710,225 +710,227 @@ let _tourObserver = null;
 let _tourClickListener = null;
 let _lastSearchedVerse = null; // Stores the verse number the user searched for
 
-const workspaceSteps = [
-  {
-    id: "welcome",
-    title: "Welcome to your canvas",
-    text: "Let's get you set up. Follow these steps to build your first board.",
-    placement: "center",
-  },
-  {
-    id: "version-select",
-    title: "Choose Version",
-    text: "First, select your preferred Bible version from this dropdown.",
-    target: "#version-select",
-    placement: "top",
-  },
-  {
-    id: "interactive-search",
-    title: "Search for a Verse",
-    text: "Type a specific Bible verse (e.g., 'John 3:16') in the search bar and press Enter. Be sure to include the chapter and verse number.",
-    target: "#search-container",
-    placement: "top",
-    padding: 4,
-    allowPointerThrough: true,
-    hideNext: true,
-    beforeStep: () => {
-        return new Promise(resolve => {
-            const container = document.getElementById("search-query-verse-container");
-            const input = document.getElementById("search-bar");
-            if(!container || !input) { resolve(); return; }
+// const workspaceSteps = [
+//   {
+//     id: "welcome",
+//     title: "Welcome to your canvas",
+//     text: "Let's get you set up. Follow these steps to build your first board.",
+//     placement: "center",
+//   },
+//   {
+//     id: "version-select",
+//     title: "Choose Version",
+//     text: "First, select your preferred Bible version from this dropdown.",
+//     target: "#version-select",
+//     placement: "top",
+//   },
+//   {
+//     id: "interactive-search",
+//     title: "Search for a Verse",
+//     text: "Type a specific Bible verse (e.g., 'John 3:16') in the search bar and press Enter. Be sure to include the chapter and verse number.",
+//     target: "#search-container",
+//     placement: "top",
+//     padding: 4,
+//     allowPointerThrough: true,
+//     hideNext: true,
+//     beforeStep: () => {
+//         return new Promise(resolve => {
+//             const container = document.getElementById("search-query-verse-container");
+//             const input = document.getElementById("search-bar");
+//             if(!container || !input) { resolve(); return; }
             
-            // Watch for VALID results (must have add button)
-            _tourObserver = new MutationObserver((mutations) => {
-                if (container.querySelector(".search-query-verse-add-button")) {
-                    // VALIDATION: Ensure user typed a full reference "Book C:V"
-                    const val = input.value.trim();
-                    const match = val.match(/:(\d+)$/); // Capture verse number
-                    const isVerseRef = /^([\dI]{0,3}\s*[A-Za-z .'-]+?)\s+(\d+):(\d+)$/.test(val);
+//             // Watch for VALID results (must have add button)
+//             _tourObserver = new MutationObserver((mutations) => {
+//                 if (container.querySelector(".search-query-verse-add-button")) {
+//                     // VALIDATION: Ensure user typed a full reference "Book C:V"
+//                     const val = input.value.trim();
+//                     const match = val.match(/:(\d+)$/); // Capture verse number
+//                     const isVerseRef = /^([\dI]{0,3}\s*[A-Za-z .'-]+?)\s+(\d+):(\d+)$/.test(val);
 
-                    if (isVerseRef) {
-                        // Store the verse number so we can find it in the next step
-                        if (match) _lastSearchedVerse = match[1];
+//                     if (isVerseRef) {
+//                         // Store the verse number so we can find it in the next step
+//                         if (match) _lastSearchedVerse = match[1];
                         
-                        _tourObserver.disconnect();
-                        setTimeout(() => myTour.next(), 500);
-                    }
-                }
-            });
-            _tourObserver.observe(container, { childList: true, subtree: true });
-            resolve();
-        });
-    },
-    afterStep: () => {
-        if(_tourObserver) _tourObserver.disconnect();
-    }
-  },
-  {
-    id: "interactive-add",
-    title: "Add to Selection",
-    text: "Great! Now click the '+' button next to the verse you just searched for.",
-    // FIX 1: Target the specific verse using the data-verse attribute
-    target: () => {
-       // Fallback to first button if logic fails
-       const fallback = document.querySelector(".search-query-verse-add-button");
-       if (!_lastSearchedVerse) return fallback;
+//                         _tourObserver.disconnect();
+//                         setTimeout(() => myTour.next(), 500);
+//                     }
+//                 }
+//             });
+//             _tourObserver.observe(container, { childList: true, subtree: true });
+//             resolve();
+//         });
+//     },
+//     afterStep: () => {
+//         if(_tourObserver) _tourObserver.disconnect();
+//     }
+//   },
+//   {
+//     id: "interactive-add",
+//     title: "Add to Selection",
+//     text: "Great! Now click the '+' button next to the verse you just searched for.",
+//     // FIX 1: Target the specific verse using the data-verse attribute
+//     target: () => {
+//        // Fallback to first button if logic fails
+//        const fallback = document.querySelector(".search-query-verse-add-button");
+//        if (!_lastSearchedVerse) return fallback;
 
-       // Look for the exact verse row using the data attribute generated by script.js
-       // NOTE: We need to find the parent .verse element, then get its button
-       const verseRow = document.querySelector(`.verse[data-verse="${_lastSearchedVerse}"]`);
-       if (verseRow) {
-           return verseRow.querySelector(".search-query-verse-add-button");
-       }
-       return fallback;
-    },
-    placement: "left",
-    hideNext: true,
-    allowPointerThrough: true,
-    beforeStep: () => {
-        return new Promise(resolve => {
-            setTimeout(() => {
-                _tourClickListener = (e) => {
-                     if(e.target.closest(".search-query-verse-add-button")) {
-                         setTimeout(() => myTour.next(), 300);
-                     }
-                };
-                document.addEventListener("click", _tourClickListener, { capture: true, once: true });
-                resolve();
-            }, 200);
-        });
-    },
-    afterStep: () => {
-        if(_tourClickListener) document.removeEventListener("click", _tourClickListener, { capture: true });
-    }
-  },
-  {
-    id: "interactive-interlinear-switch",
-    title: "Go Deeper",
-    text: "Switch to 'Interlinear' mode to see the original Greek or Hebrew text.",
-    target: "#search-mode-interlinear",
-    placement: "bottom",
-    hideNext: true,
-    allowPointerThrough: true,
-    beforeStep: () => {
-        return new Promise(resolve => {
-            const btn = document.getElementById("search-mode-interlinear");
-            // Unhide it just in case, for the tour to work
-            if(btn) btn.style.display = "inline-block";
+//        // Look for the exact verse row using the data attribute generated by script.js
+//        // NOTE: We need to find the parent .verse element, then get its button
+//        const verseRow = document.querySelector(`.verse[data-verse="${_lastSearchedVerse}"]`);
+//        if (verseRow) {
+//            return verseRow.querySelector(".search-query-verse-add-button");
+//        }
+//        return fallback;
+//     },
+//     placement: "left",
+//     hideNext: true,
+//     allowPointerThrough: true,
+//     beforeStep: () => {
+//         return new Promise(resolve => {
+//             setTimeout(() => {
+//                 _tourClickListener = (e) => {
+//                      if(e.target.closest(".search-query-verse-add-button")) {
+//                          setTimeout(() => myTour.next(), 300);
+//                      }
+//                 };
+//                 document.addEventListener("click", _tourClickListener, { capture: true, once: true });
+//                 resolve();
+//             }, 200);
+//         });
+//     },
+//     afterStep: () => {
+//         if(_tourClickListener) document.removeEventListener("click", _tourClickListener, { capture: true });
+//     }
+//   },
+//   {
+//     id: "interactive-interlinear-switch",
+//     title: "Go Deeper",
+//     text: "Switch to 'Interlinear' mode to see the original Greek or Hebrew text.",
+//     target: "#search-mode-interlinear",
+//     placement: "bottom",
+//     hideNext: true,
+//     allowPointerThrough: true,
+//     beforeStep: () => {
+//         return new Promise(resolve => {
+//             const btn = document.getElementById("search-mode-interlinear");
+//             // Unhide it just in case, for the tour to work
+//             if(btn) btn.style.display = "inline-block";
             
-            _tourClickListener = (e) => {
-                if(e.target.closest("#search-mode-interlinear")) {
-                    setTimeout(() => myTour.next(), 500);
-                }
-            };
-            document.addEventListener("click", _tourClickListener, { capture: true, once: true });
-            resolve();
-        });
-    },
-    afterStep: () => {
-        if(_tourClickListener) document.removeEventListener("click", _tourClickListener, { capture: true });
-    }
-  },
-  {
-    id: "interactive-add-interlinear",
-    title: "Select a Word",
-    text: "Click the '+' button on the first word card to add it to your list.",
-    // FIX 2: Target only the first button, not the whole container
-    target: () => document.querySelector("#interlinear-list .search-query-verse-add-button"),
-    placement: "left",
-    hideNext: true,
-    allowPointerThrough: true,
-    beforeStep: () => {
-        return new Promise(resolve => {
-            const container = document.getElementById("interlinear-list");
+//             _tourClickListener = (e) => {
+//                 if(e.target.closest("#search-mode-interlinear")) {
+//                     setTimeout(() => myTour.next(), 500);
+//                 }
+//             };
+//             document.addEventListener("click", _tourClickListener, { capture: true, once: true });
+//             resolve();
+//         });
+//     },
+//     afterStep: () => {
+//         if(_tourClickListener) document.removeEventListener("click", _tourClickListener, { capture: true });
+//     }
+//   },
+//   {
+//     id: "interactive-add-interlinear",
+//     title: "Select a Word",
+//     text: "Click the '+' button on the first word card to add it to your list.",
+//     // FIX 2: Target only the first button, not the whole container
+//     target: () => document.querySelector("#interlinear-list .search-query-verse-add-button"),
+//     placement: "left",
+//     hideNext: true,
+//     allowPointerThrough: true,
+//     beforeStep: () => {
+//         return new Promise(resolve => {
+//             const container = document.getElementById("interlinear-list");
             
-            const waitForList = () => {
-                // FIX 3: Check for the specific class, because these are DIVs, not BUTTONs
-                if(container && container.querySelector(".search-query-verse-add-button")) {
+//             const waitForList = () => {
+//                 // FIX 3: Check for the specific class, because these are DIVs, not BUTTONs
+//                 if(container && container.querySelector(".search-query-verse-add-button")) {
                     
-                    // Broad listener: Any add-button click inside the interlinear list works
-                    _tourClickListener = (e) => {
-                        // Check for the class name since it might be a div or a button
-                        if(e.target.closest("#interlinear-list .search-query-verse-add-button")) {
-                            setTimeout(() => myTour.next(), 300);
-                        }
-                    };
-                    document.addEventListener("click", _tourClickListener, { capture: true, once: true });
-                } else {
-                    _tourObserver = new MutationObserver(() => {
-                        // Watch for the class, not just "button" tag
-                        if(container.querySelector(".search-query-verse-add-button")) {
-                            _tourObserver.disconnect();
-                            waitForList();
-                        }
-                    });
-                    _tourObserver.observe(container, { childList: true, subtree: true });
-                }
-            };
-            waitForList();
-            resolve();
-        });
-    },
-    afterStep: () => {
-        if(_tourObserver) _tourObserver.disconnect();
-        if(_tourClickListener) document.removeEventListener("click", _tourClickListener, { capture: true });
-    }
-  },
-  {
-    id: "interactive-flush",
-    title: "Add to Board",
-    text: "You have items selected. Click the floating button (top right) to drop them onto your board.",
-    target: "#floating-add-to-board-btn",
-    placement: "left",
-    hideNext: true,
-    allowPointerThrough: true,
-    beforeStep: () => {
-        return new Promise(resolve => {
-            _tourClickListener = (e) => {
-                if(e.target.closest("#floating-add-to-board-btn")) {
-                    setTimeout(() => myTour.next(), 800);
-                }
-            };
-            document.addEventListener("click", _tourClickListener, { capture: true, once: true });
-            resolve();
-        });
-    },
-    afterStep: () => {
-        if(_tourClickListener) document.removeEventListener("click", _tourClickListener, { capture: true });
-    }
-  },
-  {
-    id: "interactive-note",
-    title: "Create a Note",
-    text: "Finally, click the 'Note' button (left sidebar) to add a text card.",
-    target: "#text-action-button",
-    placement: "right",
-    hideNext: true,
-    allowPointerThrough: true,
-    beforeStep: () => {
-        return new Promise(resolve => {
-            _tourClickListener = (e) => {
-                if(e.target.closest("#text-action-button")) {
-                    setTimeout(() => myTour.next(), 500);
-                }
-            };
-            document.addEventListener("click", _tourClickListener, { capture: true, once: true });
-            resolve();
-        });
-    },
-    afterStep: () => {
-        if(_tourClickListener) document.removeEventListener("click", _tourClickListener, { capture: true });
-    }
-  },
-  {
-    id: "finish",
-    title: "Tour Completed!",
-    text: "You've mastered the basics. Enjoy using BibleBoard!",
-    placement: "center",
-  }
-];
+//                     // Broad listener: Any add-button click inside the interlinear list works
+//                     _tourClickListener = (e) => {
+//                         // Check for the class name since it might be a div or a button
+//                         if(e.target.closest("#interlinear-list .search-query-verse-add-button")) {
+//                             setTimeout(() => myTour.next(), 300);
+//                         }
+//                     };
+//                     document.addEventListener("click", _tourClickListener, { capture: true, once: true });
+//                 } else {
+//                     _tourObserver = new MutationObserver(() => {
+//                         // Watch for the class, not just "button" tag
+//                         if(container.querySelector(".search-query-verse-add-button")) {
+//                             _tourObserver.disconnect();
+//                             waitForList();
+//                         }
+//                     });
+//                     _tourObserver.observe(container, { childList: true, subtree: true });
+//                 }
+//             };
+//             waitForList();
+//             resolve();
+//         });
+//     },
+//     afterStep: () => {
+//         if(_tourObserver) _tourObserver.disconnect();
+//         if(_tourClickListener) document.removeEventListener("click", _tourClickListener, { capture: true });
+//     }
+//   },
+//   {
+//     id: "interactive-flush",
+//     title: "Add to Board",
+//     text: "You have items selected. Click the floating button (top right) to drop them onto your board.",
+//     target: "#floating-add-to-board-btn",
+//     placement: "left",
+//     hideNext: true,
+//     allowPointerThrough: true,
+//     beforeStep: () => {
+//         return new Promise(resolve => {
+//             _tourClickListener = (e) => {
+//                 if(e.target.closest("#floating-add-to-board-btn")) {
+//                     setTimeout(() => myTour.next(), 800);
+//                 }
+//             };
+//             document.addEventListener("click", _tourClickListener, { capture: true, once: true });
+//             resolve();
+//         });
+//     },
+//     afterStep: () => {
+//         if(_tourClickListener) document.removeEventListener("click", _tourClickListener, { capture: true });
+//     }
+//   },
+//   {
+//     id: "interactive-note",
+//     title: "Create a Note",
+//     text: "Finally, click the 'Note' button (left sidebar) to add a text card.",
+//     target: "#text-action-button",
+//     placement: "right",
+//     hideNext: true,
+//     allowPointerThrough: true,
+//     beforeStep: () => {
+//         return new Promise(resolve => {
+//             _tourClickListener = (e) => {
+//                 if(e.target.closest("#text-action-button")) {
+//                     setTimeout(() => myTour.next(), 500);
+//                 }
+//             };
+//             document.addEventListener("click", _tourClickListener, { capture: true, once: true });
+//             resolve();
+//         });
+//     },
+//     afterStep: () => {
+//         if(_tourClickListener) document.removeEventListener("click", _tourClickListener, { capture: true });
+//     }
+//   },
+//   {
+//     id: "finish",
+//     title: "Tour Completed!",
+//     text: "You've mastered the basics. Enjoy using BibleBoard!",
+//     placement: "center",
+//   }
+// ];
 
 // 3. Init Logic
+
+const workspaceSteps = []
 const isWorkspace = !!document.getElementById("workspace");
 const currentSteps = isWorkspace ? workspaceSteps : dashboardSteps;
 const storageKey = isWorkspace ? "tour_workspace_v2_interactive" : "tour_dashboard_v2";

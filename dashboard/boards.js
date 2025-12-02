@@ -11,7 +11,7 @@ const FREE_ITEM_LIMIT_PER_BOARD = 100;
 let currentUser = null;
 let currentModalBoard = null;
 let activeMenu = null;
-let activeDropdown = null; 
+let activeDropdown = null;
 let loadedBoards = [];
 let boardToDelete = null;
 
@@ -74,7 +74,8 @@ async function isProUser() {
     // If it returns an object, look for common flags:
     if (result && typeof result === "object") {
       if (typeof result.isPro === "boolean") return result.isPro;
-      if (typeof result.hasActiveSubscription === "boolean") return result.hasActiveSubscription;
+      if (typeof result.hasActiveSubscription === "boolean")
+        return result.hasActiveSubscription;
       if (typeof result.active === "boolean") return result.active;
     }
 
@@ -89,7 +90,9 @@ async function isProUser() {
 // --- DOM Refs ---
 const deleteModalBackdrop = document.getElementById("delete-modal-backdrop");
 const confirmDeleteBtn = document.getElementById("confirm-delete-btn");
-const sidebarBoardsContainer = document.getElementById("sidebar-boards-container");
+const sidebarBoardsContainer = document.getElementById(
+  "sidebar-boards-container"
+);
 const hamburgerBtn = document.getElementById("hamburger-btn");
 
 // New DOM Refs for Upgrade Modal
@@ -97,7 +100,9 @@ const upgradeModalBackdrop = document.getElementById("upgrade-modal-backdrop");
 const upgradeNowBtn = document.getElementById("upgrade-now-btn");
 
 // Fix: Ensure button exists before using
-const newBoardBtn = document.getElementById("new-board-btn") || document.getElementById("new-board-btn-sidebar");
+const newBoardBtn =
+  document.getElementById("new-board-btn") ||
+  document.getElementById("new-board-btn-sidebar");
 
 // Modal elements
 const modalBackdrop = document.getElementById("modal-backdrop");
@@ -124,7 +129,8 @@ async function ensureUser() {
     // If we have no active session but do have a refresh token, try to refresh once.
     if (!user) {
       try {
-        const { data: refreshed, error: refreshErr } = await sb.auth.refreshSession();
+        const { data: refreshed, error: refreshErr } =
+          await sb.auth.refreshSession();
         if (refreshErr) {
           console.error("ensureUser: refreshSession error", refreshErr);
         } else {
@@ -150,7 +156,6 @@ async function ensureUser() {
   }
 }
 
-
 function setTheme(isLight) {
   body.classList.toggle("light", isLight);
   localStorage.setItem("theme", isLight ? "light" : "dark");
@@ -158,7 +163,9 @@ function setTheme(isLight) {
   if (sunIcon) sunIcon.style.display = isLight ? "none" : "block";
 }
 setTheme(localStorage.getItem("theme") === "light");
-toggle?.addEventListener("click", () => setTheme(!body.classList.contains("light")));
+toggle?.addEventListener("click", () =>
+  setTheme(!body.classList.contains("light"))
+);
 
 /** Renders loading/empty/error states */
 function renderStatus(msg) {
@@ -174,7 +181,11 @@ function renderStatus(msg) {
 }
 
 function normalize(str) {
-  return (str || "").toLowerCase().normalize("NFKD").replace(/\s+/g, " ").trim();
+  return (str || "")
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function getDateGroup(dateStr) {
@@ -192,28 +203,34 @@ function getDateGroup(dateStr) {
 // --- Helper to switch boards without reloading ---
 async function switchBoard(boardId, ownerId) {
   const newUrl = new URL(window.location);
-  newUrl.searchParams.set('board', boardId);
-  if (ownerId) newUrl.searchParams.set('owner', ownerId);
+  newUrl.searchParams.set("board", boardId);
+  if (ownerId) newUrl.searchParams.set("owner", ownerId);
   window.history.pushState({}, "", newUrl);
 
-  const allItems = document.querySelectorAll('.sidebar-board-item');
-  allItems.forEach(item => {
-    if (item.dataset.id === boardId) item.classList.add('active');
-    else item.classList.remove('active');
+  const allItems = document.querySelectorAll(".sidebar-board-item");
+  allItems.forEach((item) => {
+    if (item.dataset.id === boardId) item.classList.add("active");
+    else item.classList.remove("active");
   });
 
   setTimeout(() => {
-    window.dispatchEvent(new CustomEvent('bibleboard:load', { 
-      detail: { boardId, ownerId } 
-    }));
+    window.dispatchEvent(
+      new CustomEvent("bibleboard:load", {
+        detail: { boardId, ownerId },
+      })
+    );
   }, 10);
-  
+
   const sidebar = document.getElementById("sidebar");
   const overlay = document.getElementById("overlay");
-  if (sidebar && sidebar.classList.contains("expanded") && window.innerWidth < 900) {
-     sidebar.classList.remove("expanded");
-     sidebar.classList.add("offscreen");
-     if (overlay) overlay.classList.add("hidden");
+  if (
+    sidebar &&
+    sidebar.classList.contains("expanded") &&
+    window.innerWidth < 900
+  ) {
+    sidebar.classList.remove("expanded");
+    sidebar.classList.add("offscreen");
+    if (overlay) overlay.classList.add("hidden");
   }
 }
 
@@ -221,7 +238,11 @@ async function switchBoard(boardId, ownerId) {
 const navbar = document.getElementById("nav-bar");
 window.addEventListener("scroll", () => {
   if (!navbar) return;
-  const scrollTop = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
+  const scrollTop =
+    window.scrollY ||
+    document.documentElement.scrollTop ||
+    document.body.scrollTop ||
+    0;
   const START_FADE = 25;
   const END_FADE = 125;
   let strength = (scrollTop - START_FADE) / (END_FADE - START_FADE);
@@ -230,7 +251,7 @@ window.addEventListener("scroll", () => {
   if (strength <= 0) {
     navbar.style.background = "transparent";
     navbar.style.backdropFilter = "none";
-    navbar.style.borderBottom = "none"; 
+    navbar.style.borderBottom = "none";
   } else {
     const bgOpacity = 0.5 * strength;
     const blurAmountRem = 1.5 * strength;
@@ -245,7 +266,7 @@ window.addEventListener("scroll", () => {
 
 function closeDropdown() {
   if (activeDropdown) {
-    activeDropdown.classList.remove('show');
+    activeDropdown.classList.remove("show");
     activeDropdown = null;
   }
 }
@@ -254,15 +275,15 @@ function openModal(board) {
   currentModalBoard = board;
   const titleInput = document.getElementById("modal-title-input");
   const backdrop = document.getElementById("modal-backdrop");
-  
+
   if (titleInput) titleInput.value = board.title || "";
   if (backdrop) backdrop.classList.remove("hidden");
   if (titleInput) titleInput.focus();
-  
+
   closeDropdown();
 }
 
-window.closeModal = function() {
+window.closeModal = function () {
   const backdrop = document.getElementById("modal-backdrop");
   if (backdrop) backdrop.classList.add("hidden");
   currentModalBoard = null;
@@ -284,7 +305,7 @@ async function handleRename() {
 
   try {
     const { id, path } = currentModalBoard;
-    
+
     const { data: blob } = await sb.storage.from(BUCKET).download(path);
     const text = await blob.text();
     const json = JSON.parse(text);
@@ -292,23 +313,26 @@ async function handleRename() {
     json.title = newTitle;
     json.updatedAt = new Date().toISOString();
 
-    const newBlob = new Blob([JSON.stringify(json, null, 2)], { type: "application/json" });
+    const newBlob = new Blob([JSON.stringify(json, null, 2)], {
+      type: "application/json",
+    });
     const { error } = await sb.storage.from(BUCKET).update(path, newBlob, {
-       contentType: "application/json", cacheControl: "0", upsert: true 
+      contentType: "application/json",
+      cacheControl: "0",
+      upsert: true,
     });
 
     if (error) throw error;
 
-    await loadBoards(); 
-    
+    await loadBoards();
+
     const params = new URLSearchParams(window.location.search);
-    if (params.get('board') === id) {
-       const titleBox = document.getElementById("title-textbox");
-       if (titleBox) titleBox.value = newTitle;
+    if (params.get("board") === id) {
+      const titleBox = document.getElementById("title-textbox");
+      if (titleBox) titleBox.value = newTitle;
     }
 
     window.closeModal();
-
   } catch (err) {
     console.error("Rename failed:", err);
     alert("Failed to rename board: " + err.message);
@@ -325,17 +349,19 @@ function openDeleteModal(board) {
   boardToDelete = board;
   const nameEl = document.getElementById("delete-board-name");
   if (nameEl) nameEl.textContent = board.title || "Untitled Board";
-  
+
   if (deleteModalBackdrop) {
     deleteModalBackdrop.classList.remove("hidden");
     deleteModalBackdrop.style.display = "flex";
   }
 }
 
-window.closeDeleteModal = function() {
+window.closeDeleteModal = function () {
   if (deleteModalBackdrop) {
     deleteModalBackdrop.classList.add("hidden");
-    setTimeout(() => { deleteModalBackdrop.style.display = "none"; }, 200);
+    setTimeout(() => {
+      deleteModalBackdrop.style.display = "none";
+    }, 200);
   }
   boardToDelete = null;
 };
@@ -407,7 +433,9 @@ async function performDelete() {
     }
 
     // 4. Delete the file in Supabase Storage
-    const { data, error } = await sb.storage.from(BUCKET).remove([pathToDelete]);
+    const { data, error } = await sb.storage
+      .from(BUCKET)
+      .remove([pathToDelete]);
 
     if (error) {
       throw error;
@@ -435,21 +463,10 @@ async function performDelete() {
   }
 }
 
-
-
-
-
-
-
-
-
-
-
-
 // ==================== GLOBAL CONTEXT MENU ====================
 
-const contextMenuEl = document.createElement('div');
-contextMenuEl.id = 'board-context-menu';
+const contextMenuEl = document.createElement("div");
+contextMenuEl.id = "board-context-menu";
 contextMenuEl.innerHTML = `
   <button id="ctx-rename" class="menu-option">
       <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-pencil">
@@ -480,39 +497,40 @@ if (sidebarBoardsContainer) {
   document.body.appendChild(contextMenuEl);
 }
 
-
-document.getElementById('ctx-rename').addEventListener('click', (e) => {
+document.getElementById("ctx-rename").addEventListener("click", (e) => {
   e.stopPropagation();
   closeContextMenu();
   if (currentModalBoard) openModal(currentModalBoard);
 });
 
-document.getElementById('ctx-delete').addEventListener('click', (e) => {
+document.getElementById("ctx-delete").addEventListener("click", (e) => {
   e.stopPropagation();
   closeContextMenu();
-  if (currentModalBoard) openDeleteModal(currentModalBoard); 
+  if (currentModalBoard) openDeleteModal(currentModalBoard);
 });
 
 function closeContextMenu() {
-  contextMenuEl.classList.remove('show');
+  contextMenuEl.classList.remove("show");
 
   // Clear highlight + 3-dot state on the last item
   if (openBoardContextItem) {
-    openBoardContextItem.classList.remove('context-open');
-    const prevBtn = openBoardContextItem.querySelector('.sidebar-menu-btn');
-    if (prevBtn) prevBtn.classList.remove('active');
+    openBoardContextItem.classList.remove("context-open");
+    const prevBtn = openBoardContextItem.querySelector(".sidebar-menu-btn");
+    if (prevBtn) prevBtn.classList.remove("active");
     openBoardContextItem = null;
   }
 }
 window.closeContextMenu = closeContextMenu;
-
 
 function openContextMenu(e, board, itemEl, menuBtn) {
   e.preventDefault();
   e.stopPropagation();
   currentModalBoard = board;
 
-  const container = sidebarBoardsContainer || document.getElementById("sidebar-boards-container") || document.body;
+  const container =
+    sidebarBoardsContainer ||
+    document.getElementById("sidebar-boards-container") ||
+    document.body;
 
   // Move menu into the correct container if needed
   if (contextMenuEl.parentElement !== container) {
@@ -521,19 +539,19 @@ function openContextMenu(e, board, itemEl, menuBtn) {
 
   // Clear old item highlight / active dots
   if (openBoardContextItem && openBoardContextItem !== itemEl) {
-    openBoardContextItem.classList.remove('context-open');
-    const prevBtn = openBoardContextItem.querySelector('.sidebar-menu-btn');
-    if (prevBtn) prevBtn.classList.remove('active');
+    openBoardContextItem.classList.remove("context-open");
+    const prevBtn = openBoardContextItem.querySelector(".sidebar-menu-btn");
+    if (prevBtn) prevBtn.classList.remove("active");
   }
 
   // Track + highlight the current item and its 3-dots
   openBoardContextItem = itemEl;
-  if (itemEl) itemEl.classList.add('context-open');
-  if (menuBtn) menuBtn.classList.add('active');
+  if (itemEl) itemEl.classList.add("context-open");
+  if (menuBtn) menuBtn.classList.add("active");
 
   // Temporarily show menu (hidden) so we can measure its size
   contextMenuEl.style.visibility = "hidden";
-  contextMenuEl.classList.add('show');
+  contextMenuEl.classList.add("show");
 
   requestAnimationFrame(() => {
     const containerRect = container.getBoundingClientRect();
@@ -554,8 +572,6 @@ function openContextMenu(e, board, itemEl, menuBtn) {
   });
 }
 
-
-
 // ==================== SIDEBAR RENDERING ====================
 
 function renderSidebarBoards(boards) {
@@ -567,7 +583,7 @@ function renderSidebarBoards(boards) {
   const ownerId = currentUser ? currentUser.id : null;
 
   const groups = {};
-  boards.forEach(board => {
+  boards.forEach((board) => {
     const group = getDateGroup(board.updatedAt || board.createdAt);
     if (!groups[group]) groups[group] = [];
     groups[group].push(board);
@@ -575,7 +591,7 @@ function renderSidebarBoards(boards) {
 
   const order = ["Today", "Yesterday", "Last 7 Days", "Last 30 Days", "Older"];
 
-  order.forEach(group => {
+  order.forEach((group) => {
     if (!groups[group] || groups[group].length === 0) return;
 
     const label = document.createElement("div");
@@ -583,14 +599,14 @@ function renderSidebarBoards(boards) {
     label.textContent = group;
     container.appendChild(label);
 
-    groups[group].forEach(board => {
+    groups[group].forEach((board) => {
       const itemDiv = document.createElement("div");
       itemDiv.className = "sidebar-board-item";
       itemDiv.dataset.id = board.id;
 
       const currentParams = new URLSearchParams(window.location.search);
-      if (currentParams.get('board') === board.id) {
-        itemDiv.classList.add('active');
+      if (currentParams.get("board") === board.id) {
+        itemDiv.classList.add("active");
       }
 
       const mainBtn = document.createElement("button");
@@ -605,11 +621,10 @@ function renderSidebarBoards(boards) {
       const menuBtn = document.createElement("button");
       menuBtn.className = "sidebar-menu-btn";
       menuBtn.innerHTML = `<span class="material-symbols-outlined" style="font-size:20px">more_horiz</span>`;
-      
+
       menuBtn.onclick = (e) => {
         openContextMenu(e, board, itemDiv, menuBtn);
       };
-
 
       itemDiv.appendChild(mainBtn);
       itemDiv.appendChild(menuBtn);
@@ -701,7 +716,9 @@ async function loadBoards() {
       : [];
 
     if (!boardFiles || boardFiles.length === 0) {
-      console.log("[Boards] No board files found; auto-creating first board...");
+      console.log(
+        "[Boards] No board files found; auto-creating first board..."
+      );
       loadedBoards = [];
       renderSidebarBoards([]);
       boardsLoaded = true;
@@ -720,12 +737,14 @@ async function loadBoards() {
     const boardResults = await Promise.all(
       boardFiles.map((file) => fetchBoardDetails(user, file))
     );
-    
+
     const boards = boardResults.filter(Boolean);
 
     if (boards.length === 0) {
       // Files existed but none parsed correctly – treat as "no boards"
-      console.warn("[Boards] Board files found but none parsed; auto-creating new board.");
+      console.warn(
+        "[Boards] Board files found but none parsed; auto-creating new board."
+      );
       loadedBoards = [];
       renderSidebarBoards([]);
       boardsLoaded = true;
@@ -736,8 +755,6 @@ async function loadBoards() {
       await handleNewBoard(true);
       return;
     }
-
-
 
     // Sort boards by most recently updated/created
     const sorted = boards.sort(
@@ -762,7 +779,7 @@ async function loadBoards() {
 
     if (targetBoardId) {
       const owner = ownerFromUrl || user.id;
-      const exists = sorted.some(b => b.id === targetBoardId);
+      const exists = sorted.some((b) => b.id === targetBoardId);
 
       if (exists) {
         switchBoard(targetBoardId, owner);
@@ -783,14 +800,14 @@ async function loadBoards() {
 
         const workspace = document.getElementById("workspace");
         if (workspace) {
-          workspace.innerHTML = '<svg id="connections" class="connections"></svg>';
+          workspace.innerHTML =
+            '<svg id="connections" class="connections"></svg>';
         }
-        renderStatus("No boards yet. Click \"New Board\" to get started.");
+        renderStatus('No boards yet. Click "New Board" to get started.');
       }
     } else if (sorted.length > 0) {
       switchBoard(sorted[0].id, user.id);
     }
-
   } catch (err) {
     console.error("Failed to load boards:", err);
     renderStatus("Error loading boards.");
@@ -802,7 +819,6 @@ async function loadBoards() {
     }
   }
 }
-
 
 // --- New Board Creation ---
 
@@ -885,11 +901,6 @@ async function handleNewBoard(isInitialLoad = false) {
   }
 }
 
-
-
-
-
-
 /**
  * Performs the actual Supabase Storage file creation.
  * @param {string} boardId The ID for the new board.
@@ -953,27 +964,26 @@ async function createBoardFile(boardId) {
   }
 }
 
-
-
 // --- Upgrade Modal Logic (NEW) ---
 function openUpgradeModal(reason) {
-    if (upgradeModalBackdrop) {
-        upgradeModalBackdrop.classList.remove("hidden");
-        upgradeModalBackdrop.style.display = "flex";
-        // you can optionally use `reason` inside the modal later
-    }
+  if (upgradeModalBackdrop) {
+    upgradeModalBackdrop.classList.remove("hidden");
+    upgradeModalBackdrop.style.display = "flex";
+    // you can optionally use `reason` inside the modal later
+  }
 }
 
 // Make it callable from script.js (board workspace)
 window.openUpgradeModal = openUpgradeModal;
 
-window.closeUpgradeModal = function() {
-    if (upgradeModalBackdrop) {
-        upgradeModalBackdrop.classList.add("hidden");
-        setTimeout(() => { upgradeModalBackdrop.style.display = "none"; }, 200);
-    }
-}
-
+window.closeUpgradeModal = function () {
+  if (upgradeModalBackdrop) {
+    upgradeModalBackdrop.classList.add("hidden");
+    setTimeout(() => {
+      upgradeModalBackdrop.style.display = "none";
+    }, 200);
+  }
+};
 
 async function handleUpgrade() {
   // Close the nice modal first
@@ -991,20 +1001,19 @@ async function handleUpgrade() {
   }
 }
 
-
 // ==================== USER PROFILE LOGIC (ChatGPT Style) ====================
 
 function updateUserProfileUI(user) {
   if (!user) return;
 
-  const nameEl = document.getElementById('user-profile-name');
-  const emailEl = document.getElementById('user-profile-email');
-  const avatarEl = document.getElementById('user-avatar-img');
+  const nameEl = document.getElementById("user-profile-name");
+  const emailEl = document.getElementById("user-profile-email");
+  const avatarEl = document.getElementById("user-avatar-img");
 
   // Extract data safely
   const email = user.email || "";
   const meta = user.user_metadata || {};
-  const name = meta.full_name || meta.name || email.split('@')[0] || "User";
+  const name = meta.full_name || meta.name || email.split("@")[0] || "User";
   const avatar = meta.avatar_url || meta.picture || "../assets/logo_no_bg.png";
 
   if (nameEl) nameEl.textContent = name;
@@ -1013,29 +1022,29 @@ function updateUserProfileUI(user) {
 }
 
 function setupProfileMenu() {
-  const triggerBtn = document.getElementById('user-profile-btn');
-  const menu = document.getElementById('user-profile-menu');
-  
+  const triggerBtn = document.getElementById("user-profile-btn");
+  const menu = document.getElementById("user-profile-menu");
+
   if (!triggerBtn || !menu) return;
 
-  triggerBtn.addEventListener('click', (e) => {
+  triggerBtn.addEventListener("click", (e) => {
     e.stopPropagation();
-    const isHidden = !menu.classList.contains('show');
-    
-    if (typeof closeContextMenu === 'function') closeContextMenu();
+    const isHidden = !menu.classList.contains("show");
+
+    if (typeof closeContextMenu === "function") closeContextMenu();
 
     if (isHidden) {
-      menu.classList.remove('hidden');
+      menu.classList.remove("hidden");
       requestAnimationFrame(() => {
-        menu.classList.add('show');
-        triggerBtn.classList.add('active');
+        menu.classList.add("show");
+        triggerBtn.classList.add("active");
       });
     } else {
       closeProfileMenu();
     }
   });
 
-  document.addEventListener('click', (e) => {
+  document.addEventListener("click", (e) => {
     if (!menu.contains(e.target) && !triggerBtn.contains(e.target)) {
       closeProfileMenu();
     }
@@ -1043,12 +1052,12 @@ function setupProfileMenu() {
 }
 
 function closeProfileMenu() {
-  const menu = document.getElementById('user-profile-menu');
-  const triggerBtn = document.getElementById('user-profile-btn');
+  const menu = document.getElementById("user-profile-menu");
+  const triggerBtn = document.getElementById("user-profile-btn");
   if (menu) {
-    menu.classList.remove('show');
-    triggerBtn?.classList.remove('active');
-    setTimeout(() => menu.classList.add('hidden'), 150);
+    menu.classList.remove("show");
+    triggerBtn?.classList.remove("active");
+    setTimeout(() => menu.classList.add("hidden"), 150);
   }
 }
 
@@ -1066,7 +1075,7 @@ async function handleAuthChange(user, valid = false) {
     const isPro = await isProUser();
     window.BIBLEBOARD_IS_PRO = !!isPro;
 
-    await loadBoards();          // 👈 important: wait for boardsLoaded
+    await loadBoards(); // 👈 important: wait for boardsLoaded
 
     hasProCheckCompleted = true;
     updateBoardCreateButtonState?.();
@@ -1075,18 +1084,12 @@ async function handleAuthChange(user, valid = false) {
   }
 }
 
-
-
-
-
-
-
 // ==================== ADVANCED SEARCH LOGIC ====================
 const searchBackdrop = document.getElementById("search-modal-backdrop");
 const searchInput = document.getElementById("board-search-input");
 const searchResults = document.getElementById("board-search-results");
 const searchBtnSidebar = document.getElementById("search-board-btn-sidebar");
-const newChatSearchBtn = document.getElementById("new-chat-search-btn"); 
+const newChatSearchBtn = document.getElementById("new-chat-search-btn");
 
 if (searchBtnSidebar) {
   searchBtnSidebar.addEventListener("click", (e) => {
@@ -1104,16 +1107,18 @@ function openSearchModal() {
   if (searchInput) {
     searchInput.value = "";
     searchInput.focus();
-    handleBoardSearch(""); 
+    handleBoardSearch("");
   }
   const sidebar = document.getElementById("sidebar");
   if (sidebar && window.innerWidth < 900) sidebar.classList.add("offscreen");
 }
 
-window.closeSearchModal = function() {
+window.closeSearchModal = function () {
   if (searchBackdrop) {
     searchBackdrop.classList.add("hidden");
-    setTimeout(() => { searchBackdrop.style.display = "none"; }, 200); 
+    setTimeout(() => {
+      searchBackdrop.style.display = "none";
+    }, 200);
   }
 };
 
@@ -1124,75 +1129,80 @@ if (searchInput) {
 }
 
 function getBoardGroup(board) {
-  if (!board.updatedAt) return "Older"; 
+  if (!board.updatedAt) return "Older";
   const now = new Date();
   const boardDate = new Date(board.updatedAt);
 
-  if (boardDate.getDate() === now.getDate() &&
-      boardDate.getMonth() === now.getMonth() &&
-      boardDate.getFullYear() === now.getFullYear()) {
+  if (
+    boardDate.getDate() === now.getDate() &&
+    boardDate.getMonth() === now.getMonth() &&
+    boardDate.getFullYear() === now.getFullYear()
+  ) {
     return "Today";
   }
 
   const yesterday = new Date(now);
   yesterday.setDate(now.getDate() - 1);
-  if (boardDate.getDate() === yesterday.getDate() &&
-      boardDate.getMonth() === yesterday.getMonth() &&
-      boardDate.getFullYear() === yesterday.getFullYear()) {
+  if (
+    boardDate.getDate() === yesterday.getDate() &&
+    boardDate.getMonth() === yesterday.getMonth() &&
+    boardDate.getFullYear() === yesterday.getFullYear()
+  ) {
     return "Yesterday";
   }
 
-  return "Older"; 
+  return "Older";
 }
 
 function handleBoardSearch(query) {
   if (!searchResults) return;
-  searchResults.innerHTML = ""; 
-  
-  if (newChatSearchBtn) newChatSearchBtn.style.display = "flex"; 
+  searchResults.innerHTML = "";
+
+  if (newChatSearchBtn) newChatSearchBtn.style.display = "flex";
 
   const term = query.toLowerCase().trim();
   if (!term) return;
 
-  if (newChatSearchBtn) newChatSearchBtn.style.display = "none"; 
+  if (newChatSearchBtn) newChatSearchBtn.style.display = "none";
 
-  const matches = loadedBoards.map(board => {
-    let snippetText = ""; 
-    if (board.title.toLowerCase().includes(term)) {
-      snippetText = "Matches title";
-    } 
-    else if (board.elements && board.elements.length > 0) {
-      for (const el of board.elements) {
-        const content = extractTextFromElement(el);
-        if (content.toLowerCase().includes(term)) {
-          snippetText = getSnippet(content, term);
-          break; 
+  const matches = loadedBoards
+    .map((board) => {
+      let snippetText = "";
+      if (board.title.toLowerCase().includes(term)) {
+        snippetText = "Matches title";
+      } else if (board.elements && board.elements.length > 0) {
+        for (const el of board.elements) {
+          const content = extractTextFromElement(el);
+          if (content.toLowerCase().includes(term)) {
+            snippetText = getSnippet(content, term);
+            break;
+          }
         }
       }
-    }
 
-    if (snippetText) return { board, snippetText };
-    return null;
-  }).filter(Boolean); 
+      if (snippetText) return { board, snippetText };
+      return null;
+    })
+    .filter(Boolean);
 
-  const groupedMatches = { "Today": [], "Yesterday": [], "Older": [] };
+  const groupedMatches = { Today: [], Yesterday: [], Older: [] };
 
-  matches.forEach(match => {
+  matches.forEach((match) => {
     const group = getBoardGroup(match.board);
     if (groupedMatches[group]) groupedMatches[group].push(match);
-    else groupedMatches["Older"].push(match); 
+    else groupedMatches["Older"].push(match);
   });
-  
-  Object.keys(groupedMatches).forEach(groupName => {
-      groupedMatches[groupName].sort((a, b) => {
-          const dateA = new Date(a.board.updatedAt || 0);
-          const dateB = new Date(b.board.updatedAt || 0);
-          return dateB - dateA; 
-      });
+
+  Object.keys(groupedMatches).forEach((groupName) => {
+    groupedMatches[groupName].sort((a, b) => {
+      const dateA = new Date(a.board.updatedAt || 0);
+      const dateB = new Date(b.board.updatedAt || 0);
+      return dateB - dateA;
+    });
   });
 
   let hasResults = false;
-  ["Today", "Yesterday", "Older"].forEach(groupName => {
+  ["Today", "Yesterday", "Older"].forEach((groupName) => {
     if (groupedMatches[groupName].length > 0) {
       hasResults = true;
       const groupHeader = document.createElement("div");
@@ -1200,20 +1210,31 @@ function handleBoardSearch(query) {
       groupHeader.textContent = groupName;
       searchResults.appendChild(groupHeader);
 
-      groupedMatches[groupName].forEach(match => {
+      groupedMatches[groupName].forEach((match) => {
         const div = document.createElement("div");
         div.className = "search-result-item";
         div.onclick = () => {
-          const ownerId = currentUser ? currentUser.id : match.board.path.split('/')[0];
+          const ownerId = currentUser
+            ? currentUser.id
+            : match.board.path.split("/")[0];
           switchBoard(match.board.id, ownerId);
           closeSearchModal();
         };
 
         div.innerHTML = `
           <span class="material-symbols-outlined">chat_bubble</span>
-          <span class="search-result-title">${highlightText(match.board.title, term)}</span>
-          ${match.snippetText && match.snippetText !== "Matches title" ? 
-            `<span class="search-result-snippet">${highlightText(match.snippetText, term)}</span>` : ''}
+          <span class="search-result-title">${highlightText(
+            match.board.title,
+            term
+          )}</span>
+          ${
+            match.snippetText && match.snippetText !== "Matches title"
+              ? `<span class="search-result-snippet">${highlightText(
+                  match.snippetText,
+                  term
+                )}</span>`
+              : ""
+          }
         `;
         searchResults.appendChild(div);
       });
@@ -1228,7 +1249,7 @@ function handleBoardSearch(query) {
 function extractTextFromElement(el) {
   if (!el) return "";
   if (el.type === "note" || el.type === "text") {
-    return (el.html || el.text || "").replace(/<[^>]*>?/gm, ""); 
+    return (el.html || el.text || "").replace(/<[^>]*>?/gm, "");
   }
   if (el.type === "verse") {
     return `${el.reference} ${el.text}` || "";
@@ -1243,14 +1264,14 @@ function getSnippet(fullText, term) {
   const lower = fullText.toLowerCase();
   const index = lower.indexOf(term);
   if (index === -1) return fullText.substring(0, 50);
-  const start = Math.max(0, index - 15); 
+  const start = Math.max(0, index - 15);
   const end = Math.min(fullText.length, index + term.length + 20);
   return fullText.substring(start, end);
 }
 
 function highlightText(text, term) {
   if (!term) return text;
-  const safeTerm = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const safeTerm = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const regex = new RegExp(`(${safeTerm})`, "gi");
   return text.replace(regex, `<span class="highlight-match">$1</span>`);
 }
@@ -1265,7 +1286,9 @@ async function init() {
   });
 
   // 2. Setup Auth
-  sb.auth.onAuthStateChange((_event, data) => handleAuthChange(data?.session?.user));
+  sb.auth.onAuthStateChange((_event, data) =>
+    handleAuthChange(data?.session?.user)
+  );
   const { data } = await sb.auth.getSession();
   handleAuthChange(data?.session?.user, true);
 
@@ -1273,21 +1296,21 @@ async function init() {
   setupProfileMenu();
 
   // 4. Wire up Profile Menu Actions
-  const manageBtn = document.getElementById('manage-sub-btn');
+  const manageBtn = document.getElementById("manage-sub-btn");
   if (manageBtn) {
     manageBtn.onclick = (e) => {
-        e.preventDefault();
-        closeProfileMenu();
-        SubscriptionService.manage();
+      e.preventDefault();
+      closeProfileMenu();
+      SubscriptionService.manage();
     };
   }
 
-  const signoutBtn = document.getElementById('signout-btn-sidebar');
+  const signoutBtn = document.getElementById("signout-btn-sidebar");
   if (signoutBtn) {
     signoutBtn.onclick = async (e) => {
-        e.preventDefault();
-        closeProfileMenu();
-        await SubscriptionService.logout();
+      e.preventDefault();
+      closeProfileMenu();
+      await SubscriptionService.logout();
     };
   }
 
@@ -1296,11 +1319,10 @@ async function init() {
 
   // Initialize create button state (will show "Checking plan…" at first)
   updateBoardCreateButtonState();
-  
+
   // Wire up new upgrade button
   if (upgradeNowBtn) upgradeNowBtn.onclick = handleUpgrade;
 
-  
   // --- FIX IS HERE ---
   const delConfirm = document.getElementById("confirm-delete-btn");
   if (delConfirm) {
@@ -1322,8 +1344,8 @@ async function init() {
     e.preventDefault();
     const sidebar = document.getElementById("sidebar");
     if (sidebar && sidebar.classList.contains("offscreen")) {
-        sidebar.classList.remove("offscreen");
-        sidebar.classList.add("expanded");
+      sidebar.classList.remove("offscreen");
+      sidebar.classList.add("expanded");
     }
   });
 }
@@ -1358,17 +1380,6 @@ function updateBoardCreateButtonState() {
   btn.textContent = "New Board"; // or whatever label you want
 }
 
-
-
-
-
-
-
-
-
-
-
-
 /* ==================== UNIFIED SELECTION FIX ==================== */
 
 // 1. Ensure Global Queues Exist
@@ -1382,72 +1393,156 @@ function toggleVerseSelection(verseData, btnElement) {
   // Create a unique key including version to prevent collisions
   const key = `${verseData.reference}::${verseData.version}`;
 
+  // Verse row can be a search result OR a reader verse
+  const row = btnElement
+    ? btnElement.closest(".search-query-verse-container, .verse")
+    : null;
+
   if (window.pendingVerseAdds.has(key)) {
     // REMOVE
     window.pendingVerseAdds.delete(key);
     if (btnElement) btnElement.classList.remove("selected");
-    
-    // Also find the row and remove highlighting
-    const row = btnElement ? btnElement.closest('.search-query-verse-container') : null;
     if (row) row.classList.remove("selected-for-add");
-    
   } else {
     // ADD
     window.pendingVerseAdds.set(key, verseData);
     if (btnElement) btnElement.classList.add("selected");
-    
-    const row = btnElement ? btnElement.closest('.search-query-verse-container') : null;
     if (row) row.classList.add("selected-for-add");
   }
 
-  // Trigger the master button update
+  // Update floating button label
   updateFloatingAddButton();
+
+  // Update rounded corners for first/last selected verse in the reader
+  updateSelectedVerseRadii();
+}
+
+// Apply .selected-first / .selected-last for verses in the Bible Reader,
+// handling multiple separate runs of selected verses (e.g., 1–3 and 6–10).
+function updateSelectedVerseRadii() {
+  const readerContent = document.getElementById("bible-query-reader-content");
+  if (!readerContent) return;
+
+  const containers = readerContent.querySelectorAll(".verse-list-container");
+
+  containers.forEach((container) => {
+    const verses = Array.from(container.querySelectorAll(".verse"));
+
+    // Clear previous markings
+    verses.forEach((v) => {
+      v.classList.remove("selected-first", "selected-last", "selected-single");
+    });
+
+    let runStartIndex = null; // index of first verse in current run
+
+    for (let i = 0; i < verses.length; i++) {
+      const v = verses[i];
+      const isSelected = v.classList.contains("selected-for-add");
+
+      if (isSelected) {
+        // Start a new run if we weren't in one
+        if (runStartIndex === null) {
+          runStartIndex = i;
+        }
+      } else {
+        // We hit the end of a run
+        if (runStartIndex !== null) {
+          const startEl = verses[runStartIndex];
+          const endEl = verses[i - 1];
+
+          if (startEl === endEl) {
+            // Single verse run
+            startEl.classList.add(
+              "selected-single",
+              "selected-first",
+              "selected-last"
+            );
+          } else {
+            // Multi-verse run
+            startEl.classList.add("selected-first");
+            endEl.classList.add("selected-last");
+          }
+
+          runStartIndex = null;
+        }
+      }
+    }
+
+    // Flush a run that reaches the end of the list
+    if (runStartIndex !== null) {
+      const startEl = verses[runStartIndex];
+      const endEl = verses[verses.length - 1];
+
+      if (startEl === endEl) {
+        startEl.classList.add(
+          "selected-single",
+          "selected-first",
+          "selected-last"
+        );
+      } else {
+        startEl.classList.add("selected-first");
+        endEl.classList.add("selected-last");
+      }
+    }
+  });
 }
 
 // 3. Unified "Add to Board" Button Update
 // Counts items from ALL three maps (Verses + Songs + Interlinear)
 function updateFloatingAddButton() {
   const floatBtn = document.getElementById("floating-add-to-board-btn");
-  if (!floatBtn) return;
+  const readerBtn = document.getElementById("bible-reader-add-to-board-btn");
 
   const vCount = window.pendingVerseAdds.size;
   const sCount = window.pendingSongAdds.size;
   const iCount = window.pendingInterlinearAdds.size;
-  
+
   const total = vCount + sCount + iCount;
 
-  if (total > 0) {
-    floatBtn.style.display = "inline-flex";
-    
-    // Clear and rebuild button content
-    floatBtn.replaceChildren ? floatBtn.replaceChildren() : (floatBtn.innerHTML = "");
-    
-    // Icon
-    const icon = document.createElement("span");
-    icon.className = "material-symbols-outlined";
-    icon.textContent = "add_circle";
-    icon.style.marginRight = "6px";
-    
-    // Text
-    const text = document.createElement("span");
-    text.textContent = `Add ${total} Item${total !== 1 ? "s" : ""}`;
-    
-    floatBtn.appendChild(icon);
-    floatBtn.appendChild(text);
+  const buttons = [floatBtn, readerBtn].filter(Boolean);
+  if (buttons.length === 0) return;
 
-    // Rebind click to the master flush function (clone to strip old listeners)
-    const newBtn = floatBtn.cloneNode(true);
-    floatBtn.parentNode.replaceChild(newBtn, floatBtn);
-    newBtn.onclick = (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      handleFloatingAddClick();
-    };
+  if (total > 0) {
+    buttons.forEach((btn) => {
+      // Make it visible
+      btn.style.display = "inline-flex";
+
+      // Clear and rebuild button content
+      if (btn.replaceChildren) {
+        btn.replaceChildren();
+      } else {
+        btn.innerHTML = "";
+      }
+
+      // Icon
+      const icon = document.createElement("span");
+      icon.className = "material-symbols-outlined";
+      icon.textContent = "add_circle";
+      icon.style.marginRight = "6px";
+
+      // Text
+      const text = document.createElement("span");
+      text.textContent = `Add ${total} Item${total !== 1 ? "s" : ""}`;
+
+      btn.appendChild(icon);
+      btn.appendChild(text);
+
+      // Rebind click to the master flush function (clone to strip old listeners)
+      const newBtn = btn.cloneNode(true);
+      btn.parentNode.replaceChild(newBtn, btn);
+      newBtn.onclick = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        handleFloatingAddClick();
+      };
+    });
   } else {
-    floatBtn.style.display = "none";
+    // Hide both when nothing selected
+    buttons.forEach((btn) => {
+      btn.style.display = "none";
+    });
   }
 }
-
 
 /**
  * Counts how many items are currently on the open board.
@@ -1486,13 +1581,51 @@ async function ensureCanAddBatch(batchSize) {
     // Fallback in case modal isn't available for some reason
     alert(
       `On the free plan, you can have up to ${FREE_BOARD_ITEM_LIMIT} items per board.\n` +
-      `You currently have ${currentCount} items and are trying to add ${batchSize} more.`
+        `You currently have ${currentCount} items and are trying to add ${batchSize} more.`
     );
   }
 
   return false;
 }
 
+/**
+ * Parse a full Bible reference like "Genesis 1:3" or "1 Peter 2:10-12"
+ * into an object { book, chapter, verse }.
+ *
+ * - book: full book name portion (may include leading number, e.g. "1 Peter")
+ * - chapter: number before the colon
+ * - verse: starting verse number (if a range is given, we take the first)
+ */
+function parseFullRef(ref) {
+  if (!ref || typeof ref !== "string") {
+    return { book: "", chapter: 0, verse: 0 };
+  }
+
+  const clean = ref.trim();
+  const colonIndex = clean.lastIndexOf(":");
+  if (colonIndex === -1) {
+    // No chapter/verse part, treat whole thing as book
+    return { book: clean, chapter: 0, verse: 0 };
+  }
+
+  // "Genesis 1" / "1 Peter 2"
+  const before = clean.slice(0, colonIndex).trim();
+  // "3" or "3-5" or "3–5"
+  const after = clean.slice(colonIndex + 1).trim();
+
+  // If a range is present ("3-5" / "3–5"), use the starting verse
+  const verseStr = after.split(/[-–]/)[0].trim();
+
+  // ["Genesis","1"] or ["1","Peter","2"]
+  const parts = before.split(/\s+/);
+  const chapStr = parts.pop(); // "1" or "2"
+  const book = parts.join(" "); // "Genesis" or "1 Peter"
+
+  const chapter = parseInt(chapStr, 10) || 0;
+  const verse = parseInt(verseStr, 10) || 0;
+
+  return { book, chapter, verse };
+}
 
 // 4. Master Flush Function
 // Takes items from all queues and adds them to the board
@@ -1524,7 +1657,7 @@ async function handleFloatingAddClick() {
   // Immediately hide the floating button
   updateFloatingAddButton();
 
-  let delay = 0;
+  let delay = 0.25;
 
   // --- ADD VERSES ---
   if (verses.length > 0) {
@@ -1618,8 +1751,8 @@ async function handleFloatingAddClick() {
   document
     .querySelectorAll(".search-query-verse-add-button.selected")
     .forEach((el) => el.classList.remove("selected"));
+  closeBibleReaderAndExitScriptureMode();
 }
-
 
 // Helper: figure out if the user is Pro and enforce the limit for batch adds
 async function canAddMoreBoardItems(batchSize) {
@@ -1628,7 +1761,9 @@ async function canAddMoreBoardItems(batchSize) {
     // try to use it to detect Pro users.
     if (window.SubscriptionService) {
       // 1) Preferred: async check
-      if (typeof window.SubscriptionService.hasActiveSubscription === "function") {
+      if (
+        typeof window.SubscriptionService.hasActiveSubscription === "function"
+      ) {
         const hasSub = await window.SubscriptionService.hasActiveSubscription();
         if (hasSub) return true; // Pro → no limit
       }
@@ -1661,7 +1796,10 @@ async function canAddMoreBoardItems(batchSize) {
 
   const projected = currentCount + batchSize;
 
-  if (currentCount >= FREE_BOARD_ITEM_LIMIT || projected > FREE_BOARD_ITEM_LIMIT) {
+  if (
+    currentCount >= FREE_BOARD_ITEM_LIMIT ||
+    projected > FREE_BOARD_ITEM_LIMIT
+  ) {
     // Show your nice upgrade modal if available, otherwise fall back to alert
     if (typeof window.openUpgradeModal === "function") {
       // You can pass a reason string if your modal cares, or just call with no args.
@@ -1669,13 +1807,1223 @@ async function canAddMoreBoardItems(batchSize) {
     } else {
       alert(
         `Board item limit reached.\n\n` +
-        `On the free plan you can have up to ${FREE_BOARD_ITEM_LIMIT} items per board.\n` +
-        `You currently have ${currentCount} item${currentCount !== 1 ? "s" : ""}. ` +
-        `Remove some items or upgrade to Pro to add more.`
+          `On the free plan you can have up to ${FREE_BOARD_ITEM_LIMIT} items per board.\n` +
+          `You currently have ${currentCount} item${
+            currentCount !== 1 ? "s" : ""
+          }. ` +
+          `Remove some items or upgrade to Pro to add more.`
       );
     }
     return false;
   }
 
   return true;
+}
+
+// Keeps track of which verse the modal is currently showing
+window.currentVerseStudyData = null;
+
+function openVerseStudyModal(verseData) {
+  const backdrop = document.getElementById("verse-study-modal-backdrop");
+  if (!backdrop || !verseData) return;
+
+  window.currentVerseStudyData = verseData;
+
+  const refEl = document.getElementById("verse-study-ref");
+  const versionEl = document.getElementById("verse-study-version");
+  const previewEl = document.getElementById("verse-study-preview");
+
+  if (refEl) refEl.textContent = verseData.reference || "";
+  if (versionEl) versionEl.textContent = verseData.version || "";
+  if (previewEl) previewEl.textContent = verseData.text || "";
+
+  // 🔄 Reset sections + tabs
+  if (typeof resetVerseStudySections === "function") {
+    resetVerseStudySections();
+  }
+
+  // Default: show Interlinear, hide Crossref
+  const interSec = document.getElementById("interlinear-section");
+  const crossSec = document.getElementById("crossref-section");
+  const interBtn = document.getElementById("verse-study-open-interlinear");
+  const crossBtn = document.getElementById("verse-study-open-crossref");
+
+  if (interSec) interSec.style.display = "block";
+  if (crossSec) crossSec.style.display = "none";
+  if (interBtn) interBtn.classList.add("verse-study-tab-active");
+  if (crossBtn) crossBtn.classList.remove("verse-study-tab-active");
+
+  // 🔥 Auto-load BOTH interlinear and crossrefs for this verse
+  try {
+    // ⬅️ use the *modal-specific* interlinear loader so rows are clickable
+    if (
+      typeof openVerseStudyInterlinear === "function" &&
+      verseData.reference
+    ) {
+      openVerseStudyInterlinear(verseData.reference);
+    }
+
+    if (
+      typeof openCrossRefForReference === "function" &&
+      verseData.reference
+    ) {
+      openCrossRefForReference(verseData.reference);
+    }
+  } catch (err) {
+    console.warn("Failed to pre-load verse-study data:", err);
+  }
+
+  // Show modal
+  backdrop.style.display = "flex";
+  backdrop.setAttribute("data-open", "true");
+
+  // Make sure the Interlinear tab is visually active
+  if (interBtn) interBtn.click();
+}
+
+
+
+function closeVerseStudyModal() {
+  const backdrop = document.getElementById("verse-study-modal-backdrop");
+  if (!backdrop) return;
+
+  backdrop.style.display = "none";
+  backdrop.removeAttribute("data-open");
+  window.currentVerseStudyData = null;
+
+  if (typeof resetVerseStudySections === "function") {
+    resetVerseStudySections();
+  }
+}
+
+function initVerseStudyModal() {
+  const backdrop = document.getElementById("verse-study-modal-backdrop");
+  if (!backdrop) return;
+
+  const closeBtn = backdrop.querySelector(".verse-study-close");
+  const interBtn = document.getElementById("verse-study-open-interlinear");
+  const crossBtn = document.getElementById("verse-study-open-crossref");
+
+  // Close button
+  if (closeBtn) {
+    closeBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      closeVerseStudyModal();
+    });
+  }
+
+  // Click outside modal to close
+  backdrop.addEventListener("click", (event) => {
+    if (event.target === backdrop) {
+      closeVerseStudyModal();
+    }
+  });
+
+  // ESC to close
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && backdrop.getAttribute("data-open") === "true") {
+      closeVerseStudyModal();
+    }
+  });
+
+  // ✅ Interlinear tab button
+  if (interBtn) {
+    interBtn.addEventListener("click", () => {
+      const interSec = document.getElementById("interlinear-section");
+      const crossSec = document.getElementById("crossref-section");
+
+      if (interSec) interSec.style.display = "block";
+      if (crossSec) crossSec.style.display = "none";
+
+      interBtn.classList.add("verse-study-tab-active");
+      if (crossBtn) crossBtn.classList.remove("verse-study-tab-active");
+
+      if (interSec) {
+        interSec.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    });
+  }
+
+  // ✅ Crossref tab button (NO fetch – data was loaded on modal open)
+  if (crossBtn) {
+    crossBtn.addEventListener("click", () => {
+      const interSec = document.getElementById("interlinear-section");
+      const crossSec = document.getElementById("crossref-section");
+
+      if (interSec) interSec.style.display = "none";
+      if (crossSec) crossSec.style.display = "block";
+
+      crossBtn.classList.add("verse-study-tab-active");
+      if (interBtn) interBtn.classList.remove("verse-study-tab-active");
+
+      if (crossSec) {
+        crossSec.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    });
+  }
+}
+
+
+// ======================
+// Bible Query UI Helpers
+// ======================
+
+document.addEventListener("DOMContentLoaded", () => {
+  try {
+    initBibleQueryVersionDropdown();
+  } catch (err) {
+    console.warn("Failed to init Bible Query version dropdown:", err);
+  }
+
+  try {
+    initBibleQueryBookChapterDropdowns();
+  } catch (err) {
+    console.warn("Failed to init Bible Query book/chapter dropdowns:", err);
+  }
+
+  try {
+    initScriptureModeToggle();
+  } catch (err) {
+    console.warn("Failed to init Scripture Mode toggle:", err);
+  }
+
+  try {
+    initVerseStudyModal();
+  } catch (err) {
+    console.warn("Failed to init verse study modal:", err);
+  }
+
+  // Hook up the Bible reader close button to the same logic
+  const readerCloseBtn = document.getElementById("bible-query-reader-close");
+  if (readerCloseBtn) {
+    readerCloseBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      closeBibleReaderAndExitScriptureMode();
+    });
+  }
+
+  // Also close on ESC key
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" || e.key === "Esc") {
+      closeBibleReaderAndExitScriptureMode();
+    }
+  });
+});
+
+function initScriptureModeToggle() {
+  const btn = document.getElementById("scripture-mode-toggle");
+  const container = document.getElementById("bible-query-container");
+  const reader = document.getElementById("bible-query-reader");
+
+  if (!btn || !container || !reader) return;
+
+  function applyState(on) {
+    const body = document.body;
+
+    if (on) {
+      body.classList.add("scripture-mode-on");
+      btn.classList.add("active");
+      btn.textContent = "Close Scripture";
+      reader.style.display = "block";
+
+      if (typeof window.__bbSyncScriptureNow === "function") {
+        window.__bbSyncScriptureNow(true);
+      }
+    } else {
+      body.classList.remove("scripture-mode-on");
+      btn.classList.remove("active");
+      btn.textContent = "Scripture mode";
+      reader.style.display = "none";
+
+      if (typeof closeSearchQuery === "function") {
+        try {
+          closeSearchQuery();
+        } catch (err) {
+          console.warn(
+            "closeSearchQuery() failed when turning off Scripture mode:",
+            err
+          );
+        }
+      }
+    }
+  }
+
+  applyState(false);
+
+  btn.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const turningOn = !document.body.classList.contains("scripture-mode-on");
+    applyState(turningOn);
+  });
+}
+
+// Close the Bible reader and also turn off Scripture mode (if it's on)
+function closeBibleReaderAndExitScriptureMode() {
+  const body = document.body;
+  const reader = document.getElementById("bible-query-reader");
+  const scriptureBtn = document.getElementById("scripture-mode-toggle");
+  const scriptureContainer = document.getElementById("bible-query-container");
+
+  // 1) Run existing close logic (animations, etc.)
+  if (typeof closeSearchQuery === "function") {
+    try {
+      closeSearchQuery();
+    } catch (err) {
+      console.warn(
+        "closeSearchQuery() failed while closing Bible reader:",
+        err
+      );
+    }
+  }
+
+  // 2) Ensure the reader panel is hidden
+  if (reader) {
+    reader.style.display = "none";
+  }
+
+  // 3) Clear any queued selections (verses / songs / interlinear)
+  if (
+    window.pendingVerseAdds &&
+    typeof window.pendingVerseAdds.clear === "function"
+  ) {
+    window.pendingVerseAdds.clear();
+  }
+  if (
+    window.pendingInterlinearAdds &&
+    typeof window.pendingInterlinearAdds.clear === "function"
+  ) {
+    window.pendingInterlinearAdds.clear();
+  }
+  if (
+    window.pendingSongAdds &&
+    typeof window.pendingSongAdds.clear === "function"
+  ) {
+    window.pendingSongAdds.clear();
+  }
+
+  // Remove selection-related classes from the DOM
+  const selectedEls = document.querySelectorAll(
+    ".verse.selected-for-add, " +
+      ".search-query-verse-container.selected-for-add, " +
+      ".verse.selected-first, " +
+      ".verse.selected-last, " +
+      ".verse.selected-single"
+  );
+  selectedEls.forEach((el) => {
+    el.classList.remove(
+      "selected-for-add",
+      "selected-first",
+      "selected-last",
+      "selected-single"
+    );
+  });
+
+  // Hide any "Add to Board" buttons that depend on pending adds
+  if (typeof updateFloatingAddButton === "function") {
+    updateFloatingAddButton();
+  }
+
+  // 4) Exit Scripture mode visually
+  if (body.classList.contains("scripture-mode-on")) {
+    body.classList.remove("scripture-mode-on");
+  }
+
+  if (scriptureBtn) {
+    scriptureBtn.classList.remove("active");
+    scriptureBtn.textContent = "Scripture mode";
+  }
+
+  if (scriptureContainer) {
+    // CSS will hide it when scripture-mode-on is removed, so reset inline style
+    scriptureContainer.style.display = "";
+  }
+}
+
+/**
+ * Custom dropdowns for:
+ * - Book  (#bible-query-container-book)
+ * - Chapter (#bible-query-container-chapter)
+ *
+ * UX flow:
+ *   - Click reference pill OR book -> show BOOK dropdown
+ *   - Select book  -> close book dropdown, immediately show CHAPTER dropdown
+ *   - Select chapter -> close everything
+ *
+ * Both dropdowns use the same .bible-query-dropdown / .bible-query-dropdown-item styles
+ * as the version dropdown.
+ */
+function initBibleQueryBookChapterDropdowns() {
+  const referencePill = document.getElementById("bible-query-reference");
+  const bookLabel = document.getElementById("bible-query-container-book");
+  const chapterLabel = document.getElementById("bible-query-container-chapter");
+
+  if (!referencePill || !bookLabel || !chapterLabel) {
+    return; // Not on this page or markup missing
+  }
+
+  // Hidden search form we reuse (already wired to Bible logic)
+  const searchInput = document.getElementById("search-bar");
+  const searchForm = document.getElementById("search-container");
+
+  // Bible search results container (existing drawer)
+  const verseResultContainer = document.getElementById(
+    "search-query-verse-container"
+  );
+
+  // New reader DOM
+  const reader = document.getElementById("bible-query-reader");
+  const readerHeader = document.getElementById("bible-query-reader-header");
+  const readerContent = document.getElementById("bible-query-reader-content");
+
+  // Allow selecting verses directly in the Bible Reader
+  // and long-pressing to open the verse study modal.
+  function buildVerseDataFromReaderVerse(verseEl) {
+    if (!verseEl) return null;
+
+    const book = (bookLabel.textContent || "").trim();
+    const chapter = (chapterLabel.textContent || "").trim();
+
+    const verseNumEl = verseEl.querySelector(".verse-number");
+    const verseNum = verseNumEl ? verseNumEl.textContent.trim() : "";
+    if (!book || !chapter || !verseNum) return null;
+
+    const reference = `${book} ${chapter}:${verseNum}`;
+
+    const textEl =
+      verseEl.querySelector(".verse-text-content") ||
+      verseEl.querySelector(".verse-text");
+
+    const verseText = textEl
+      ? textEl.textContent.trim()
+      : verseEl.textContent.trim();
+
+    const text = `${verseNum} ${verseText}`.trim();
+
+    // Current version (ESV, NLT, etc.)
+    const versionTextEl = document.getElementById("bible-query-version-text");
+    const versionSelect = document.getElementById("version-select");
+    const version =
+      (versionTextEl && versionTextEl.textContent.trim()) ||
+      (versionSelect &&
+        (versionSelect.value ||
+          (versionSelect.selectedOptions &&
+            versionSelect.selectedOptions[0] &&
+            versionSelect.selectedOptions[0].textContent.trim()))) ||
+      "";
+
+    if (!version) return null;
+
+    return { reference, text, version };
+  }
+
+  if (readerContent) {
+    // Normal tap / click still toggles selection
+    readerContent.addEventListener("click", (event) => {
+      // Only care about verse rows inside the reader
+      const verseEl = event.target.closest(
+        "#bible-query-reader-content .verse-list-container .verse"
+      );
+      if (!verseEl) return;
+
+      const verseData = buildVerseDataFromReaderVerse(verseEl);
+      if (!verseData) return;
+
+      toggleVerseSelection(verseData, verseEl);
+    });
+
+    // Long-press (hold) opens the verse study modal for interlinear / cross-refs
+    const LONG_PRESS_MS = 550;
+    let longPressTimer = null;
+    let longPressTarget = null;
+
+    function clearLongPressTimer() {
+      if (longPressTimer !== null) {
+        clearTimeout(longPressTimer);
+        longPressTimer = null;
+      }
+      longPressTarget = null;
+    }
+
+    function startLongPress(verseEl) {
+      if (!verseEl) return;
+      clearLongPressTimer();
+      longPressTarget = verseEl;
+
+      longPressTimer = window.setTimeout(() => {
+        longPressTimer = null;
+        const verseData = buildVerseDataFromReaderVerse(longPressTarget);
+        if (!verseData) return;
+
+        if (typeof openVerseStudyModal === "function") {
+          openVerseStudyModal(verseData);
+        }
+      }, LONG_PRESS_MS);
+    }
+
+    function getVerseFromEvent(event) {
+      return event.target.closest(
+        "#bible-query-reader-content .verse-list-container .verse"
+      );
+    }
+
+    // Desktop: hold left mouse button
+    readerContent.addEventListener("mousedown", (event) => {
+      // Only left-click (button 0)
+      if (event.button !== 0) return;
+      const verseEl = getVerseFromEvent(event);
+      if (!verseEl) return;
+      startLongPress(verseEl);
+    });
+
+    readerContent.addEventListener("mouseup", clearLongPressTimer);
+    readerContent.addEventListener("mouseleave", clearLongPressTimer);
+
+    // Mobile / touch: finger hold
+    readerContent.addEventListener(
+      "touchstart",
+      (event) => {
+        const verseEl = getVerseFromEvent(event);
+        if (!verseEl) return;
+        startLongPress(verseEl);
+      },
+      { passive: true }
+    );
+
+    readerContent.addEventListener("touchend", clearLongPressTimer);
+    readerContent.addEventListener("touchcancel", clearLongPressTimer);
+
+    ["pointerup", "pointerleave", "pointercancel"].forEach((type) => {
+      readerContent.addEventListener(type, clearLongPressTimer);
+    });
+  }
+
+  // Track what we requested so we can label the header nicely
+  let lastRequestedBook = null;
+  let lastRequestedChapter = null;
+  let pendingSyncAfterSearch = false;
+
+  // Allow selecting verses directly inside the Bible Reader (not just the hidden search drawer)
+  if (readerContent) {
+    readerContent.addEventListener("click", (event) => {
+      // Find the verse row that was clicked
+      const verseRow = event.target.closest(".search-query-verse-container");
+      if (!verseRow) return;
+
+      // If the user clicked anywhere in the row, treat it as toggling that verse
+      let addBtn =
+        event.target.closest(".search-query-verse-add-button") ||
+        verseRow.querySelector(".search-query-verse-add-button") ||
+        verseRow; // fallback so toggleVerseSelection still finds the row
+
+      // Extract reference + text from the row
+      const refEl =
+        verseRow.querySelector(".verse-text-reference") ||
+        verseRow.querySelector(".search-query-verse-text");
+      const textEl =
+        verseRow.querySelector(".verse-text-content") ||
+        verseRow.querySelector(".search-query-verse-text");
+
+      const reference = refEl ? refEl.textContent.trim() : "";
+      const text = textEl ? textEl.textContent.trim() : "";
+
+      // Get the current version shown in the reader header
+      const versionTextEl = document.getElementById("bible-query-version-text");
+      const versionSelect = document.getElementById("version-select");
+      const version =
+        (versionTextEl && versionTextEl.textContent.trim()) ||
+        (versionSelect &&
+          (versionSelect.value ||
+            (versionSelect.selectedOptions &&
+              versionSelect.selectedOptions[0] &&
+              versionSelect.selectedOptions[0].textContent.trim()))) ||
+        "";
+
+      if (!reference || !text || !version) return;
+
+      const verseData = { reference, text, version };
+
+      // Toggle selection (queue + row highlight + floating button)
+      toggleVerseSelection(verseData, addBtn);
+    });
+  }
+
+  // Allow other scripts (like the version picker) to request a sync
+  window.__bbMarkBibleQueryNeedsSync = () => {
+    pendingSyncAfterSearch = true;
+  };
+
+  // ---- Canonical book list (66 books) ----
+  const BOOK_NAMES = [
+    "Genesis",
+    "Exodus",
+    "Leviticus",
+    "Numbers",
+    "Deuteronomy",
+    "Joshua",
+    "Judges",
+    "Ruth",
+    "1 Samuel",
+    "2 Samuel",
+    "1 Kings",
+    "2 Kings",
+    "1 Chronicles",
+    "2 Chronicles",
+    "Ezra",
+    "Nehemiah",
+    "Esther",
+    "Job",
+    "Psalms",
+    "Proverbs",
+    "Ecclesiastes",
+    "Song of Solomon",
+    "Isaiah",
+    "Jeremiah",
+    "Lamentations",
+    "Ezekiel",
+    "Daniel",
+    "Hosea",
+    "Joel",
+    "Amos",
+    "Obadiah",
+    "Jonah",
+    "Micah",
+    "Nahum",
+    "Habakkuk",
+    "Zephaniah",
+    "Haggai",
+    "Zechariah",
+    "Malachi",
+    "Matthew",
+    "Mark",
+    "Luke",
+    "John",
+    "Acts",
+    "Romans",
+    "1 Corinthians",
+    "2 Corinthians",
+    "Galatians",
+    "Ephesians",
+    "Philippians",
+    "Colossians",
+    "1 Thessalonians",
+    "2 Thessalonians",
+    "1 Timothy",
+    "2 Timothy",
+    "Titus",
+    "Philemon",
+    "Hebrews",
+    "James",
+    "1 Peter",
+    "2 Peter",
+    "1 John",
+    "2 John",
+    "3 John",
+    "Jude",
+    "Revelation",
+  ];
+
+  // ---- Chapter counts per book ----
+  const BOOK_CHAPTER_COUNTS = {
+    Genesis: 50,
+    Exodus: 40,
+    Leviticus: 27,
+    Numbers: 36,
+    Deuteronomy: 34,
+    Joshua: 24,
+    Judges: 21,
+    Ruth: 4,
+    "1 Samuel": 31,
+    "2 Samuel": 24,
+    "1 Kings": 22,
+    "2 Kings": 25,
+    "1 Chronicles": 29,
+    "2 Chronicles": 36,
+    Ezra: 10,
+    Nehemiah: 13,
+    Esther: 10,
+    Job: 42,
+    Psalms: 150,
+    Proverbs: 31,
+    Ecclesiastes: 12,
+    "Song of Solomon": 8,
+    Isaiah: 66,
+    Jeremiah: 52,
+    Lamentations: 5,
+    Ezekiel: 48,
+    Daniel: 12,
+    Hosea: 14,
+    Joel: 3,
+    Amos: 9,
+    Obadiah: 1,
+    Jonah: 4,
+    Micah: 7,
+    Nahum: 3,
+    Habakkuk: 3,
+    Zephaniah: 3,
+    Haggai: 2,
+    Zechariah: 14,
+    Malachi: 4,
+    Matthew: 28,
+    Mark: 16,
+    Luke: 24,
+    John: 21,
+    Acts: 28,
+    Romans: 16,
+    "1 Corinthians": 16,
+    "2 Corinthians": 13,
+    Galatians: 6,
+    Ephesians: 6,
+    Philippians: 4,
+    Colossians: 4,
+    "1 Thessalonians": 5,
+    "2 Thessalonians": 3,
+    "1 Timothy": 6,
+    "2 Timothy": 4,
+    Titus: 3,
+    Philemon: 1,
+    Hebrews: 13,
+    James: 5,
+    "1 Peter": 5,
+    "2 Peter": 3,
+    "1 John": 5,
+    "2 John": 1,
+    "3 John": 1,
+    Jude: 1,
+    Revelation: 22,
+  };
+
+  function getMaxChapterForBook(bookName) {
+    return BOOK_CHAPTER_COUNTS[bookName] || 150;
+  }
+
+  // ---- Prev/Next chapter arrows (Scripture mode) ----
+  const prevArrow = document.createElement("button");
+  prevArrow.type = "button";
+  prevArrow.id = "bible-query-prev-chapter";
+  prevArrow.className = "bible-query-arrow bible-query-arrow-prev";
+  prevArrow.innerHTML =
+    '<span class="material-symbols-outlined">chevron_left</span>';
+
+  const nextArrow = document.createElement("button");
+  nextArrow.type = "button";
+  nextArrow.id = "bible-query-next-chapter";
+  nextArrow.className = "bible-query-arrow bible-query-arrow-next";
+  nextArrow.innerHTML =
+    '<span class="material-symbols-outlined">chevron_right</span>';
+
+  // Place arrows at the edges of the pill
+  // [prev] [icon + book + chapter] [next]
+  referencePill.insertBefore(prevArrow, referencePill.firstChild);
+  referencePill.appendChild(nextArrow);
+
+  function getCurrentBookChapter() {
+    const book = (bookLabel.textContent || "").trim();
+    let chapter = parseInt((chapterLabel.textContent || "").trim(), 10) || 1;
+
+    const maxForBook = getMaxChapterForBook(book);
+    if (chapter < 1) chapter = 1;
+    if (chapter > maxForBook) chapter = maxForBook;
+
+    return { book, chapter };
+  }
+
+  function updateArrowVisibility() {
+    const { book, chapter } = getCurrentBookChapter();
+    if (!prevArrow || !nextArrow) return;
+
+    // Default: show both arrows
+    prevArrow.style.display = "inline-flex";
+    nextArrow.style.display = "inline-flex";
+
+    // Genesis 1: only right arrow
+    if (book === "Genesis" && chapter === 1) {
+      prevArrow.style.display = "none";
+      nextArrow.style.display = "inline-flex";
+      return;
+    }
+
+    // Revelation 22: only left arrow
+    const lastBook = "Revelation";
+    const lastChapter = getMaxChapterForBook(lastBook);
+    if (book === lastBook && chapter === lastChapter) {
+      prevArrow.style.display = "inline-flex";
+      nextArrow.style.display = "none";
+      return;
+    }
+  }
+
+  function goToPrevChapter() {
+    const { book, chapter } = getCurrentBookChapter();
+    const idx = BOOK_NAMES.indexOf(book);
+    if (idx === -1) return;
+
+    // No previous from Genesis 1
+    if (book === "Genesis" && chapter === 1) {
+      return;
+    }
+
+    let newBook = book;
+    let newChapter = chapter;
+
+    if (chapter > 1) {
+      // Previous chapter in same book
+      newChapter = chapter - 1;
+    } else {
+      // Chapter 1 → last chapter of previous book
+      if (idx > 0) {
+        newBook = BOOK_NAMES[idx - 1];
+        newChapter = getMaxChapterForBook(newBook);
+      }
+    }
+
+    bookLabel.textContent = newBook;
+    chapterLabel.textContent = String(newChapter);
+    updateArrowVisibility();
+    // Auto-submit & reload reader
+    syncSearchField(true);
+  }
+
+  function goToNextChapter() {
+    const { book, chapter } = getCurrentBookChapter();
+    const idx = BOOK_NAMES.indexOf(book);
+    if (idx === -1) return;
+
+    const maxChapter = getMaxChapterForBook(book);
+
+    // No next from Revelation 22
+    if (book === "Revelation" && chapter === maxChapter) {
+      return;
+    }
+
+    let newBook = book;
+    let newChapter = chapter;
+
+    if (chapter < maxChapter) {
+      // Next chapter in same book
+      newChapter = chapter + 1;
+    } else {
+      // Last chapter of this book → chapter 1 of next book
+      if (idx < BOOK_NAMES.length - 1) {
+        newBook = BOOK_NAMES[idx + 1];
+        newChapter = 1;
+      }
+    }
+
+    bookLabel.textContent = newBook;
+    chapterLabel.textContent = String(newChapter);
+    updateArrowVisibility();
+    // Auto-submit & reload reader
+    syncSearchField(true);
+  }
+
+  prevArrow.addEventListener("click", (e) => {
+    e.stopPropagation();
+    goToPrevChapter();
+  });
+
+  nextArrow.addEventListener("click", (e) => {
+    e.stopPropagation();
+    goToNextChapter();
+  });
+
+  // Initial state (Genesis 1 = only right arrow)
+  updateArrowVisibility();
+
+  // ---- Create dropdown DOM nodes (book + chapter) ----
+  const bookDropdown = document.createElement("div");
+  bookDropdown.id = "bible-query-book-dropdown";
+  bookDropdown.className = "bible-query-dropdown";
+  bookDropdown.setAttribute("data-open", "false");
+
+  const chapterDropdown = document.createElement("div");
+  chapterDropdown.id = "bible-query-chapter-dropdown";
+  chapterDropdown.className = "bible-query-dropdown";
+  chapterDropdown.setAttribute("data-open", "false");
+
+  document.body.appendChild(bookDropdown);
+  document.body.appendChild(chapterDropdown);
+
+  // ---- Position dropdown under the reference pill ----
+  function positionDropdown(dropdownEl) {
+    const rect = referencePill.getBoundingClientRect();
+    dropdownEl.style.position = "fixed";
+    dropdownEl.style.left = rect.left + "px";
+    dropdownEl.style.bottom = 80 + "px";
+    dropdownEl.style.minWidth = rect.width + "px";
+  }
+
+  function openDropdown(dropdownEl, type) {
+    closeAllDropdowns();
+    positionDropdown(dropdownEl);
+    dropdownEl.setAttribute("data-open", "true");
+    dropdownEl.dataset.dropdownType = type; // 'book' or 'chapter'
+    referencePill.classList.add("open");
+  }
+
+  function closeDropdown(dropdownEl) {
+    dropdownEl.setAttribute("data-open", "false");
+    dropdownEl.dataset.dropdownType = "";
+  }
+
+  function closeAllDropdowns() {
+    closeDropdown(bookDropdown);
+    closeDropdown(chapterDropdown);
+    referencePill.classList.remove("open");
+  }
+
+  // ---- Reader rendering (copies from existing verse search results) ----
+  function renderReaderFromVerseResults() {
+    if (!reader || !readerHeader || !readerContent || !verseResultContainer)
+      return;
+
+    const book = (lastRequestedBook || bookLabel.textContent || "").trim();
+    const chapter = (
+      lastRequestedChapter ||
+      chapterLabel.textContent ||
+      ""
+    ).trim();
+
+    const versionTextEl = document.getElementById("bible-query-version-text");
+    const versionSelect = document.getElementById("version-select");
+
+    const version =
+      (versionTextEl && versionTextEl.textContent.trim()) ||
+      (versionSelect &&
+        (versionSelect.value ||
+          (versionSelect.selectedOptions &&
+            versionSelect.selectedOptions[0] &&
+            versionSelect.selectedOptions[0].textContent.trim()))) ||
+      "";
+
+    // 🔹 Reset header content
+    readerHeader.innerHTML = "";
+
+    const bookChapter = document.createElement("div");
+    bookChapter.id = "book-chapter-text-element";
+    bookChapter.textContent = `${book} ${chapter}`;
+
+    const versionText = document.createElement("div");
+    versionText.id = "version-text-element";
+    versionText.textContent = version;
+
+    readerHeader.appendChild(bookChapter);
+    readerHeader.appendChild(versionText);
+
+    // 🔹 Copy verses from the hidden search drawer
+    readerContent.innerHTML = verseResultContainer.innerHTML;
+
+    // 🔝 Always scroll to top when content changes
+    readerContent.scrollTop = 0;
+    reader.scrollTop = 0;
+
+    // 🔹 Make it visible & animate in
+    reader.style.display = "flex";
+
+    // Start from "closed" pose so the transition plays
+    reader.style.opacity = "0";
+    reader.style.top = "12px";
+
+    // Next frame, animate to open pose
+    requestAnimationFrame(() => {
+      reader.style.opacity = "1";
+      reader.style.top = "0px";
+    });
+  }
+
+  // Watch the verse results container for changes after we trigger search
+  if (verseResultContainer && readerContent) {
+    const observer = new MutationObserver(() => {
+      // Only react if this change came from our book/chapter selection
+      if (!pendingSyncAfterSearch) return;
+
+      // ✅ Wait until actual chapter content has been rendered
+      const hasVerses = !!verseResultContainer.querySelector(
+        ".verse-list-container"
+      );
+      if (!hasVerses) {
+        // This is probably just the "clear" / loader stage — ignore
+        return;
+      }
+
+      pendingSyncAfterSearch = false;
+      renderReaderFromVerseResults();
+    });
+
+    observer.observe(verseResultContainer, {
+      childList: true,
+      subtree: true, // watch deeper changes as verses are appended
+    });
+  }
+
+  // ---- Render options for BOOKS ----
+  function renderBookOptions() {
+    bookDropdown.innerHTML = "";
+    const currentBook = (bookLabel.textContent || "").trim();
+
+    BOOK_NAMES.forEach((name) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "bible-query-dropdown-item";
+      btn.textContent = name;
+
+      if (name === currentBook) {
+        btn.classList.add("selected");
+      }
+
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        // 1) Select book
+        selectBook(name);
+        // 2) Immediately open chapters for that book
+        renderChapterOptions();
+        openDropdown(chapterDropdown, "chapter");
+      });
+
+      bookDropdown.appendChild(btn);
+    });
+  }
+
+  // ---- Render options for CHAPTERS (based on current book) ----
+  function renderChapterOptions() {
+    chapterDropdown.innerHTML = "";
+    const currentBook = (bookLabel.textContent || "").trim();
+    const maxChapter = getMaxChapterForBook(currentBook);
+    const currentChapter =
+      parseInt((chapterLabel.textContent || "").trim(), 10) || 1;
+
+    for (let ch = 1; ch <= maxChapter; ch++) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "bible-query-dropdown-item";
+      btn.textContent = String(ch);
+
+      if (ch === currentChapter) {
+        btn.classList.add("selected");
+      }
+
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        selectChapter(ch);
+        closeAllDropdowns();
+      });
+
+      chapterDropdown.appendChild(btn);
+    }
+  }
+
+  // ---- Sync book/chapter into hidden search input & trigger search ----
+  function syncSearchField(autoSubmit = false) {
+    if (!searchInput) return;
+
+    const book = (bookLabel.textContent || "").trim();
+    const chapter = (chapterLabel.textContent || "").trim();
+    if (!book || !chapter) return;
+
+    searchInput.value = `${book} ${chapter}`;
+
+    if (autoSubmit && searchForm) {
+      lastRequestedBook = book;
+      lastRequestedChapter = chapter;
+      pendingSyncAfterSearch = true;
+
+      // If you have a search drawer function, open it so the verses load
+      if (typeof window.openSearchModal === "function") {
+        window.openSearchModal();
+      }
+
+      if (typeof searchForm.requestSubmit === "function") {
+        searchForm.requestSubmit();
+      } else {
+        const ev = new Event("submit", { bubbles: true, cancelable: true });
+        searchForm.dispatchEvent(ev);
+      }
+    }
+  }
+
+  // Expose a helper so other parts (like Scripture mode) can trigger this
+  window.__bbSyncScriptureNow = function (autoSubmit = true) {
+    syncSearchField(autoSubmit);
+  };
+
+  // ---- Selection handlers ----
+  function selectBook(name) {
+    bookLabel.textContent = name;
+
+    const maxChapter = getMaxChapterForBook(name);
+    let currentChapter =
+      parseInt((chapterLabel.textContent || "").trim(), 10) || 1;
+    if (currentChapter > maxChapter) {
+      currentChapter = maxChapter;
+      chapterLabel.textContent = String(currentChapter);
+    }
+
+    updateArrowVisibility(); // NEW
+    // Just change the text + hidden query, do NOT auto-submit yet
+    syncSearchField(false);
+  }
+
+  function selectChapter(ch) {
+    chapterLabel.textContent = String(ch);
+    updateArrowVisibility(); // NEW
+    // 👇 This auto-submits and triggers the reader update
+    syncSearchField(true);
+  }
+
+  function selectChapter(ch) {
+    chapterLabel.textContent = String(ch);
+    // 👇 This auto-submits and triggers the reader update
+    syncSearchField(true);
+  }
+
+  // ---- Click behavior ----
+
+  // Click on the whole reference pill opens BOOK selection
+  referencePill.addEventListener("click", (e) => {
+    e.stopPropagation();
+    renderBookOptions();
+    openDropdown(bookDropdown, "book");
+  });
+
+  // Clicking on the book label also opens the book list
+  bookLabel.addEventListener("click", (e) => {
+    e.stopPropagation();
+    renderBookOptions();
+    openDropdown(bookDropdown, "book");
+  });
+
+  // Clicking on the chapter label jumps straight to the chapter list
+  chapterLabel.addEventListener("click", (e) => {
+    e.stopPropagation();
+    renderChapterOptions();
+    openDropdown(chapterDropdown, "chapter");
+  });
+
+  // Close all dropdowns when clicking outside
+  document.addEventListener("click", (e) => {
+    const isOpenBook = bookDropdown.getAttribute("data-open") === "true";
+    const isOpenChapter = chapterDropdown.getAttribute("data-open") === "true";
+
+    if (!isOpenBook && !isOpenChapter) return;
+
+    if (
+      !bookDropdown.contains(e.target) &&
+      !chapterDropdown.contains(e.target) &&
+      !referencePill.contains(e.target)
+    ) {
+      closeAllDropdowns();
+    }
+  });
+
+  // Initial: clamp chapter to the valid range for the initial book
+  const initialBook =
+    (bookLabel.textContent || "").trim() || BOOK_NAMES[0] || "Genesis";
+  selectBook(initialBook);
+}
+
+/**
+ * Custom dropdown for Bible versions that stays in sync
+ * with the hidden <select id="version-select"> element.
+ * This avoids the native <select> styling and works on
+ * both desktop and mobile.
+ */
+function initBibleQueryVersionDropdown() {
+  const versionButton = document.getElementById("bible-query-version");
+  const versionText = document.getElementById("bible-query-version-text");
+  const nativeSelect = document.getElementById("version-select");
+
+  if (!versionButton || !versionText || !nativeSelect) {
+    return; // Not on this page or markup missing
+  }
+
+  // Hide the native select but keep it in the DOM so
+  // existing logic that reads #version-select still works.
+  nativeSelect.style.display = "none";
+
+  const dropdown = document.createElement("div");
+  dropdown.id = "bible-query-version-dropdown";
+  dropdown.className = "bible-query-dropdown";
+  dropdown.setAttribute("data-open", "false");
+
+  Array.from(nativeSelect.options).forEach((opt) => {
+    const item = document.createElement("button");
+    item.type = "button";
+    item.className = "bible-query-dropdown-item";
+    item.textContent = opt.textContent.trim();
+    item.dataset.value = opt.value || opt.textContent.trim();
+
+    if (opt.selected || nativeSelect.value === item.dataset.value) {
+      item.classList.add("selected");
+    }
+
+    item.addEventListener("click", (e) => {
+      e.stopPropagation();
+
+      const value = item.dataset.value;
+      const label = item.textContent;
+
+      // Update the visible label
+      versionText.textContent = label;
+
+      // Keep the hidden native select in sync
+      nativeSelect.value = value;
+
+      // Update selected state UI
+      dropdown.querySelectorAll(".bible-query-dropdown-item").forEach((btn) => {
+        btn.classList.toggle("selected", btn === item);
+      });
+
+      // Fire a change event so any existing listeners react.
+      nativeSelect.dispatchEvent(new Event("change", { bubbles: true }));
+
+      closeDropdown();
+    });
+
+    dropdown.appendChild(item);
+  });
+
+  document.body.appendChild(dropdown);
+
+  function openDropdown() {
+    const rect = versionButton.getBoundingClientRect();
+    dropdown.style.position = "fixed";
+    dropdown.style.left = rect.left + "px";
+    dropdown.style.bottom = 80 + "px";
+    dropdown.style.minWidth = rect.width + "px";
+    dropdown.setAttribute("data-open", "true");
+    versionButton.classList.add("open");
+  }
+
+  function closeDropdown() {
+    dropdown.setAttribute("data-open", "false");
+    versionButton.classList.remove("open");
+  }
+
+  versionButton.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const isOpen = dropdown.getAttribute("data-open") === "true";
+    if (isOpen) {
+      closeDropdown();
+    } else {
+      openDropdown();
+    }
+  });
+
+  // Close when clicking outside
+  document.addEventListener("click", (e) => {
+    if (dropdown.getAttribute("data-open") !== "true") return;
+    if (!dropdown.contains(e.target) && !versionButton.contains(e.target)) {
+      closeDropdown();
+    }
+  });
+
+  // Ensure the label matches the current select value on load
+  if (!versionText.textContent.trim()) {
+    const selected =
+      nativeSelect.value || nativeSelect.options[0]?.textContent.trim();
+    if (selected) {
+      versionText.textContent = selected;
+    }
+  }
 }

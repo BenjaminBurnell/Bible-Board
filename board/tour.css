@@ -45,6 +45,7 @@ body.light {
   position: fixed;
   inset: 0;
   z-index: var(--bb-tour-z-index); /* Shields go under tooltip */
+  display:none !important;
   pointer-events: none; /* Correct: Container is passthrough */
 }
 
