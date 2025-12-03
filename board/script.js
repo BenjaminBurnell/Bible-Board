@@ -1614,7 +1614,8 @@ function updateConnectionLineMenuPosition() {
     return;
   }
 
-  const menuWidth = (connectionLineMenuEl.offsetWidth - 400) || 0;
+  // Use the real width/height of the menu
+  const menuWidth = connectionLineMenuEl.offsetWidth || 0;
   const menuHeight = connectionLineMenuEl.offsetHeight || 0;
 
   // Use the stored anchor if we have one, else default to middle-right
@@ -1642,8 +1643,21 @@ function updateConnectionLineMenuPosition() {
     x = anchorX - menuWidth - 8;
   }
 
-  // Clamp to viewport
-  if (x < 8) x = 8;
+  // --- NEW: keep it to the right of the action buttons ---
+  let minX = 8;
+  const actions = document.getElementById("action-buttons-container");
+  if (actions) {
+    const actionRect = actions.getBoundingClientRect();
+    // right edge of the left toolbar + a small gap
+    minX = Math.max(minX, actionRect.right + 12);
+  }
+
+  const maxX = vw - menuWidth - 8;
+
+  if (x < minX) x = minX;
+  if (x > maxX) x = maxX;
+
+  // Clamp vertically so it stays on-screen
   if (y < 8) y = 8;
   if (y + menuHeight > vh - 8) {
     y = vh - menuHeight - 8;

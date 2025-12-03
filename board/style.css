@@ -819,7 +819,7 @@ body:not(.light) #sun-icon {
 }
 
 .search-query-verse-container {
-  width:calc(100% - 50px);
+  width:calc(100% - 20px);
   border-radius: 20px;
   color: var(--fg);
   /* border: 1px solid var(--border);
@@ -832,6 +832,12 @@ body:not(.light) #sun-icon {
   justify-content:center;
   /* align-items:center; */
   flex-direction: column;
+}
+
+@media (max-width:900px) {
+  .search-query-verse-container {  
+    width:calc(100% - 42.5px);
+  }
 }
 
 /* Hide skeleton rows while still loading/pending */
@@ -3234,6 +3240,10 @@ body.scripture-mode-on #scripture-mode-toggle {
   line-height: 1.4;
   font-weight: 900;
   max-height: 6rem;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;      /* number of lines */
+  -webkit-box-orient: vertical;
   overflow: hidden;
 }
 
