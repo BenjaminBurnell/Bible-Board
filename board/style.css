@@ -819,6 +819,7 @@ body:not(.light) #sun-icon {
 }
 
 .search-query-verse-container {
+  width:calc(100% - 50px);
   border-radius: 20px;
   color: var(--fg);
   /* border: 1px solid var(--border);
@@ -2641,7 +2642,7 @@ body.grouping-mode .board-item {
 }
 
 .crossref-main {
-  max-width: 75%;
+  max-width: calc(100% - 35px);
   display: flex;
   flex-direction: column;
 }
@@ -3267,8 +3268,8 @@ body.scripture-mode-on #scripture-mode-toggle {
 
 .verse-study-close {
   position: absolute;
-  top: 14px;
-  right: 14px;
+  top: 25px;
+  right: 25px;
   border: 1px solid var(--border);
   background: var(--bg-dots);
   color: var(--muted);
@@ -3401,7 +3402,7 @@ body.scripture-mode-on #scripture-mode-toggle {
     height:50px;
     background:linear-gradient(to top, var(--bg-transparent), var(--bg));
     position:absolute;
-    bottom:calc(100vh - 335px);
+    top:284px;
     left:0px;
   }
 
