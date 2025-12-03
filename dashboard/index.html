@@ -424,7 +424,15 @@
 
   <!-- NEW: Scripture Mode toggle button -->
   <button id="scripture-mode-toggle" class="scripture-mode-toggle">
-    Scripture mode
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-book">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+      <path d="M3 19a9 9 0 0 1 9 0a9 9 0 0 1 9 0"></path>
+      <path d="M3 6a9 9 0 0 1 9 0a9 9 0 0 1 9 0"></path>
+      <path d="M3 6l0 13"></path>
+      <path d="M12 6l0 13"></path>
+      <path d="M21 6l0 13"></path>
+    </svg>
+    Open Scripture
   </button>
 
   <div id="bible-query-container">
@@ -530,8 +538,8 @@
           type="button"
           id="verse-study-open-crossref"
           class="verse-study-action-btn"
-          style="display: none;"
         >
+          <!-- style="display: none;" -->
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-affiliate">
             <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
             <path d="M5.931 6.936l1.275 4.249m5.607 5.609l4.251 1.275"/>
@@ -568,7 +576,7 @@
       <option>NLT</option>
       <!-- <option>NIV</option> -->
       <option>KJV</option>
-      <option>ESV</option>
+      <!-- <option>ESV</option> -->
       <option>ASV</option>
         <!-- <option>SBLG</option> -->
     </select>

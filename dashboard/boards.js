@@ -31,6 +31,33 @@ let openBoardContextItem = null;
 // ✅ NEW: tracks whether we've finished a Pro check
 let hasProCheckCompleted = false;
 
+// Local overrides for board titles to work around storage caching
+let boardTitleOverrides = {};
+
+function loadBoardTitleOverrides() {
+  try {
+    const raw = localStorage.getItem("bb-board-title-overrides");
+    boardTitleOverrides = raw ? JSON.parse(raw) : {};
+  } catch (err) {
+    console.warn("[Boards][overrides] Failed to load overrides", err);
+    boardTitleOverrides = {};
+  }
+}
+
+function saveBoardTitleOverrides() {
+  try {
+    localStorage.setItem(
+      "bb-board-title-overrides",
+      JSON.stringify(boardTitleOverrides)
+    );
+  } catch (err) {
+    console.warn("[Boards][overrides] Failed to save overrides", err);
+  }
+}
+
+// Call this once at startup
+loadBoardTitleOverrides();
+
 // --- ASYNCHRONOUS PRO STATUS CHECK ---
 // Returns true if the current user is Pro (RevenueCat / SubscriptionService)
 async function isProUser() {
@@ -290,13 +317,356 @@ window.closeModal = function () {
 };
 
 // --- RENAME LOGIC ---
+
+// Generic helper that actually updates the JSON in storage
+async function renameBoard(board, newTitle) {
+  if (!board || !newTitle) return;
+
+  const { id, path } = board;
+
+  // Download current JSON
+  const { data: blob, error: downloadError } = await sb.storage
+    .from(BUCKET)
+    .download(path);
+  if (downloadError) throw downloadError;
+
+  const text = await blob.text();
+  const json = JSON.parse(text);
+
+  json.title = newTitle;
+  json.updatedAt = new Date().toISOString();
+
+  const newBlob = new Blob([JSON.stringify(json, null, 2)], {
+    type: "application/json",
+  });
+
+  const { error: updateError } = await sb.storage
+    .from(BUCKET)
+    .update(path, newBlob, {
+      contentType: "application/json",
+      cacheControl: "0",
+      upsert: true,
+    });
+
+  if (updateError) throw updateError;
+
+  // Re-render sidebar with new title
+  await loadBoards();
+
+  // If this board is currently open in the viewer, update the title textbox
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("board") === id) {
+    const titleBox = document.getElementById("title-textbox");
+    if (titleBox) titleBox.value = newTitle;
+  }
+}
+
+// --- Shared rename helper used by modal + inline rename ---
+async function renameBoardOnStorage(board, newTitle) {
+  if (!board || !newTitle) return;
+
+  const { id, path } = board;
+
+  const { data: blob, error: downloadError } = await sb.storage
+    .from(BUCKET)
+    .download(path);
+  if (downloadError) throw downloadError;
+
+  const text = await blob.text();
+  const json = JSON.parse(text);
+
+  json.title = newTitle;
+  json.updatedAt = new Date().toISOString();
+
+  const newBlob = new Blob([JSON.stringify(json, null, 2)], {
+    type: "application/json",
+  });
+
+  const { error: updateError } = await sb.storage
+    .from(BUCKET)
+    .update(path, newBlob, {
+      contentType: "application/json",
+      cacheControl: "0",
+      upsert: true,
+    });
+
+  if (updateError) throw updateError;
+
+  // Re-render sidebar
+  await loadBoards();
+
+  // If this board is open in the main viewer, update that title too
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("board") === id) {
+    const titleBox = document.getElementById("title-textbox");
+    if (titleBox) titleBox.value = newTitle;
+  }
+}
+
+
+// --- Shared helper for renaming a board ---
+async function saveBoardTitle(board, newTitle) {
+  if (!board || !newTitle) return;
+
+  const { id, path } = board;
+  console.log("[Boards] Saving new title", { id, path, newTitle });
+
+  const { data: blob, error: downloadError } = await sb.storage
+    .from(BUCKET)
+    .download(path);
+
+  if (downloadError) {
+    console.error("[Boards] download error during rename:", downloadError);
+    throw downloadError;
+  }
+
+  const text = await blob.text();
+  let json;
+  try {
+    json = JSON.parse(text);
+  } catch (parseErr) {
+    console.error("[Boards] JSON parse error during rename:", parseErr);
+    throw parseErr;
+  }
+
+  json.title = newTitle;
+  json.updatedAt = new Date().toISOString();
+
+  const newBlob = new Blob([JSON.stringify(json, null, 2)], {
+    type: "application/json",
+  });
+
+  const { error: updateError } = await sb.storage
+    .from(BUCKET)
+    .update(path, newBlob, {
+      contentType: "application/json",
+      cacheControl: "0",
+      upsert: true,
+    });
+
+  if (updateError) {
+    console.error("[Boards] update error during rename:", updateError);
+    throw updateError;
+  }
+
+  console.log("[Boards] Title saved OK for", id);
+
+  // Always reload sidebar from storage so we see the actual saved value
+  await loadBoards();
+
+  // If this board is open in the main view, update that title box too
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("board") === id) {
+    const titleBox = document.getElementById("title-textbox");
+    if (titleBox) titleBox.value = newTitle;
+  }
+}
+
+// --- Canonical helper: rename a board in storage + update local UI ---
+// Canonical + DEBUGGY helper: rename a board in storage
+// and update the in-memory list + sidebar.
+async function renameBoardAndUpdateUI(boardId, newTitle) {
+  if (!boardId || !newTitle) {
+    console.warn("[Boards][rename] missing boardId/newTitle", {
+      boardId,
+      newTitle,
+    });
+    return;
+  }
+
+  // Find the board in our current in-memory list
+  const idx = loadedBoards.findIndex((b) => b.id === boardId);
+  if (idx === -1) {
+    console.warn(
+      "[Boards][rename] board not found in loadedBoards",
+      boardId,
+      loadedBoards.map((b) => ({ id: b.id, title: b.title }))
+    );
+    return;
+  }
+
+  const board = loadedBoards[idx];
+  const path = board.path;
+
+  console.log("[Boards][rename] START", {
+    boardId,
+    path,
+    oldTitle: board.title,
+    newTitle,
+  });
+
+  try {
+    // 1) Download existing JSON
+    const { data: blob, error: downloadError } = await sb.storage
+      .from(BUCKET)
+      .download(path);
+
+    if (downloadError) {
+      console.error(
+        "[Boards][rename] download error before rename",
+        downloadError
+      );
+      throw downloadError;
+    }
+
+    const text = await blob.text();
+    let json;
+    try {
+      json = JSON.parse(text);
+    } catch (parseErr) {
+      console.error("[Boards][rename] JSON parse error before rename", {
+        parseErr,
+        textSnippet: text.slice(0, 200),
+      });
+      throw parseErr;
+    }
+
+    console.log("[Boards][rename] JSON BEFORE", {
+      jsonTitle: json.title,
+      jsonUpdatedAt: json.updatedAt,
+    });
+
+    // 2) Mutate JSON
+    const nowIso = new Date().toISOString();
+    json.title = newTitle;
+    json.updatedAt = nowIso;
+
+    const serialized = JSON.stringify(json, null, 2);
+    console.log("[Boards][rename] JSON AFTER (about to save)", {
+      jsonTitle: json.title,
+      length: serialized.length,
+    });
+
+    // 3) Save back to Supabase
+    const newBlob = new Blob([serialized], {
+      type: "application/json",
+    });
+
+    const { error: updateError } = await sb.storage
+      .from(BUCKET)
+      .update(path, newBlob, {
+        contentType: "application/json",
+        cacheControl: "0",
+        upsert: true,
+      });
+
+    if (updateError) {
+      console.error("[Boards][rename] UPDATE error", updateError);
+      throw updateError;
+    }
+
+    console.log("[Boards][rename] UPDATE OK, verifying from storage…");
+
+    // 4) Immediately re-download to see what’s *actually* stored
+    try {
+      const { data: verifyBlob, error: verifyError } = await sb.storage
+        .from(BUCKET)
+        .download(path);
+
+      if (verifyError) {
+        console.error("[Boards][rename] VERIFY download error", verifyError);
+      } else {
+        const verifyText = await verifyBlob.text();
+        const verifyJson = JSON.parse(verifyText);
+        console.log("[Boards][rename] VERIFY JSON FROM STORAGE", {
+          jsonTitle: verifyJson.title,
+          jsonUpdatedAt: verifyJson.updatedAt,
+        });
+      }
+    } catch (verifyThrow) {
+      console.error("[Boards][rename] VERIFY step threw", verifyThrow);
+    }
+
+    // 5) Update in-memory list
+    loadedBoards[idx] = {
+      ...board,
+      title: newTitle,
+      updatedAt: nowIso,
+    };
+
+    // 5.5) Store a local override so we don't trust stale cached JSON on reload
+    boardTitleOverrides[boardId] = {
+      title: newTitle,
+      updatedAt: nowIso,
+      stampedAt: Date.now(),
+    };
+
+    saveBoardTitleOverrides();
+
+    console.log("[Boards][rename] override stored", {
+      boardId,
+      override: boardTitleOverrides[boardId],
+    });
+
+
+    // Keep the same sort as loadBoards()
+    loadedBoards.sort(
+      (a, b) =>
+        new Date(b.updatedAt || b.createdAt) -
+        new Date(a.updatedAt || a.createdAt)
+    );
+
+    console.log(
+      "[Boards][rename] loadedBoards AFTER local update",
+      loadedBoards.map((b) => ({
+        id: b.id,
+        title: b.title,
+        updatedAt: b.updatedAt,
+      }))
+    );
+
+    // 6) Re-render sidebar from updated in-memory state
+    renderSidebarBoards(loadedBoards);
+
+    // 7) If this board is open in the main editor, update textbox too
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("board") === boardId) {
+      const titleBox = document.getElementById("title-textbox");
+      if (titleBox) titleBox.value = newTitle;
+    }
+
+    console.log("[Boards][rename] DONE for", boardId);
+  } catch (err) {
+    console.error("[Boards][rename] FAILED", err);
+    throw err;
+  }
+}
+
+
+
+
+
+// Existing modal-based rename now just calls renameBoard()
+// --- RENAME LOGIC (with debug) ---
 async function handleRename() {
-  if (!currentModalBoard) return;
+  if (!currentModalBoard) {
+    console.warn("[Boards][rename] called with no currentModalBoard");
+    return;
+  }
+
   const modalTitleInput = document.getElementById("modal-title-input");
   const modalSaveBtn = document.getElementById("modal-save-btn");
 
   const newTitle = modalTitleInput.value.trim();
-  if (!newTitle) return;
+  const { id, path, title: oldTitle } = currentModalBoard;
+
+  console.log("[Boards][rename] start", {
+    id,
+    path,
+    oldTitle,
+    newTitle,
+  });
+
+  if (!newTitle) {
+    console.warn("[Boards][rename] empty newTitle, aborting");
+    return;
+  }
+
+  if (newTitle === oldTitle) {
+    console.log("[Boards][rename] title unchanged, closing modal");
+    window.closeModal();
+    return;
+  }
 
   if (modalSaveBtn) {
     modalSaveBtn.textContent = "Saving...";
@@ -304,28 +674,86 @@ async function handleRename() {
   }
 
   try {
-    const { id, path } = currentModalBoard;
+    // 1️⃣ Download existing JSON
+    const { data: blob, error: downloadError } = await sb.storage
+      .from(BUCKET)
+      .download(path);
 
-    const { data: blob } = await sb.storage.from(BUCKET).download(path);
+    if (downloadError) {
+      console.error("[Boards][rename] download error", downloadError);
+      throw downloadError;
+    }
+
     const text = await blob.text();
-    const json = JSON.parse(text);
+    let json;
+    try {
+      json = JSON.parse(text);
+    } catch (parseErr) {
+      console.error("[Boards][rename] JSON parse error", parseErr);
+      throw parseErr;
+    }
 
+    console.log("[Boards][rename] JSON before change", {
+      jsonTitle: json.title,
+      jsonUpdatedAt: json.updatedAt,
+    });
+
+    // 2️⃣ Mutate JSON
     json.title = newTitle;
     json.updatedAt = new Date().toISOString();
 
-    const newBlob = new Blob([JSON.stringify(json, null, 2)], {
+    const serialized = JSON.stringify(json, null, 2);
+    console.log("[Boards][rename] JSON after change (about to save)", {
+      jsonTitle: json.title,
+      length: serialized.length,
+    });
+
+    // 3️⃣ Save back to Supabase
+    const newBlob = new Blob([serialized], {
       type: "application/json",
     });
-    const { error } = await sb.storage.from(BUCKET).update(path, newBlob, {
-      contentType: "application/json",
-      cacheControl: "0",
-      upsert: true,
-    });
 
-    if (error) throw error;
+    const { error: updateError } = await sb.storage
+      .from(BUCKET)
+      .update(path, newBlob, {
+        contentType: "application/json",
+        cacheControl: "0",
+        upsert: true,
+      });
 
+    if (updateError) {
+      console.error("[Boards][rename] update error", updateError);
+      throw updateError;
+    }
+
+    console.log(
+      "[Boards][rename] Supabase update OK, calling loadBoards() next"
+    );
+
+    // 4️⃣ Reload list from server (this is what might be racing)
     await loadBoards();
 
+    // 5️⃣ Immediately re-download the JSON to see what's actually stored
+    try {
+      const { data: verifyBlob, error: verifyError } = await sb.storage
+        .from(BUCKET)
+        .download(path);
+
+      if (verifyError) {
+        console.error("[Boards][rename] verify download error", verifyError);
+      } else {
+        const verifyText = await verifyBlob.text();
+        const verifyJson = JSON.parse(verifyText);
+        console.log("[Boards][rename] verify JSON after save", {
+          jsonTitle: verifyJson.title,
+          jsonUpdatedAt: verifyJson.updatedAt,
+        });
+      }
+    } catch (verifyErr) {
+      console.error("[Boards][rename] verify step threw", verifyErr);
+    }
+
+    // 6️⃣ If this board is open, update the main title box
     const params = new URLSearchParams(window.location.search);
     if (params.get("board") === id) {
       const titleBox = document.getElementById("title-textbox");
@@ -334,8 +762,8 @@ async function handleRename() {
 
     window.closeModal();
   } catch (err) {
-    console.error("Rename failed:", err);
-    alert("Failed to rename board: " + err.message);
+    console.error("[Boards][rename] FAILED", err);
+    alert("Failed to rename board: " + (err.message || err));
   } finally {
     if (modalSaveBtn) {
       modalSaveBtn.textContent = "Save";
@@ -343,6 +771,12 @@ async function handleRename() {
     }
   }
 }
+
+
+
+
+
+
 
 // --- DELETE LOGIC (FIXED) ---
 function openDeleteModal(board) {
@@ -381,12 +815,12 @@ async function performDelete() {
     btn.disabled = true;
   }
 
-  try {
+    try {
     // 1. Make sure we are actually signed in before deleting
     const user = await ensureUser();
 
     if (!user) {
-      renderStatus("Not signed in.");
+      // Don't touch sidebar status here; just throw so we can show an alert.
       throw new Error("NOT_SIGNED_IN");
     }
 
@@ -499,9 +933,23 @@ if (sidebarBoardsContainer) {
 
 document.getElementById("ctx-rename").addEventListener("click", (e) => {
   e.stopPropagation();
+
+  const targetBoard = currentModalBoard;
+  const targetItem = openBoardContextItem;
+
   closeContextMenu();
-  if (currentModalBoard) openModal(currentModalBoard);
+
+  if (targetBoard && targetItem) {
+    startInlineRename(targetBoard, targetItem);
+  } else if (targetBoard) {
+    // Fallback: open modal
+    openModal(targetBoard);
+  }
 });
+
+
+
+
 
 document.getElementById("ctx-delete").addEventListener("click", (e) => {
   e.stopPropagation();
@@ -521,6 +969,91 @@ function closeContextMenu() {
   }
 }
 window.closeContextMenu = closeContextMenu;
+
+function startInlineRename(board, itemEl) {
+  if (!itemEl || !board) return;
+
+  const mainBtn = itemEl.querySelector(".sidebar-board-btn");
+  const menuBtn = itemEl.querySelector(".sidebar-menu-btn");
+  if (!mainBtn) {
+    // Fallback: if something is weird, use the modal
+    openModal(board);
+    return;
+  }
+
+  // Avoid multiple rename inputs on the same item
+  if (itemEl.querySelector(".sidebar-board-rename-input")) return;
+
+  const originalTitle = board.title || "Untitled";
+
+  const input = document.createElement("input");
+  input.type = "text";
+  input.value = originalTitle;
+  input.className = "sidebar-board-rename-input";
+
+  mainBtn.replaceWith(input);
+
+  // Hide the 3-dot menu while editing
+  if (menuBtn) {
+    menuBtn.dataset.prevVisibility = menuBtn.style.visibility || "";
+    menuBtn.style.visibility = "hidden";
+  }
+
+  let finished = false;
+
+  const cleanupDomOnly = () => {
+    // Just re-render from loadedBoards so DOM matches our state
+    renderSidebarBoards(loadedBoards);
+  };
+
+  const finish = async (commit) => {
+    if (finished) return;
+    finished = true;
+
+    input.removeEventListener("blur", onBlur);
+    input.removeEventListener("keydown", onKeyDown);
+
+    const newTitle = input.value.trim();
+
+    // Cancel / no change
+    if (!commit || !newTitle || newTitle === originalTitle) {
+      cleanupDomOnly();
+      return;
+    }
+
+    try {
+      await renameBoardAndUpdateUI(board.id, newTitle);
+    } catch (err) {
+      console.error("Inline rename failed:", err);
+      alert("Failed to rename board: " + (err.message || err));
+      cleanupDomOnly();
+    }
+  };
+
+  const onBlur = () => finish(true);
+  const onKeyDown = (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      finish(true);
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      finish(false);
+    }
+  };
+
+  input.addEventListener("blur", onBlur);
+  input.addEventListener("keydown", onKeyDown);
+
+  setTimeout(() => {
+    input.focus();
+    input.select();
+  }, 0);
+}
+
+
+
+
+
 
 function openContextMenu(e, board, itemEl, menuBtn) {
   e.preventDefault();
@@ -637,7 +1170,9 @@ function renderSidebarBoards(boards) {
 async function fetchBoardDetails(user, file) {
   const path = `${user.id}/boards/${file.name}`;
   try {
-    const { data: blob, error } = await sb.storage.from(BUCKET).download(path);
+    const { data: blob, error } = await sb.storage
+      .from(BUCKET)
+      .download(path);
     if (error) throw error;
 
     const text = await blob.text();
@@ -651,13 +1186,14 @@ async function fetchBoardDetails(user, file) {
       if (first.type === "note" && first.html) {
         previewSnippet = first.html.toString().trim();
       } else if (first.type === "verse") {
-        previewSnippet = first.text?.toString().trim() || first.reference || "";
+        previewSnippet =
+          first.text?.toString().trim() || first.reference || "";
       } else if (first.type === "song") {
         previewSnippet = first.title?.toString().trim() || "";
       }
     }
 
-    return {
+    const parsedBoard = {
       id: json.id || file.name.replace(".json", ""),
       title: json.title || "Untitled Board",
       description: json.description || previewSnippet || "",
@@ -666,11 +1202,46 @@ async function fetchBoardDetails(user, file) {
       updatedAt: json.updatedAt || file.updated_at || file.created_at || null,
       path,
     };
+
+    // 🔄 Apply local title override if present
+    const override = boardTitleOverrides[parsedBoard.id];
+
+    if (override && override.title && override.title !== parsedBoard.title) {
+      console.log("[Boards][fetchBoardDetails] applying override", {
+        id: parsedBoard.id,
+        jsonTitle: parsedBoard.title,
+        overrideTitle: override.title,
+        jsonUpdatedAt: parsedBoard.updatedAt,
+        overrideUpdatedAt: override.updatedAt,
+      });
+
+      parsedBoard.title = override.title;
+      // Optionally, also prefer override.updatedAt for sorting:
+      if (override.updatedAt) {
+        parsedBoard.updatedAt = override.updatedAt;
+      }
+    } else if (override && override.title === parsedBoard.title) {
+      // JSON finally caught up; we can optionally clean up the override
+      // delete boardTitleOverrides[parsedBoard.id];
+      // saveBoardTitleOverrides();
+    }
+
+    console.log("[Boards][fetchBoardDetails]", {
+      fileName: file.name,
+      id: parsedBoard.id,
+      title: parsedBoard.title,
+      updatedAt: parsedBoard.updatedAt,
+      path,
+    });
+
+    return parsedBoard;
+
   } catch (err) {
     console.error("Failed to fetch details for", file.name, err);
     return null;
   }
 }
+
 
 // --- Load all boards for the current user ---
 async function loadBoards() {
@@ -680,10 +1251,17 @@ async function loadBoards() {
       updateBoardCreateButtonState();
     }
 
-    const user = currentUser;
-    renderStatus("Loading boards…");
+    // Try to use the cached user first
+    let user = currentUser;
+
+    // If we don't have one yet (or something cleared it),
+    // ask Supabase for the current session.
+    if (!user && typeof ensureUser === "function") {
+      user = await ensureUser();
+    }
 
     if (!user) {
+      // Truly not signed in
       renderStatus("Not signed in.");
       loadedBoards = [];
       renderSidebarBoards([]);
@@ -693,6 +1271,9 @@ async function loadBoards() {
       }
       return;
     }
+
+    // Now we *know* we have a user, safe to show loading
+    renderStatus("Loading boards…");
 
     const { data: files, error: listErr } = await sb.storage
       .from(BUCKET)
@@ -763,8 +1344,19 @@ async function loadBoards() {
         new Date(a.updatedAt || a.createdAt)
     );
 
+    console.log(
+      "[Boards][loadBoards] SORTED from storage:",
+      sorted.map((b) => ({
+        id: b.id,
+        title: b.title,
+        updatedAt: b.updatedAt,
+        path: b.path,
+      }))
+    );
+
     loadedBoards = sorted;
     renderSidebarBoards(sorted);
+
     renderStatus("");
 
     boardsLoaded = true;
@@ -1878,7 +2470,7 @@ function openVerseStudyModal(verseData) {
   backdrop.setAttribute("data-open", "true");
 
   // Make sure the Interlinear tab is visually active
-  if (interBtn) interBtn.click();
+  if (crossBtn) crossBtn.click();
 }
 
 
@@ -2024,7 +2616,7 @@ function initScriptureModeToggle() {
     if (on) {
       body.classList.add("scripture-mode-on");
       btn.classList.add("active");
-      btn.textContent = "Close Scripture";
+      // btn.textContent = "Close Scripture";
       reader.style.display = "block";
 
       if (typeof window.__bbSyncScriptureNow === "function") {
@@ -2033,7 +2625,7 @@ function initScriptureModeToggle() {
     } else {
       body.classList.remove("scripture-mode-on");
       btn.classList.remove("active");
-      btn.textContent = "Scripture mode";
+      // btn.textContent = "Scripture mode";
       reader.style.display = "none";
 
       if (typeof closeSearchQuery === "function") {
@@ -2132,7 +2724,7 @@ function closeBibleReaderAndExitScriptureMode() {
 
   if (scriptureBtn) {
     scriptureBtn.classList.remove("active");
-    scriptureBtn.textContent = "Scripture mode";
+    // scriptureBtn.textContent = "Scripture mode";
   }
 
   if (scriptureContainer) {
@@ -2234,7 +2826,7 @@ function initBibleQueryBookChapterDropdowns() {
     });
 
     // Long-press (hold) opens the verse study modal for interlinear / cross-refs
-    const LONG_PRESS_MS = 550;
+    const LONG_PRESS_MS = 350;
     let longPressTimer = null;
     let longPressTarget = null;
 

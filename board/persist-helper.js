@@ -109,8 +109,15 @@
       const payload = window.BoardAPI.serializeBoard();
       if (!payload) throw new Error("Serialization failed");
 
+      console.log("[Persist][save] about to save board", {
+        reason,
+        boardId: window.BOARD_ID || window.__CURRENT_BOARD_ID || null,
+        title: payload.title,
+      });
+
       // The actual async save call to the external module
       await window.BoardAPI.saveBoard(payload);
+
 
       logSave(reason, "success");
       updateBadge("saved");

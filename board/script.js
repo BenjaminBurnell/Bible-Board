@@ -495,7 +495,8 @@ function expandReferenceAbbrev(ref) {
     abbrevMap[normalized.replace(/\s+/g, "")] ||
     bookAbbrev; // fallback
 
-  return `${fullBook.toUpperCase()} ${ch}:${vs}`;
+  // Keep normal casing: "Hebrews 11:3" instead of "HEBREWS 11:3"
+  return `${fullBook} ${ch}:${vs}`;
 }
 
 // ==================== OPTIMIZATION: Performance Helpers ====================
@@ -2795,6 +2796,8 @@ function renderVerseStudyInterlinearTokens(tokens, referenceTitle) {
     container.appendChild(row);
   });
 }
+
+
 
 // Fetch + render interlinear specifically for the verse-study modal
 async function openVerseStudyInterlinear(referenceString) {
@@ -8346,18 +8349,22 @@ async function openCrossRefForReference(reference) {
         : text;
 
       rows.push(`
-        <div class="crossref-row">
-          <div class="crossref-ref">${displayRef}</div>
-          <div class="crossref-text">${cleanText}</div>
+        <div class="crossref-row search-query-verse-container"
+            data-ref="${displayRef}"
+            data-version="${version}"
+            data-text="${cleanText}">
+          <div class="crossref-main">
+            <div class="crossref-ref">${displayRef}</div>
+            <div class="crossref-text">${cleanText}</div>
+          </div>
+          <button
+            type="button"
+            class="search-query-verse-add-button"
+            aria-label="Add ${displayRef} to board">
+          </button>
         </div>
-        <button
-          type="button"
-          class="search-query-verse-add-button"
-          aria-label="Add ${displayRef} to board"
-        >
-          +
-        </button>
       `);
+
     }
 
     loader.style.display = "none";
@@ -8370,6 +8377,73 @@ async function openCrossRefForReference(reference) {
     }
 
     content.innerHTML = rows.join("");
+
+        // Wire up click handlers so cross-ref rows can be added to the
+    // same "Add to board" queue used by the Bible search + reader.
+    try {
+      // Ensure the global verse queue map exists
+      if (!window.pendingVerseAdds) {
+        window.pendingVerseAdds = new Map();
+      }
+
+      const rowsEls = content.querySelectorAll(
+        ".crossref-row.search-query-verse-container"
+      );
+
+      rowsEls.forEach((rowEl) => {
+        const btnEl = rowEl.querySelector(".search-query-verse-add-button");
+        if (!btnEl) return;
+
+        // Build the verse payload from data attributes
+        const reference =
+          rowEl.dataset.ref || rowEl.dataset.reference || "";
+        const text = rowEl.dataset.text || "";
+        const version =
+          rowEl.dataset.version ||
+          (typeof safeGetSelectedVersion === "function"
+            ? safeGetSelectedVersion()
+            : "KJV");
+
+        if (!reference) return;
+
+        const verseData = { reference, text, version };
+        const key = `${verseData.reference}::${verseData.version}`;
+
+        // If this verse is already queued, reflect that visually
+        if (window.pendingVerseAdds.has(key)) {
+          rowEl.classList.add("selected-for-add");
+          btnEl.classList.add("selected");
+        }
+
+        const handleToggle = (evt) => {
+          if (evt) evt.stopPropagation();
+          if (typeof toggleVerseSelection === "function") {
+            toggleVerseSelection(verseData, btnEl);
+          } else if (window.toggleVerseSelection) {
+            window.toggleVerseSelection(verseData, btnEl);
+          }
+        };
+
+        // Click on the plus icon
+        btnEl.addEventListener("click", handleToggle);
+
+        // Clicking anywhere on the row should also toggle
+        rowEl.addEventListener("click", (evt) => {
+          // If the click originated on the actual button, the button
+          // handler already fired; no need to run twice.
+          if (evt.target.closest(".search-query-verse-add-button")) {
+            return;
+          }
+          handleToggle(evt);
+        });
+      });
+    } catch (wiringErr) {
+      console.error(
+        "[VerseStudy Crossref] Failed to wire add-to-board handlers:",
+        wiringErr
+      );
+    }
+
   } catch (err) {
     if (err.name === "AbortError") return;
     console.error("[VerseStudy Crossref] error:", err);

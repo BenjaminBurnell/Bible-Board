@@ -161,6 +161,10 @@ body.light {
   /* padding-right: 50px;  */
 }
 
+.verse > .search-query-verse-add-button {
+  display:none;
+}
+
 
 .verse-text {
   width:calc(100% - 0px);
@@ -168,7 +172,7 @@ body.light {
   text-align: left;
   color: var(--muted);
   font-weight: 700;
-  text-transform: uppercase;
+  text-transform: none;
 }
 
 .verse-text-content {
@@ -227,7 +231,7 @@ body.light {
   align-items: center;
   padding: 10px 2px;
   border-radius: 100px;
-  z-index: 10001;
+  z-index: 10000000;
 }
 
 .action-button {
@@ -593,8 +597,8 @@ textarea:focus {
   justify-content: center;
   padding: 12px;
   border-radius: 100px;
-  width: 45px;
-  height: 45px;
+  width: 50px;
+  height: 50px;
   transition: 0.3s ease, transform 0.3s ease;
   backdrop-filter: blur(1rem);
   background: var(--bg-seethroug);
@@ -867,7 +871,7 @@ body:not(.light) #sun-icon {
 
 .search-query-verse-add-button {
   display: flex;
-  display: none;
+  /* display: none; */
   align-items: center;
   justify-content: center;
   width: 30px;
@@ -877,7 +881,7 @@ body:not(.light) #sun-icon {
   color: var(--fg);
   border: 1px solid var(--fg-seethrough);
   position: absolute;
-  right: 0;
+  right: 0px;
   top: 50%;
   transform: translateY(-50%);
 }
@@ -1573,14 +1577,14 @@ textarea:disabled {
     right: 12px;
     /* track width; the thumb is inside via left/width inline styles */
     height: 5px;
-    bottom: 120px;
+    bottom: 5px;
     background: transparent;
     /* track is transparent; we render the thumb as an inner div */
   }
   /* Vertical bar (right) */
   #viewbar-y {
     top: 12px;
-    bottom: 120px;
+    bottom: 5px;
     /* track height; the thumb is inside via top/height inline styles */
     width: 5px;
     right: 5px;
@@ -2001,7 +2005,7 @@ body.read-only .connection-handle {
 /* This will override the old button style */
 .search-query-verse-add-button {
   display: flex;
-  display: none;
+  /* display: none; */
   align-items: center;
   justify-content: center;
   line-height: 1;
@@ -3051,7 +3055,7 @@ body.scripture-mode-on #bible-query-reader {
   height:100px;
   position:absolute;
   left:50%;
-  top:500px;
+  top:300px;
   transform:translate(-50%);
   margin-left: 350px;
 }
@@ -3061,7 +3065,7 @@ body.scripture-mode-on #bible-query-reader {
   height:100%;
   object-fit: cover;
   object-position: center;
-  transform: rotate(-90deg);
+  transform: rotate(-110deg);
   filter: invert(var(--invert-num));
   opacity: 0.8;
 }
@@ -3069,8 +3073,8 @@ body.scripture-mode-on #bible-query-reader {
 #hold-for-more-text {
   opacity: 0.8;
   position:absolute;
-  bottom:0px;
-  left:100%;
+  bottom:25px;
+  left:calc(100% + 5px);
   font-size: 15px;
   font-weight:900;
   color:var(--fg);
@@ -3234,7 +3238,8 @@ body.scripture-mode-on #scripture-mode-toggle {
 
 .verse-study-actions {
   display: flex;
-  flex-direction: row;
+  justify-content: left;
+  flex-direction: row-reverse;
   gap: 8px;
 }
 
@@ -3425,4 +3430,30 @@ body.scripture-mode-on #scripture-mode-toggle {
     box-shadow: 0 18px 60px rgba(0, 0, 0, 0.55);
     color: var(--fg);
   */
+}
+
+
+.crossref-row.search-query-verse-container {
+  display: flex;
+  /* justify-content: space-between; */
+  align-items: flex-start;
+  padding: 6px 8px;
+  border-radius: 8px;
+  transition: background 0.2s ease;
+  position:relative !important;
+}
+.crossref-row.search-query-verse-container:hover {
+  background: var(--hover-bg);
+}
+.crossref-main {
+  width:100%;
+  min-width: 0;
+}
+.crossref-ref {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.crossref-text {
+  font-size: 16px;
+  opacity: 0.9;
 }

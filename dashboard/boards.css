@@ -584,6 +584,24 @@ body {
   font-family: inherit;
 }
 
+/* Inline rename input inside sidebar cards */
+.sidebar-board-rename-input {
+  flex: 1;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  border: none;
+  background: transparent;
+  color: var(--fg);
+  padding: 10px 15px;
+  font-size: 0.9rem;
+  font-family: inherit;
+  outline: none;
+}
+
+.sidebar-board-rename-input:focus {
+  background: rgba(255, 255, 255, 0.03);
+}
+
 /* --- 3-Dot Menu Button --- */
 .sidebar-menu-btn {
   background: transparent;
@@ -1135,11 +1153,11 @@ body {
     background: var(--bg-dots) !important;
     backdrop-filter: blur(4px);
     border: 1px solid var(--border);
-    border-radius: 15px;
+    border-radius: 100px;
     cursor: pointer;
     position: fixed;
-    width:44px;
-    height:44px;
+    width:50px;
+    height:50px;
     padding:14px;
     top: 15px;
     left: 15px;
@@ -1821,13 +1839,14 @@ body {
 
 #connection-line-menu {
   position: fixed;
-  z-index: 10010;
+  z-index: 1000;
   display: none;
   flex-direction: row;
   justify-content: center;
   align-items: center;
   gap: 4px;
   padding: 6px 12px;
+  padding-right: 6px;
   border-radius: 100px;
   border: 1px solid var(--fg-seethrough, rgba(255, 255, 255, 0.18));
   backdrop-filter: blur(10px);
