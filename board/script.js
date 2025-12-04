@@ -1866,8 +1866,22 @@ connectionsSvg.addEventListener("click", (ev) => {
   }
 
   ev.stopPropagation();
+
+  // 🔹 NEW: when clicking a connection line, unselect any selected board-item
+  if (typeof clearSelection === "function") {
+    clearSelection();
+  } else if (typeof selectedItem !== "undefined" && selectedItem) {
+    // Fallback in case clearSelection isn't available for some reason
+    selectedItem.classList.remove("selected-connection");
+    selectedItem = null;
+    if (typeof updateActionButtonsEnabled === "function") {
+      updateActionButtonsEnabled();
+    }
+  }
+
   openConnectionLineMenu(canonicalPath, ev.clientX, ev.clientY);
 });
+
 
 function clearConnectionHighlight() {
   if (!window.BoardAPI || typeof window.BoardAPI.getConnections !== "function") {
@@ -2076,14 +2090,49 @@ const MIN_SCALE = 0.15,
   WHEEL_SENS = 0.001;
 
 function syncHandleScaleVar() {
-  const s =
-    (typeof scale === "number" && isFinite(scale) && scale > 0 ? scale : 1) / .75;
-  const inverse = 1 / s;
+  // Current board zoom
+  const rawScale =
+    typeof scale === "number" && isFinite(scale) && scale > 0 ? scale : 1;
+
+  // Same base logic you had before (the / 0.75 tweak)
+  const s = rawScale / 0.75;
+  const base = 1 / s; // inverse of board scale
+
+  // ====== 1) DOT SCALE (little connection dots) ======
+  let dotScale = base;
+  const MIN_DOT_SCALE = 0.7;
+  const MAX_DOT_SCALE = 2.7;
+
+  if (dotScale < MIN_DOT_SCALE) dotScale = MIN_DOT_SCALE;
+  if (dotScale > MAX_DOT_SCALE) dotScale = MAX_DOT_SCALE;
+
+  // ====== 2) MENU SCALE (connection-line-menu bubble) ======
+  let menuScale = base;
+  const MIN_MENU_SCALE = 1;
+  const MAX_MENU_SCALE = .95; // ⬅️ cap the menu smaller than dots
+
+  if (menuScale < MIN_MENU_SCALE) menuScale = MIN_MENU_SCALE;
+  if (menuScale > MAX_MENU_SCALE) menuScale = MAX_MENU_SCALE;
+
+  // Expose both as CSS variables
+  document.documentElement.style.setProperty(
+    "--bb-connection-dot-scale",
+    dotScale.toString()
+  );
+  document.documentElement.style.setProperty(
+    "--bb-connection-menu-scale",
+    menuScale.toString()
+  );
+
+  // Optional: keep old var for anything still using it
   document.documentElement.style.setProperty(
     "--bb-handle-scale",
-    inverse.toString()
+    dotScale.toString()
   );
 }
+
+
+
 
 // --- BoardAPI shim (safe to re-declare) ---
 window.BoardAPI = window.BoardAPI || {};
@@ -3621,7 +3670,7 @@ function startConnectionDrag(e, sourceEl) {
     return { x: cx, y: cy };
   }
 
-  // client (screen) coords -> board coords (same math as connections)
+    // client (screen) coords -> board coords (same math as connections)
   function clientToBoard(clientX, clientY) {
     return {
       x: (viewport.scrollLeft + (clientX - viewportRect.left)) / scale,
@@ -3629,7 +3678,59 @@ function startConnectionDrag(e, sourceEl) {
     };
   }
 
+  // 🔹 How close the draft tip must be to a card *border* to snap
+  const SNAP_BORDER_PX = 10; // adjust if you want more/less forgiving
+  let currentSnapTarget = null;
+
+  // Bounds of an element in *board* coordinates
+  function getElementBoundsBoard(el) {
+    const r = el.getBoundingClientRect();
+    const left =
+      (viewport.scrollLeft + (r.left - viewportRect.left)) / scale;
+    const top =
+      (viewport.scrollTop + (r.top - viewportRect.top)) / scale;
+    const right = left + r.width / scale;
+    const bottom = top + r.height / scale;
+    return { left, top, right, bottom };
+  }
+
+  // Distance from a point to the rectangle edge (0 if inside)
+  function distanceToRect(px, py, rect) {
+    let dx = 0;
+    if (px < rect.left) dx = rect.left - px;
+    else if (px > rect.right) dx = px - rect.right;
+
+    let dy = 0;
+    if (py < rect.top) dy = rect.top - py;
+    else if (py > rect.bottom) dy = py - rect.bottom;
+
+    return Math.sqrt(dx * dx + dy * dy);
+  }
+
+  // Find nearest board-item whose border is within SNAP_BORDER_PX
+  function findSnapTarget(boardX, boardY) {
+    let closestEl = null;
+    let closestDist = SNAP_BORDER_PX + 1;
+
+    document.querySelectorAll(".board-item").forEach((candidate) => {
+      if (candidate === sourceEl) return;
+      if (!candidate.offsetParent) return; // skip hidden
+
+      const rect = getElementBoundsBoard(candidate);
+      const distToEdge = distanceToRect(boardX, boardY, rect);
+
+      if (distToEdge <= SNAP_BORDER_PX && distToEdge < closestDist) {
+        closestDist = distToEdge;
+        closestEl = candidate;
+      }
+    });
+
+    return closestEl;
+  }
+
   const src = getElementCenter(sourceEl);
+
+
 
   // Create the ghost dashed path if it doesn't exist yet
   if (!connectionDraftPath) {
@@ -3653,15 +3754,19 @@ function startConnectionDrag(e, sourceEl) {
     }
 
     // Make it obviously "ghost"
-    connectionDraftPath.style.strokeDasharray = "8 6";
+    connectionDraftPath.style.strokeDasharray = "12 20";
     connectionDraftPath.style.opacity = "0.85";
   }
 
   function updateDraft(clientX, clientY) {
     const dst = clientToBoard(clientX, clientY);
 
+    // Try to find a snap target based on the *end* of the draft
+    const snapTarget = findSnapTarget(dst.x, dst.y);
+    currentSnapTarget = snapTarget;
+
     const p1 = src; // source element center (already in board coords)
-    const p2 = dst; // current mouse position in board coords
+    const p2 = snapTarget ? getElementCenter(snapTarget) : dst;
 
     const dx = p2.x - p1.x;
     const dy = p2.y - p1.y;
@@ -3674,7 +3779,7 @@ function startConnectionDrag(e, sourceEl) {
       // Short distance → straight line (same rule as updateConnection)
       d = `M${p1.x},${p1.y} L${p2.x},${p2.y}`;
     } else {
-      // Same smooth curve logic as real connections
+      // Same curve logic as updateConnection
       const s = 0.7;
       let c1x = p1.x;
       let c1y = p1.y;
@@ -3700,13 +3805,29 @@ function startConnectionDrag(e, sourceEl) {
 
     connectionDraftPath.setAttribute("d", d);
 
+    // 🔹 Style: dashed when free-floating, solid when snapped
+    if (snapTarget) {
+      connectionDraftPath.style.strokeDasharray = "none";
+      connectionDraftPath.removeAttribute("stroke-dasharray");
+    } else {
+      connectionDraftPath.style.strokeDasharray = "12 20";
+    }
+
+
+
     if (DEBUG_CONNECTIONS) {
-      console.log("[BB-CONN] updateDraft", { src: p1, dst: p2, d });
+      console.log("[BB-CONN] updateDraft", {
+        src: p1,
+        dst: p2,
+        snappedTo: snapTarget,
+        d,
+      });
     }
   }
 
   // Initial position for the ghost line
   updateDraft(startPoint.clientX, startPoint.clientY);
+
 
   function onMove(ev) {
     const pt = ev.touches && ev.touches[0] ? ev.touches[0] : ev;
@@ -3736,24 +3857,12 @@ function startConnectionDrag(e, sourceEl) {
     // remove the ghost line from the SVG
     cleanupDraft();
 
-    // === SNAP-TO-NEAREST BOARD ITEM ===
-    let closestEl = null;
-    let closestDist = SNAP_RADIUS;
-
-    document.querySelectorAll(".board-item").forEach((candidate) => {
-      if (candidate === sourceEl) return;
-      if (!candidate.offsetParent) return; // skip hidden
-
-      const cCenter = getElementCenter(candidate);
-      const dx = cCenter.x - endPos.x;
-      const dy = cCenter.y - endPos.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-
-      if (dist < closestDist) {
-        closestDist = dist;
-        closestEl = candidate;
-      }
-    });
+    // Prefer the snap target we tracked while dragging
+    let closestEl = currentSnapTarget;
+    if (!closestEl) {
+      // Fallback: recompute based on final pointer position
+      closestEl = findSnapTarget(endPos.x, endPos.y);
+    }
 
     if (
       closestEl &&
@@ -3762,14 +3871,15 @@ function startConnectionDrag(e, sourceEl) {
     ) {
       window.BoardAPI.connectItems(sourceEl, closestEl);
 
-      // refresh all connections
-      if (typeof window.throttledUpdateAllConnections === "function") {
-        window.throttledUpdateAllConnections();
-      } else if (typeof window.updateAllConnections === "function") {
-        window.updateAllConnections();
+      if (DEBUG_CONNECTIONS) {
+        console.log("[BB-CONN] connected via drag", {
+          from: sourceEl.dataset.id,
+          to: closestEl.dataset.id,
+        });
       }
     }
   }
+
 
   document.addEventListener("mousemove", onMove);
   document.addEventListener("mouseup", onUp);
@@ -3846,7 +3956,43 @@ function connectItems(a, b) {
 
   updateConnection(conn);
   onBoardMutated("connect_items");
+
+  // 🔹 After creating a connection via user action, auto-open the mini menu
+  // Skip this during board restore so you don't get random menus popping up
+  if (!window.__RESTORING_FROM_SUPABASE && typeof openConnectionLineMenu === "function") {
+    // Use next frame so the browser has laid out the new path
+    requestAnimationFrame(() => {
+      try {
+        const rect = path.getBoundingClientRect();
+
+        let clientX;
+        let clientY;
+
+        if (rect && (rect.width || rect.height)) {
+          // Center of the new line on screen
+          clientX = rect.left + rect.width / 2;
+          clientY = rect.top + rect.height / 2;
+        } else {
+          // Fallback: midpoint between the two items
+          const aRect = a.getBoundingClientRect();
+          const bRect = b.getBoundingClientRect();
+          clientX = (aRect.left + aRect.right + bRect.left + bRect.right) / 4;
+          clientY = (aRect.top + aRect.bottom + bRect.top + bRect.bottom) / 4;
+        }
+
+        // Optional: mirror the click handler behavior and clear any selected card
+        if (typeof clearSelection === "function") {
+          clearSelection();
+        }
+
+        openConnectionLineMenu(path, clientX, clientY);
+      } catch (err) {
+        console.warn("[Connections] Failed to auto-open connection-line-menu:", err);
+      }
+    });
+  }
 }
+
 
 
 /**

@@ -2275,25 +2275,25 @@ body.read-only .connection-handle {
 
 /* Positions (unchanged) */
 .item-connector-handle.handle-top {
-  top: -100px;
+  top: -75px;
   left: 50%;
   transform: translateX(-50%);
 }
 
 .item-connector-handle.handle-bottom {
-  bottom: -100px;
+  bottom: -75px;
   left: 50%;
   transform: translateX(-50%);
 }
 
 .item-connector-handle.handle-left {
-  left: -100px;
+  left: -75px;
   top: 50%;
   transform: translateY(-50%);
 }
 
 .item-connector-handle.handle-right {
-  right: -100px;
+  right: -75px;
   top: 50%;
   transform: translateY(-50%);
 }
@@ -2308,15 +2308,15 @@ body.read-only .connection-handle {
   box-sizing: border-box;
   pointer-events: none; /* clicks handled by outer handle */
   transform-origin: center;
-  transform: scale(var(--bb-handle-scale, 1));
+  transform: scale(var(--bb-connection-dot-scale, 1));
 }
 
 
 /* Ghost connection preview while dragging */
 .connection-line.connection-draft {
   stroke: var(--accent);
-  stroke-width: 8px;
-  stroke-dasharray: 12 20 !important;
+  stroke-width: 10px;
+  stroke-dasharray: 12 20;
   pointer-events: none;
   opacity: 0.5 !important;
 }
@@ -3443,6 +3443,10 @@ body.scripture-mode-on #scripture-mode-toggle {
   */
 }
 
+.search-query-verse-container > .search-query-verse-add-button {
+  width:32px;
+  height:32px;
+}
 
 .crossref-row.search-query-verse-container {
   display: flex;

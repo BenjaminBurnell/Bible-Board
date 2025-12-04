@@ -1192,7 +1192,7 @@ body {
 .sidebar-footer {
   margin-top: auto;
   padding: 10px;
-  border-top: 1px solid var(--border);
+  /* border-top: 1px solid var(--border); */
   position: relative; /* Anchor for the popup menu */
 }
 
@@ -1463,8 +1463,8 @@ body {
 
 .upgrade-close {
   position: absolute;
-  top: 14px;
-  right: 14px;
+  top: 25px;
+  right: 25px;
   border: 1px solid var(--border);
   background: var(--bg-dots);
   color: var(--muted);
@@ -1504,6 +1504,12 @@ body {
   margin: 0;
   font-size: 1.8rem;
   color: var(--fg);
+}
+
+@media (max-width:900px) {
+  .upgrade-header {
+    margin-top: 20px;
+  }
 }
 
 .upgrade-toggle {
@@ -1846,7 +1852,7 @@ body {
   align-items: center;
   gap: 4px;
   padding: 6px 12px;
-  padding-right: 6px;
+  padding-right: 8px;
   border-radius: 100px;
   border: 1px solid var(--fg-seethrough, rgba(255, 255, 255, 0.18));
   backdrop-filter: blur(10px);
@@ -1854,6 +1860,10 @@ body {
   background: var(--bg-dots);
   font-size: 12px;
   overflow: hidden;
+
+  
+  transform-origin: center ;
+  transform: scale(var(--bb-connection-menu-scale, 1));
 }
 
 #connection-line-menu button {
