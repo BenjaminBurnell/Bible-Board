@@ -16,8 +16,8 @@
 #bb-onboarding-highlight {
   position: fixed;
   border-radius: 999px;
-  border: 2px solid #4ea8ff;
-  box-shadow: 0 0 0 4px rgba(78, 168, 255, 0.35);
+  border: 2px solid #3b82f6;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.35);
   pointer-events: none;
   transition: all 0.25s ease;
 }
@@ -32,10 +32,10 @@
 /* Bubble that holds the text */
 .bb-onboarding-bubble {
   position: relative;
-  background: rgba(24, 24, 27, 0.96);
+  background: var(--bg-alt);
   border-radius: 12px;
   padding: 12px 14px;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.1);
 }
 
 /* Arrow pointer */
@@ -47,23 +47,24 @@
   transform: translateX(-50%);
 }
 
-/* Tooltip is ABOVE the target */
+/* Tooltip ABOVE the target (arrow points down) */
 #bb-onboarding-tooltip.bb-placement-top .bb-onboarding-arrow {
-  bottom: -8px;
-  border-left: 8px solid transparent;
-  border-right: 8px solid transparent;
+  bottom: -10px;
+  border-left: 10px solid transparent;
+  border-right: 10px solid transparent;
   border-top: 0;
-  border-bottom: 8px solid rgba(24, 24, 27, 0.96);
+  border-bottom: 10px solid rgba(24, 24, 27, 0.96);
 }
 
-/* Tooltip is BELOW the target */
+/* Tooltip BELOW the target (arrow points up) */
 #bb-onboarding-tooltip.bb-placement-bottom .bb-onboarding-arrow {
-  top: -8px;
-  border-left: 8px solid transparent;
-  border-right: 8px solid transparent;
-  border-top: 8px solid rgba(24, 24, 27, 0.96);
+  top: -10px;
+  border-left: 10px solid transparent;
+  border-right: 10px solid transparent;
+  border-top: 10px solid rgba(24, 24, 27, 0.96);
   border-bottom: 0;
 }
+
 
 /* Text layout */
 .bb-onboarding-body {

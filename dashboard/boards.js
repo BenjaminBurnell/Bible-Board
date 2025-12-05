@@ -7,6 +7,98 @@ const BUCKET = "bible-boards";
 const FREE_BOARD_LIMIT = 3; // The maximum number of boards for a free user
 const FREE_ITEM_LIMIT_PER_BOARD = 100;
 
+// ==================== PROMO CODE LOGIC (client-side hashes) ====================
+
+const PROMO_CODE_HASHES = new Set([
+  // Example placeholder: replace with your real hashes
+  "d82059ecd1edd9d58d10bda74e5486dbd480bd6fadb7e8ab6f56f2defcf26c7c",
+]);
+
+/**
+ * Hashes a promo code using SHA-256 and returns a lowercase hex string.
+ * Normalizes the input by trimming + uppercasing first.
+ */
+async function hashPromoInput(rawCode) {
+  const normalized = (rawCode || "").trim().toUpperCase();
+  if (!normalized) return null;
+
+  if (!window.crypto?.subtle) {
+    console.error("Web Crypto API not available; cannot hash promo codes safely.");
+    // Last-resort fallback: plain string (NOT ideal)
+    return normalized;
+  }
+
+  const encoder = new TextEncoder();
+  const data = encoder.encode(normalized);
+  const hashBuffer = await window.crypto.subtle.digest("SHA-256", data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+function setPromoMessage(text, type = "error") {
+  const msgEl = document.querySelector(".promo-plan-message");
+  if (!msgEl) return;
+
+  msgEl.textContent = text || "";
+  msgEl.classList.remove("error", "success");
+  if (text) {
+    msgEl.classList.add(type);
+  }
+}
+
+/**
+ * Handles clicking the "Redeem" button or pressing Enter in the promo input.
+ */
+async function redeemPromoCodeFromUI() {
+  const input = document.querySelector(".promo-plan-input");
+  const button = document.querySelector(".redeem-code-button");
+  if (!input || !button) return;
+
+  const code = input.value;
+  if (!code || !code.trim()) {
+    // alert("Please enter a promo code first.");
+    setPromoMessage("Please enter a promo code.", "error");
+    return;
+  }
+
+  const originalLabel = button.textContent;
+  button.disabled = true;
+  button.textContent = "Checking…";
+
+  try {
+    const hash = await hashPromoInput(code);
+    const isValid = hash && PROMO_CODE_HASHES.has(hash);
+
+    if (!isValid) {
+      setPromoMessage("That promo code isn’t valid. Please double-check it.", "error");
+      // alert("That promo code isn’t valid. Please double-check it and try again.");
+      return;
+    }
+
+    closeUpgradeModal()
+
+    // ✅ Valid code — run the special RevenueCat promo flow
+    if (typeof SubscriptionService?.redeemStudentPromo === "function") {
+      await SubscriptionService.redeemStudentPromo();
+    } else {
+      // Fallback, just in case
+      await SubscriptionService.subscribe();
+    }
+
+
+    // Optional: clear input on success attempt
+    input.value = "";
+  } catch (err) {
+    console.error("Error redeeming promo code:", err);
+    // alert("Something went wrong while applying your promo. Please try again.");
+    setPromoMessage("Something went wrong while applying your promo. Please refresh and try again.", "error");
+  } finally {
+    button.disabled = false;
+    button.textContent = originalLabel;
+  }
+}
+
+
 // --- State ---
 let currentUser = null;
 let currentModalBoard = null;
@@ -125,6 +217,25 @@ const hamburgerBtn = document.getElementById("hamburger-btn");
 // New DOM Refs for Upgrade Modal
 const upgradeModalBackdrop = document.getElementById("upgrade-modal-backdrop");
 const upgradeNowBtn = document.getElementById("upgrade-now-btn");
+
+// Promo code DOM refs
+const promoInputEl = document.querySelector(".promo-plan-input");
+const promoBtnEl = document.querySelector(".redeem-code-button");
+
+if (promoBtnEl && promoInputEl) {
+  promoBtnEl.addEventListener("click", (e) => {
+    e.preventDefault();
+    redeemPromoCodeFromUI();
+  });
+
+  promoInputEl.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      redeemPromoCodeFromUI();
+    }
+  });
+}
+
 
 // Fix: Ensure button exists before using
 const newBoardBtn =
@@ -409,7 +520,7 @@ async function saveBoardTitle(board, newTitle) {
   if (!board || !newTitle) return;
 
   const { id, path } = board;
-  console.log("[Boards] Saving new title", { id, path, newTitle });
+  // console.log("[Boards] Saving new title", { id, path, newTitle });
 
   const { data: blob, error: downloadError } = await sb.storage
     .from(BUCKET)
@@ -449,7 +560,7 @@ async function saveBoardTitle(board, newTitle) {
     throw updateError;
   }
 
-  console.log("[Boards] Title saved OK for", id);
+  // console.log("[Boards] Title saved OK for", id);
 
   // Always reload sidebar from storage so we see the actual saved value
   await loadBoards();
@@ -488,12 +599,12 @@ async function renameBoardAndUpdateUI(boardId, newTitle) {
   const board = loadedBoards[idx];
   const path = board.path;
 
-  console.log("[Boards][rename] START", {
-    boardId,
-    path,
-    oldTitle: board.title,
-    newTitle,
-  });
+  // console.log("[Boards][rename] START", {
+  //   boardId,
+  //   path,
+  //   oldTitle: board.title,
+  //   newTitle,
+  // });
 
   try {
     // 1) Download existing JSON
@@ -521,10 +632,10 @@ async function renameBoardAndUpdateUI(boardId, newTitle) {
       throw parseErr;
     }
 
-    console.log("[Boards][rename] JSON BEFORE", {
-      jsonTitle: json.title,
-      jsonUpdatedAt: json.updatedAt,
-    });
+    // console.log("[Boards][rename] JSON BEFORE", {
+    //   jsonTitle: json.title,
+    //   jsonUpdatedAt: json.updatedAt,
+    // });
 
     // 2) Mutate JSON
     const nowIso = new Date().toISOString();
@@ -532,10 +643,10 @@ async function renameBoardAndUpdateUI(boardId, newTitle) {
     json.updatedAt = nowIso;
 
     const serialized = JSON.stringify(json, null, 2);
-    console.log("[Boards][rename] JSON AFTER (about to save)", {
-      jsonTitle: json.title,
-      length: serialized.length,
-    });
+    // console.log("[Boards][rename] JSON AFTER (about to save)", {
+    //   jsonTitle: json.title,
+    //   length: serialized.length,
+    // });
 
     // 3) Save back to Supabase
     const newBlob = new Blob([serialized], {
@@ -555,7 +666,7 @@ async function renameBoardAndUpdateUI(boardId, newTitle) {
       throw updateError;
     }
 
-    console.log("[Boards][rename] UPDATE OK, verifying from storage…");
+    // console.log("[Boards][rename] UPDATE OK, verifying from storage…");
 
     // 4) Immediately re-download to see what’s *actually* stored
     try {
@@ -568,10 +679,10 @@ async function renameBoardAndUpdateUI(boardId, newTitle) {
       } else {
         const verifyText = await verifyBlob.text();
         const verifyJson = JSON.parse(verifyText);
-        console.log("[Boards][rename] VERIFY JSON FROM STORAGE", {
-          jsonTitle: verifyJson.title,
-          jsonUpdatedAt: verifyJson.updatedAt,
-        });
+        // console.log("[Boards][rename] VERIFY JSON FROM STORAGE", {
+        //   jsonTitle: verifyJson.title,
+        //   jsonUpdatedAt: verifyJson.updatedAt,
+        // });
       }
     } catch (verifyThrow) {
       console.error("[Boards][rename] VERIFY step threw", verifyThrow);
@@ -593,10 +704,10 @@ async function renameBoardAndUpdateUI(boardId, newTitle) {
 
     saveBoardTitleOverrides();
 
-    console.log("[Boards][rename] override stored", {
-      boardId,
-      override: boardTitleOverrides[boardId],
-    });
+    // console.log(`[Boards][rename] override stored`, {
+    //   boardId,
+    //   override: boardTitleOverrides[boardId],
+    // });
 
 
     // Keep the same sort as loadBoards()
@@ -606,14 +717,14 @@ async function renameBoardAndUpdateUI(boardId, newTitle) {
         new Date(a.updatedAt || a.createdAt)
     );
 
-    console.log(
-      "[Boards][rename] loadedBoards AFTER local update",
-      loadedBoards.map((b) => ({
-        id: b.id,
-        title: b.title,
-        updatedAt: b.updatedAt,
-      }))
-    );
+    // console.log(
+    //   "[Boards][rename] loadedBoards AFTER local update",
+    //   loadedBoards.map((b) => ({
+    //     id: b.id,
+    //     title: b.title,
+    //     updatedAt: b.updatedAt,
+    //   }))
+    // );
 
     // 6) Re-render sidebar from updated in-memory state
     renderSidebarBoards(loadedBoards);
@@ -625,7 +736,7 @@ async function renameBoardAndUpdateUI(boardId, newTitle) {
       if (titleBox) titleBox.value = newTitle;
     }
 
-    console.log("[Boards][rename] DONE for", boardId);
+    // console.log("[Boards][rename] DONE for", boardId);
   } catch (err) {
     console.error("[Boards][rename] FAILED", err);
     throw err;
@@ -650,12 +761,12 @@ async function handleRename() {
   const newTitle = modalTitleInput.value.trim();
   const { id, path, title: oldTitle } = currentModalBoard;
 
-  console.log("[Boards][rename] start", {
-    id,
-    path,
-    oldTitle,
-    newTitle,
-  });
+  // console.log("[Boards][rename] start", {
+  //   id,
+  //   path,
+  //   oldTitle,
+  //   newTitle,
+  // });
 
   if (!newTitle) {
     console.warn("[Boards][rename] empty newTitle, aborting");
@@ -663,7 +774,7 @@ async function handleRename() {
   }
 
   if (newTitle === oldTitle) {
-    console.log("[Boards][rename] title unchanged, closing modal");
+    // console.log("[Boards][rename] title unchanged, closing modal");
     window.closeModal();
     return;
   }
@@ -693,20 +804,20 @@ async function handleRename() {
       throw parseErr;
     }
 
-    console.log("[Boards][rename] JSON before change", {
-      jsonTitle: json.title,
-      jsonUpdatedAt: json.updatedAt,
-    });
+    // console.log("[Boards][rename] JSON before change", {
+    //   jsonTitle: json.title,
+    //   jsonUpdatedAt: json.updatedAt,
+    // });
 
     // 2️⃣ Mutate JSON
     json.title = newTitle;
     json.updatedAt = new Date().toISOString();
 
     const serialized = JSON.stringify(json, null, 2);
-    console.log("[Boards][rename] JSON after change (about to save)", {
-      jsonTitle: json.title,
-      length: serialized.length,
-    });
+    // console.log("[Boards][rename] JSON after change (about to save)", {
+    //   jsonTitle: json.title,
+    //   length: serialized.length,
+    // });
 
     // 3️⃣ Save back to Supabase
     const newBlob = new Blob([serialized], {
@@ -726,9 +837,9 @@ async function handleRename() {
       throw updateError;
     }
 
-    console.log(
-      "[Boards][rename] Supabase update OK, calling loadBoards() next"
-    );
+    // console.log(
+    //   "[Boards][rename] Supabase update OK, calling loadBoards() next"
+    // );
 
     // 4️⃣ Reload list from server (this is what might be racing)
     await loadBoards();
@@ -744,10 +855,10 @@ async function handleRename() {
       } else {
         const verifyText = await verifyBlob.text();
         const verifyJson = JSON.parse(verifyText);
-        console.log("[Boards][rename] verify JSON after save", {
-          jsonTitle: verifyJson.title,
-          jsonUpdatedAt: verifyJson.updatedAt,
-        });
+        // console.log("[Boards][rename] verify JSON after save", {
+        //   jsonTitle: verifyJson.title,
+        //   jsonUpdatedAt: verifyJson.updatedAt,
+        // });
       }
     } catch (verifyErr) {
       console.error("[Boards][rename] verify step threw", verifyErr);
@@ -1207,13 +1318,13 @@ async function fetchBoardDetails(user, file) {
     const override = boardTitleOverrides[parsedBoard.id];
 
     if (override && override.title && override.title !== parsedBoard.title) {
-      console.log("[Boards][fetchBoardDetails] applying override", {
-        id: parsedBoard.id,
-        jsonTitle: parsedBoard.title,
-        overrideTitle: override.title,
-        jsonUpdatedAt: parsedBoard.updatedAt,
-        overrideUpdatedAt: override.updatedAt,
-      });
+      // console.log("[Boards][fetchBoardDetails] applying override", {
+      //   id: parsedBoard.id,
+      //   jsonTitle: parsedBoard.title,
+      //   overrideTitle: override.title,
+      //   jsonUpdatedAt: parsedBoard.updatedAt,
+      //   overrideUpdatedAt: override.updatedAt,
+      // });
 
       parsedBoard.title = override.title;
       // Optionally, also prefer override.updatedAt for sorting:
@@ -1226,13 +1337,13 @@ async function fetchBoardDetails(user, file) {
       // saveBoardTitleOverrides();
     }
 
-    console.log("[Boards][fetchBoardDetails]", {
-      fileName: file.name,
-      id: parsedBoard.id,
-      title: parsedBoard.title,
-      updatedAt: parsedBoard.updatedAt,
-      path,
-    });
+    // console.log(`[Boards][fetchBoardDetails]`, {
+    //   fileName: file.name,
+    //   id: parsedBoard.id,
+    //   title: parsedBoard.title,
+    //   updatedAt: parsedBoard.updatedAt,
+    //   path,
+    // });
 
     return parsedBoard;
 
@@ -1297,9 +1408,9 @@ async function loadBoards() {
       : [];
 
     if (!boardFiles || boardFiles.length === 0) {
-      console.log(
-        "[Boards] No board files found; auto-creating first board..."
-      );
+      // console.log(
+      //   "[Boards] No board files found; auto-creating first board..."
+      // );
       loadedBoards = [];
       renderSidebarBoards([]);
       boardsLoaded = true;
@@ -1344,15 +1455,15 @@ async function loadBoards() {
         new Date(a.updatedAt || a.createdAt)
     );
 
-    console.log(
-      "[Boards][loadBoards] SORTED from storage:",
-      sorted.map((b) => ({
-        id: b.id,
-        title: b.title,
-        updatedAt: b.updatedAt,
-        path: b.path,
-      }))
-    );
+    // console.log(
+    //   "[Boards][loadBoards] SORTED from storage:",
+    //   sorted.map((b) => ({
+    //     id: b.id,
+    //     title: b.title,
+    //     updatedAt: b.updatedAt,
+    //     path: b.path,
+    //   }))
+    // );
 
     loadedBoards = sorted;
     renderSidebarBoards(sorted);

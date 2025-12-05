@@ -2940,7 +2940,7 @@ body.scripture-mode-on #bible-query-reader {
 #bible-query-reader-fade-top {
   width:100vw;
   max-width: 600px;
-  height:60px;
+  height:100px;
   position:fixed;
   top:0px;
   left:50%;
@@ -2955,7 +2955,7 @@ body.scripture-mode-on #bible-query-reader {
 #bible-query-reader-fade-bottom {
   width:100vw;
   max-width: 600px;
-  height:60px;
+  height:100px;
   position:fixed;
   bottom:0px;
   left:50%;

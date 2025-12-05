@@ -1453,6 +1453,9 @@ body {
   position: relative;
   width: calc(100vw - 50px);
   max-width: 800px;
+  max-height: 500px;
+  overflow-y: scroll;
+  overflow-x: hidden;
   background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 26px;
@@ -2194,4 +2197,66 @@ body {
     gap: 12px;
     color: var(--fg, #e5e7eb);
   }
+}
+
+
+.promo-code-container {
+  width:calc(100% - 38px);
+  height:120px;
+  margin-top: 15px;
+  background: var(--bg-dots);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 18px;
+}
+
+.promo-plan-input-container {
+  width:calc(100%);
+  height:50px;
+  margin-top: 15px;
+  display:flex;
+  flex-direction: row;
+  gap: 15px;
+  justify-content:space-between;
+  align-items:center;
+}
+
+.promo-plan-input {
+  width: calc(100% - 160px);
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  padding: 12px;
+  font-weight: 800;
+  font-size: 0.95rem;
+  background: var(--bg-alt);
+  color: var(--fg);
+}
+
+.redeem-code-button {
+  width: 150px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  padding: 12px 15px;
+  font-weight: 800;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.redeem-code-button > span {
+  word-break: nowrap;
+}
+
+.promo-plan-message {
+  margin-top: 6px;
+  font-size: 13px;
+  min-height: 16px; /* keeps layout steady even when empty */
+  color: var(--muted);   /* default to error-ish red */
+}
+
+.promo-plan-message.error {
+  color: #f97373;
+}
+
+.promo-plan-message.success {
+  color: #22c55e;
 }
