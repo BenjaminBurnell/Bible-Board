@@ -1384,7 +1384,7 @@ async function loadBoards() {
     }
 
     // Now we *know* we have a user, safe to show loading
-    renderStatus("Loading boards…");
+    // renderStatus("Loading boards…");
 
     const { data: files, error: listErr } = await sb.storage
       .from(BUCKET)
@@ -1609,11 +1609,11 @@ async function handleNewBoard(isInitialLoad = false) {
  * @param {string} boardId The ID for the new board.
  */
 async function createBoardFile(boardId) {
-  let originalContent = "";
+  let originalContent = '';
   if (newBoardBtn) {
     originalContent = newBoardBtn.innerHTML;
     newBoardBtn.disabled = true;
-    newBoardBtn.textContent = "Creating...";
+    document.getElementById("new-board-btn-sidebar-text").textContent = "Creating...";
   }
 
   try {
@@ -2013,9 +2013,31 @@ async function init() {
     signoutBtn.onclick = async (e) => {
       e.preventDefault();
       closeProfileMenu();
-      await SubscriptionService.logout();
+
+      try {
+        // Prefer your SubscriptionService logout if it exists
+        if (typeof SubscriptionService?.logout === "function") {
+          await SubscriptionService.logout();
+        } else {
+          console.warn("[Boards] SubscriptionService.logout missing, using Supabase directly.");
+          await sb.auth.signOut();
+        }
+      } catch (err) {
+        console.error("[Boards] Error during SubscriptionService.logout, falling back to Supabase signOut:", err);
+        try {
+          await sb.auth.signOut();
+        } catch (innerErr) {
+          console.error("[Boards] Supabase signOut also failed:", innerErr);
+        }
+      }
+
+      // Force redirect after sign out so it *feels* like it worked
+      window.location.href = "../";
+      // Alternatively, if you prefer to reuse your auth handler:
+      // await handleAuthChange(null, true);
     };
   }
+
 
   // 5. Buttons
   if (newBoardBtn) newBoardBtn.onclick = handleNewBoard;
