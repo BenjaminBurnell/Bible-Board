@@ -7514,7 +7514,7 @@ function setupBoardSettingsPanel() {
 
     // Help Section
     if (tourBtn) {
-      content.appendChild(createLabel("Help"));
+      // content.appendChild(createLabel("Help"));
       resetPosition(tourBtn);
       content.appendChild(tourBtn);
     }
