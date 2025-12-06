@@ -92,7 +92,7 @@ export const SubscriptionService = {
     const { customerInfo } = await purchases.purchasePackage(normalPackage);
 
     if (customerInfo.entitlements.active[ENTITLEMENT_ID]) {
-      window.location.href = "dashboard/";
+      window.location.href = "../dashboard/";
     } else {
       alert("Payment succeeded, but Pro isn’t active. Please contact support.");
       console.error("[Sub] Missing entitlement after normal purchase:", customerInfo);
@@ -130,7 +130,7 @@ export const SubscriptionService = {
       const { customerInfo } = await purchases.purchasePackage(studentPackage);
 
       if (customerInfo.entitlements.active[ENTITLEMENT_ID]) {
-        window.location.href = "dashboard/";
+        window.location.href = "../dashboard/";
       } else {
         alert("Promo purchase succeeded, but Pro isn’t active. Please contact support.");
         console.error("[Promo] Missing entitlement after promo purchase:", customerInfo);

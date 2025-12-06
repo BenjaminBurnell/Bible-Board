@@ -3,6 +3,67 @@
 import { sb } from "../supabaseClient.js";
 import { SubscriptionService } from "../subscriptionService.js";
 
+/* =========================
+   Toast helper
+   ========================= */
+
+function ensureToastContainer() {
+  let container = document.getElementById("bb-toast-container");
+  if (!container) {
+    container = document.createElement("div");
+    container.id = "bb-toast-container";
+    document.body.appendChild(container);
+  }
+  return container;
+}
+
+function showToast(
+  message,
+  { variant = "success", duration = 4500 } = {}
+) {
+  const container = ensureToastContainer();
+
+  const toast = document.createElement("div");
+  toast.className = `bb-toast bb-toast-${variant}`;
+
+  toast.innerHTML = `
+    <div class="bb-toast-icon">
+      <span class="material-symbols-rounded">
+        ${variant === "success" ? "check_circle" : variant === "error" ? "error" : "info"}
+      </span>
+    </div>
+    <div class="bb-toast-message">${message}</div>
+    <button class="bb-toast-close" aria-label="Dismiss notification">
+      <span class="material-symbols-rounded">close</span>
+    </button>
+  `;
+
+  container.appendChild(toast);
+
+  // Animate in
+  requestAnimationFrame(() => {
+    toast.classList.add("bb-toast-show");
+  });
+
+  const remove = () => {
+    toast.classList.remove("bb-toast-show");
+    setTimeout(() => toast.remove(), 200);
+  };
+
+  // Close button
+  const closeBtn = toast.querySelector(".bb-toast-close");
+  if (closeBtn) {
+    closeBtn.addEventListener("click", remove);
+  }
+
+  // Auto-hide
+  const timeoutId = setTimeout(remove, duration);
+
+  // Optional: pause hide on hover
+  toast.addEventListener("mouseenter", () => clearTimeout(timeoutId));
+}
+
+
 const BUCKET = "bible-boards";
 const FREE_BOARD_LIMIT = 3; // The maximum number of boards for a free user
 const FREE_ITEM_LIMIT_PER_BOARD = 100;
@@ -23,7 +84,9 @@ async function hashPromoInput(rawCode) {
   if (!normalized) return null;
 
   if (!window.crypto?.subtle) {
-    console.error("Web Crypto API not available; cannot hash promo codes safely.");
+    console.error(
+      "Web Crypto API not available; cannot hash promo codes safely."
+    );
     // Last-resort fallback: plain string (NOT ideal)
     return normalized;
   }
@@ -70,12 +133,15 @@ async function redeemPromoCodeFromUI() {
     const isValid = hash && PROMO_CODE_HASHES.has(hash);
 
     if (!isValid) {
-      setPromoMessage("That promo code isn’t valid. Please double-check it.", "error");
+      setPromoMessage(
+        "That promo code isn’t valid. Please double-check it.",
+        "error"
+      );
       // alert("That promo code isn’t valid. Please double-check it and try again.");
       return;
     }
 
-    closeUpgradeModal()
+    closeUpgradeModal();
 
     // ✅ Valid code — run the special RevenueCat promo flow
     if (typeof SubscriptionService?.redeemStudentPromo === "function") {
@@ -85,19 +151,28 @@ async function redeemPromoCodeFromUI() {
       await SubscriptionService.subscribe();
     }
 
+    // ✅ Promo success toast
+    showToast("Student promo applied — you now have BibleBoard Pro for 3 months 🎓", {
+      variant: "success",
+    });
 
     // Optional: clear input on success attempt
     input.value = "";
   } catch (err) {
     console.error("Error redeeming promo code:", err);
-    // alert("Something went wrong while applying your promo. Please try again.");
-    setPromoMessage("Something went wrong while applying your promo. Please refresh and try again.", "error");
+    setPromoMessage(
+      "Something went wrong while applying your promo. Please refresh and try again.",
+      "error"
+    );
+
+    showToast("Something went wrong applying your promo. Please try again.", {
+      variant: "error",
+    });
   } finally {
     button.disabled = false;
     button.textContent = originalLabel;
   }
 }
-
 
 // --- State ---
 let currentUser = null;
@@ -109,6 +184,10 @@ let boardToDelete = null;
 
 // New: track whether we've finished loading the user's boards
 let boardsLoaded = false;
+
+// When true, the next Bible reader render will NOT force-scroll to the top.
+// Used so closing the reader with ESC doesn't reset scroll position.
+let suppressNextReaderScroll = false;
 
 // Assume FREE until proved Pro
 window.BIBLEBOARD_IS_PRO = false;
@@ -216,6 +295,7 @@ const hamburgerBtn = document.getElementById("hamburger-btn");
 
 // New DOM Refs for Upgrade Modal
 const upgradeModalBackdrop = document.getElementById("upgrade-modal-backdrop");
+const upgradeModal = document.querySelector(".upgrade-modal");
 const upgradeNowBtn = document.getElementById("upgrade-now-btn");
 
 // Promo code DOM refs
@@ -235,7 +315,6 @@ if (promoBtnEl && promoInputEl) {
     }
   });
 }
-
 
 // Fix: Ensure button exists before using
 const newBoardBtn =
@@ -514,7 +593,6 @@ async function renameBoardOnStorage(board, newTitle) {
   }
 }
 
-
 // --- Shared helper for renaming a board ---
 async function saveBoardTitle(board, newTitle) {
   if (!board || !newTitle) return;
@@ -709,7 +787,6 @@ async function renameBoardAndUpdateUI(boardId, newTitle) {
     //   override: boardTitleOverrides[boardId],
     // });
 
-
     // Keep the same sort as loadBoards()
     loadedBoards.sort(
       (a, b) =>
@@ -742,10 +819,6 @@ async function renameBoardAndUpdateUI(boardId, newTitle) {
     throw err;
   }
 }
-
-
-
-
 
 // Existing modal-based rename now just calls renameBoard()
 // --- RENAME LOGIC (with debug) ---
@@ -883,12 +956,6 @@ async function handleRename() {
   }
 }
 
-
-
-
-
-
-
 // --- DELETE LOGIC (FIXED) ---
 function openDeleteModal(board) {
   boardToDelete = board;
@@ -926,7 +993,7 @@ async function performDelete() {
     btn.disabled = true;
   }
 
-    try {
+  try {
     // 1. Make sure we are actually signed in before deleting
     const user = await ensureUser();
 
@@ -1058,10 +1125,6 @@ document.getElementById("ctx-rename").addEventListener("click", (e) => {
   }
 });
 
-
-
-
-
 document.getElementById("ctx-delete").addEventListener("click", (e) => {
   e.stopPropagation();
   closeContextMenu();
@@ -1160,11 +1223,6 @@ function startInlineRename(board, itemEl) {
     input.select();
   }, 0);
 }
-
-
-
-
-
 
 function openContextMenu(e, board, itemEl, menuBtn) {
   e.preventDefault();
@@ -1281,9 +1339,7 @@ function renderSidebarBoards(boards) {
 async function fetchBoardDetails(user, file) {
   const path = `${user.id}/boards/${file.name}`;
   try {
-    const { data: blob, error } = await sb.storage
-      .from(BUCKET)
-      .download(path);
+    const { data: blob, error } = await sb.storage.from(BUCKET).download(path);
     if (error) throw error;
 
     const text = await blob.text();
@@ -1297,8 +1353,7 @@ async function fetchBoardDetails(user, file) {
       if (first.type === "note" && first.html) {
         previewSnippet = first.html.toString().trim();
       } else if (first.type === "verse") {
-        previewSnippet =
-          first.text?.toString().trim() || first.reference || "";
+        previewSnippet = first.text?.toString().trim() || first.reference || "";
       } else if (first.type === "song") {
         previewSnippet = first.title?.toString().trim() || "";
       }
@@ -1346,13 +1401,11 @@ async function fetchBoardDetails(user, file) {
     // });
 
     return parsedBoard;
-
   } catch (err) {
     console.error("Failed to fetch details for", file.name, err);
     return null;
   }
 }
-
 
 // --- Load all boards for the current user ---
 async function loadBoards() {
@@ -1609,11 +1662,12 @@ async function handleNewBoard(isInitialLoad = false) {
  * @param {string} boardId The ID for the new board.
  */
 async function createBoardFile(boardId) {
-  let originalContent = '';
+  let originalContent = "";
   if (newBoardBtn) {
     originalContent = newBoardBtn.innerHTML;
     newBoardBtn.disabled = true;
-    document.getElementById("new-board-btn-sidebar-text").textContent = "Creating...";
+    document.getElementById("new-board-btn-sidebar-text").textContent =
+      "Creating...";
   }
 
   try {
@@ -1695,14 +1749,21 @@ async function handleUpgrade() {
   try {
     // Only using monthly right now, so hard-code monthly
     await SubscriptionService.subscribe("monthly");
-    // RevenueCat SDK / your SubscriptionService should handle
-    // opening the hosted pay page or Stripe checkout.
+
+    // ✅ Show success toast once payment completes
+    showToast("You’re all set! BibleBoard Pro is now active on your account 🙌", {
+      variant: "success",
+    });
   } catch (err) {
     console.error("Error starting subscription:", err);
-    // Optional: show a small toast or alert if you want
-    // alert("Something went wrong starting your subscription. Please try again.");
+
+    // Optional error toast
+    showToast("Something went wrong starting your subscription. Please try again.", {
+      variant: "error",
+    });
   }
 }
+
 
 // ==================== USER PROFILE LOGIC (ChatGPT Style) ====================
 
@@ -2001,10 +2062,50 @@ async function init() {
   // 4. Wire up Profile Menu Actions
   const manageBtn = document.getElementById("manage-sub-btn");
   if (manageBtn) {
-    manageBtn.onclick = (e) => {
+    manageBtn.onclick = async (e) => {
       e.preventDefault();
       closeProfileMenu();
-      SubscriptionService.manage();
+
+      let pro = false;
+      try {
+        // Use your existing async Pro check
+        pro = await isProUser();
+      } catch (err) {
+        console.error("[Boards] Error checking Pro status before manage:", err);
+        // If something goes wrong, treat as not Pro
+        pro = false;
+      }
+
+      // If they are NOT Pro → open the upgrade modal instead of manage portal
+      if (!pro) {
+        if (typeof window.openUpgradeModal === "function") {
+          window.openUpgradeModal("manage-no-active-sub");
+        } else {
+          // Fallback if for some reason modal isn't wired
+          alert(
+            "It looks like you don’t have an active subscription yet. " +
+              "You can upgrade to unlock BibleBoard Pro features."
+          );
+        }
+        return;
+      }
+
+      // If they ARE Pro → send them to the manage portal
+      if (
+        typeof SubscriptionService !== "undefined" &&
+        typeof SubscriptionService.manage === "function"
+      ) {
+        try {
+          await SubscriptionService.manage();
+        } catch (err) {
+          console.error(
+            "[Boards] Error opening manage subscription portal:",
+            err
+          );
+        }
+      } else {
+        console.warn("[Boards] SubscriptionService.manage is not available.");
+      }
     };
   }
 
@@ -2019,11 +2120,16 @@ async function init() {
         if (typeof SubscriptionService?.logout === "function") {
           await SubscriptionService.logout();
         } else {
-          console.warn("[Boards] SubscriptionService.logout missing, using Supabase directly.");
+          console.warn(
+            "[Boards] SubscriptionService.logout missing, using Supabase directly."
+          );
           await sb.auth.signOut();
         }
       } catch (err) {
-        console.error("[Boards] Error during SubscriptionService.logout, falling back to Supabase signOut:", err);
+        console.error(
+          "[Boards] Error during SubscriptionService.logout, falling back to Supabase signOut:",
+          err
+        );
         try {
           await sb.auth.signOut();
         } catch (innerErr) {
@@ -2037,7 +2143,6 @@ async function init() {
       // await handleAuthChange(null, true);
     };
   }
-
 
   // 5. Buttons
   if (newBoardBtn) newBoardBtn.onclick = handleNewBoard;
@@ -2108,9 +2213,93 @@ function updateBoardCreateButtonState() {
 /* ==================== UNIFIED SELECTION FIX ==================== */
 
 // 1. Ensure Global Queues Exist
+// 1. Ensure Global Queues Exist
 window.pendingVerseAdds = window.pendingVerseAdds || new Map();
 window.pendingSongAdds = window.pendingSongAdds || new Map();
-window.pendingInterlinearAdds = window.pendingInterlinearAdds || new Map();
+
+// Wrap interlinear queue so only *confirmed* items are visible to the rest of the app
+if (
+  !window.pendingInterlinearAdds ||
+  !window.pendingInterlinearAdds.__isVerseStudyQueueWrapper
+) {
+  const internal = new Map(); // all currently selected in the verse-study modal
+  const confirmed = new Set(); // the subset the user has "confirmed" via header +
+
+  window.pendingInterlinearAdds = {
+    __isVerseStudyQueueWrapper: true,
+    _internal: internal,
+    _confirmed: confirmed,
+
+    // 🔹 Used by renderVerseStudyInterlinearTokens & toggleInterlinearSelection
+    has(key) {
+      return internal.has(key);
+    },
+
+    // 🔹 Used by toggleInterlinearSelection when selecting/deselecting items
+    set(key, value) {
+      internal.set(key, value);
+    },
+
+    delete(key) {
+      internal.delete(key);
+      confirmed.delete(key);
+    },
+
+    clear() {
+      internal.clear();
+      confirmed.clear();
+    },
+
+    // 🔹 Called when the user clicks the verse-study header "+" button
+    confirmAll() {
+      for (const key of internal.keys()) {
+        confirmed.add(key);
+      }
+    },
+
+    // 🔹 Called when closing the verse-study modal (to drop unconfirmed picks)
+    clearUnconfirmed() {
+      for (const key of Array.from(internal.keys())) {
+        if (!confirmed.has(key)) {
+          internal.delete(key);
+        }
+      }
+    },
+
+    // ✅ What the floating button / queue should see: only confirmed items
+    get size() {
+      return confirmed.size;
+    },
+
+    values() {
+      const items = [];
+      for (const key of confirmed) {
+        if (internal.has(key)) {
+          items.push(internal.get(key));
+        }
+      }
+      return items.values();
+    },
+  };
+}
+
+window.verseStudySelectionCount = window.verseStudySelectionCount || 0;
+
+function updateVerseStudyHeaderButtons() {
+  const addBtn = document.getElementById("verse-study-add-btn");
+  const clearBtn = document.getElementById("verse-study-clear-btn");
+  if (!addBtn && !clearBtn) return;
+
+  const count = window.verseStudySelectionCount || 0;
+
+  if (count > 0) {
+    if (addBtn) addBtn.style.display = "inline-flex";
+    if (clearBtn) clearBtn.style.display = "inline-flex";
+  } else {
+    if (addBtn) addBtn.style.display = "none";
+    if (clearBtn) clearBtn.style.display = "none";
+  }
+}
 
 // 2. Unified Verse Toggle (Fixes the split-brain issue)
 // This replaces the old 'toggleVerseSelection' that used verseSelectionQueue
@@ -2141,6 +2330,25 @@ function toggleVerseSelection(verseData, btnElement) {
   // Update rounded corners for first/last selected verse in the reader
   updateSelectedVerseRadii();
 }
+
+function clearVerseStudySelections() {
+  // Deselect interlinear items
+  if (window.pendingInterlinearAdds) {
+    window.pendingInterlinearAdds.clear();
+  }
+  // Deselect crossref items
+  if (window.pendingCrossRefAdds) {
+    window.pendingCrossRefAdds.clear();
+  }
+
+  document.querySelectorAll(".selected-for-add").forEach((el) => {
+    el.classList.remove("selected-for-add");
+  });
+  document.querySelectorAll(".selected").forEach((el) => {
+    el.classList.remove("selected");
+  });
+}
+window.clearVerseStudySelections = clearVerseStudySelections;
 
 // Apply .selected-first / .selected-last for verses in the Bible Reader,
 // handling multiple separate runs of selected verses (e.g., 1–3 and 6–10).
@@ -2215,59 +2423,37 @@ function updateSelectedVerseRadii() {
 // 3. Unified "Add to Board" Button Update
 // Counts items from ALL three maps (Verses + Songs + Interlinear)
 function updateFloatingAddButton() {
-  const floatBtn = document.getElementById("floating-add-to-board-btn");
-  const readerBtn = document.getElementById("bible-reader-add-to-board-btn");
+  const btn = document.getElementById("bible-reader-add-to-board-btn");
+  if (!btn) return;
 
-  const vCount = window.pendingVerseAdds.size;
-  const sCount = window.pendingSongAdds.size;
-  const iCount = window.pendingInterlinearAdds.size;
+  const totalCount =
+    (window.pendingVerseAdds?.size || 0) +
+    (window.pendingInterlinearAdds?.size || 0) +
+    (window.pendingCrossRefAdds?.size || 0);
 
-  const total = vCount + sCount + iCount;
-
-  const buttons = [floatBtn, readerBtn].filter(Boolean);
-  if (buttons.length === 0) return;
-
-  if (total > 0) {
-    buttons.forEach((btn) => {
-      // Make it visible
-      btn.style.display = "inline-flex";
-
-      // Clear and rebuild button content
-      if (btn.replaceChildren) {
-        btn.replaceChildren();
-      } else {
-        btn.innerHTML = "";
-      }
-
-      // Icon
-      const icon = document.createElement("span");
-      icon.className = "material-symbols-outlined";
-      icon.textContent = "add_circle";
-      icon.style.marginRight = "6px";
-
-      // Text
-      const text = document.createElement("span");
-      text.textContent = `Add ${total} Item${total !== 1 ? "s" : ""}`;
-
-      btn.appendChild(icon);
-      btn.appendChild(text);
-
-      // Rebind click to the master flush function (clone to strip old listeners)
-      const newBtn = btn.cloneNode(true);
-      btn.parentNode.replaceChild(newBtn, btn);
-      newBtn.onclick = (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        handleFloatingAddClick();
-      };
-    });
+  if (totalCount > 0) {
+    btn.style.display = "flex";
+    btn.innerHTML = `
+      <span class="floating-add-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
+             viewBox="0 0 24 24" fill="currentColor"
+             class="icon icon-tabler icons-tabler-filled icon-tabler-square-rounded-plus">
+          <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+          <path d="M12 2l.324 .001l.318 .004l.616 .017l.299 .013l.579 .034l.553 .046c4.785 .464 6.732 2.411 7.196 7.196l.046 .553l.034 .579c.005 .098 .01 .198 .013 .299l.017 .616l.005 .642l-.005 .642l-.017 .616l-.013 .299l-.034 .579l-.046 .553c-.464 4.785 -2.411 6.732 -7.196 7.196l-.553 .046l-.579 .034c-.098 .005 -.198 .01 -.299 .013l-.616 .017l-.642 .005l-.642 -.005l-.616 -.017l-.299 -.013l-.579 -.034l-.553 -.046c-4.785 -.464 -6.732 -2.411 -7.196 -7.196l-.046 -.553l-.034 -.579a28.058 28.058 0 0 1 -.013 -.299l-.017 -.616c-.003 -.21 -.005 -.424 -.005 -.642l.001 -.324l.004 -.318l.017 -.616l.013 -.299l.034 -.579l.046 -.553c.464 -4.785 2.411 -6.732 7.196 -7.196l.553 -.046l.579 -.034c.098 -.005 .198 -.01 .299 -.013l.616 -.017c.21 -.003 .424 -.005 .642 -.005zm0 6a1 1 0 0 0 -1 1v2h-2l-.117 .007a1 1 0 0 0 .117 1.993h2v2l.007 .117a1 1 0 0 0 1.993 -.117v-2h2l.117 -.007a1 1 0 0 0 -.117 -1.993h-2v-2l-.007 -.117a1 1 0 0 0 -.993 -.883z"
+                fill="currentColor" stroke-width="0"></path>
+        </svg>
+      </span>
+      <span class="floating-add-label">
+        Add ${totalCount} item${totalCount > 1 ? "s" : ""}
+      </span>
+    `;
   } else {
-    // Hide both when nothing selected
-    buttons.forEach((btn) => {
-      btn.style.display = "none";
-    });
+    btn.style.display = "none";
   }
 }
+
+// 🔐 Export to the global window so non-module scripts use THIS version
+window.updateFloatingAddButton = updateFloatingAddButton;
 
 /**
  * Counts how many items are currently on the open board.
@@ -2554,13 +2740,55 @@ function openVerseStudyModal(verseData) {
 
   window.currentVerseStudyData = verseData;
 
+  // Reset verse-study selection header state for this open
+  if (typeof window !== "undefined") {
+    window.verseStudySelectionCount = 0;
+  }
+  if (typeof updateVerseStudyHeaderButtons === "function") {
+    updateVerseStudyHeaderButtons();
+  }
+
   const refEl = document.getElementById("verse-study-ref");
   const versionEl = document.getElementById("verse-study-version");
   const previewEl = document.getElementById("verse-study-preview");
 
   if (refEl) refEl.textContent = verseData.reference || "";
   if (versionEl) versionEl.textContent = verseData.version || "";
-  if (previewEl) previewEl.textContent = verseData.text || "";
+
+  if (previewEl) {
+    const rawText = (verseData.text || "").trim();
+
+    // Try to split "2 In the beginning..." into ["2", "In the beginning..."]
+    let verseNumber = "";
+    let verseBody = rawText;
+
+    const numMatch = rawText.match(/^(\d+)\s+(.*)$/);
+    if (numMatch) {
+      verseNumber = numMatch[1];
+      verseBody = numMatch[2];
+    }
+
+    const escapeHtml = (str) =>
+      String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+
+    if (verseNumber) {
+      previewEl.innerHTML =
+        `<span class="verse-study-preview-number">${escapeHtml(
+          verseNumber
+        )}</span>` +
+        `<span class="verse-study-preview-text">${escapeHtml(
+          verseBody
+        )}</span>`;
+    } else {
+      // Fallback: no leading number, just show the text
+      previewEl.textContent = verseBody;
+    }
+  }
 
   // 🔄 Reset sections + tabs
   if (typeof resetVerseStudySections === "function") {
@@ -2588,10 +2816,7 @@ function openVerseStudyModal(verseData) {
       openVerseStudyInterlinear(verseData.reference);
     }
 
-    if (
-      typeof openCrossRefForReference === "function" &&
-      verseData.reference
-    ) {
+    if (typeof openCrossRefForReference === "function" && verseData.reference) {
       openCrossRefForReference(verseData.reference);
     }
   } catch (err) {
@@ -2606,8 +2831,6 @@ function openVerseStudyModal(verseData) {
   if (crossBtn) crossBtn.click();
 }
 
-
-
 function closeVerseStudyModal() {
   const backdrop = document.getElementById("verse-study-modal-backdrop");
   if (!backdrop) return;
@@ -2616,10 +2839,20 @@ function closeVerseStudyModal() {
   backdrop.removeAttribute("data-open");
   window.currentVerseStudyData = null;
 
+  // Drop any interlinear rows that were selected but never confirmed with the header +
+  if (
+    window.pendingInterlinearAdds &&
+    typeof window.pendingInterlinearAdds.clearUnconfirmed === "function"
+  ) {
+    window.pendingInterlinearAdds.clearUnconfirmed();
+  }
+
   if (typeof resetVerseStudySections === "function") {
     resetVerseStudySections();
   }
 }
+
+window.closeVerseStudyModal = closeVerseStudyModal;
 
 function initVerseStudyModal() {
   const backdrop = document.getElementById("verse-study-modal-backdrop");
@@ -2628,12 +2861,68 @@ function initVerseStudyModal() {
   const closeBtn = backdrop.querySelector(".verse-study-close");
   const interBtn = document.getElementById("verse-study-open-interlinear");
   const crossBtn = document.getElementById("verse-study-open-crossref");
+  const headerAddBtn = document.getElementById("verse-study-add-btn");
+  const headerClearBtn = document.getElementById("verse-study-clear-btn");
 
   // Close button
   if (closeBtn) {
     closeBtn.addEventListener("click", (e) => {
       e.preventDefault();
       closeVerseStudyModal();
+    });
+  }
+
+  // Header "Add" button:
+  // ✅ DO NOT add directly to the board.
+  // It just closes the modal; the real add happens via the floating "Add N items" button.
+  if (headerAddBtn) {
+    headerAddBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      closeVerseStudyModal();
+      // Queue contents (verses + interlinear) are already in the global maps,
+      // so the floating Add button will still show the correct count.
+    });
+  }
+
+  // Header "Clear" button: clear ALL queued add-to-board items.
+  if (headerClearBtn) {
+    headerClearBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      // Clear queues
+      if (window.pendingVerseAdds && window.pendingVerseAdds.clear) {
+        window.pendingVerseAdds.clear();
+      }
+      if (window.pendingSongAdds && window.pendingSongAdds.clear) {
+        window.pendingSongAdds.clear();
+      }
+      if (
+        window.pendingInterlinearAdds &&
+        window.pendingInterlinearAdds.clear
+      ) {
+        window.pendingInterlinearAdds.clear();
+      }
+
+      // Reset visual selections everywhere
+      document
+        .querySelectorAll(
+          ".selected-for-add, .search-query-verse-add-button.selected"
+        )
+        .forEach((el) => {
+          el.classList.remove("selected-for-add");
+          el.classList.remove("selected");
+        });
+
+      window.verseStudySelectionCount = 0;
+
+      if (typeof updateFloatingAddButton === "function") {
+        updateFloatingAddButton();
+      }
+      if (typeof updateVerseStudyHeaderButtons === "function") {
+        updateVerseStudyHeaderButtons();
+      }
     });
   }
 
@@ -2646,7 +2935,10 @@ function initVerseStudyModal() {
 
   // ESC to close
   document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && backdrop.getAttribute("data-open") === "true") {
+    if (
+      event.key === "Escape" &&
+      backdrop.getAttribute("data-open") === "true"
+    ) {
       closeVerseStudyModal();
     }
   });
@@ -2688,7 +2980,6 @@ function initVerseStudyModal() {
   }
 }
 
-
 // ======================
 // Bible Query UI Helpers
 // ======================
@@ -2718,12 +3009,21 @@ document.addEventListener("DOMContentLoaded", () => {
     console.warn("Failed to init verse study modal:", err);
   }
 
+  // NEW: verse-study header clear behaviour
+  try {
+    initVerseStudyHeaderClearButton();
+  } catch (err) {
+    console.warn("Failed to init verse study header clear button:", err);
+  }
+
   // Hook up the Bible reader close button to the same logic
   const readerCloseBtn = document.getElementById("bible-query-reader-close");
   if (readerCloseBtn) {
     readerCloseBtn.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
+      // Next time the reader renders, keep the current scroll position
+      suppressNextReaderScroll = true;
       closeBibleReaderAndExitScriptureMode();
     });
   }
@@ -2731,10 +3031,17 @@ document.addEventListener("DOMContentLoaded", () => {
   // Also close on ESC key
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" || e.key === "Esc") {
+      // If the user closes with ESC, don't snap back to the top on next open
+      suppressNextReaderScroll = true;
       closeBibleReaderAndExitScriptureMode();
     }
   });
 });
+
+function initVerseStudyHeaderClearButton() {
+  // Placeholder for future "clear selections in verse-study" behavior.
+  // Currently a no-op – just here so the init call doesn't throw.
+}
 
 function initScriptureModeToggle() {
   const btn = document.getElementById("scripture-mode-toggle");
@@ -3261,11 +3568,14 @@ function initBibleQueryBookChapterDropdowns() {
     // Default: show both arrows
     prevArrow.style.display = "inline-flex";
     nextArrow.style.display = "inline-flex";
+    referencePill.style.padding = "0px 10px";
 
     // Genesis 1: only right arrow
     if (book === "Genesis" && chapter === 1) {
       prevArrow.style.display = "none";
       nextArrow.style.display = "inline-flex";
+      referencePill.style.paddingRight = "10px";
+      referencePill.style.paddingLeft = "20px";
       return;
     }
 
@@ -3275,6 +3585,8 @@ function initBibleQueryBookChapterDropdowns() {
     if (book === lastBook && chapter === lastChapter) {
       prevArrow.style.display = "inline-flex";
       nextArrow.style.display = "none";
+      referencePill.style.paddingLeft = "10px";
+      referencePill.style.paddingRight = "20px";
       return;
     }
   }
@@ -3439,9 +3751,14 @@ function initBibleQueryBookChapterDropdowns() {
     // 🔹 Copy verses from the hidden search drawer
     readerContent.innerHTML = verseResultContainer.innerHTML;
 
-    // 🔝 Always scroll to top when content changes
-    readerContent.scrollTop = 0;
-    reader.scrollTop = 0;
+    // 🔝 Scroll to top *unless* we've been told to preserve scroll
+    if (!suppressNextReaderScroll) {
+      readerContent.scrollTop = 0;
+      reader.scrollTop = 0;
+    } else {
+      // Consume the suppression flag so future renders behave normally again
+      suppressNextReaderScroll = false;
+    }
 
     // 🔹 Make it visible & animate in
     reader.style.display = "flex";
@@ -3553,6 +3870,16 @@ function initBibleQueryBookChapterDropdowns() {
       lastRequestedChapter = chapter;
       pendingSyncAfterSearch = true;
 
+      // ✅ NEW: Persist last opened chapter locally
+      try {
+        localStorage.setItem(
+          "bb:lastScriptureRef",
+          JSON.stringify({ book, chapter })
+        );
+      } catch (err) {
+        console.warn("[BibleReader] Failed to persist last reference:", err);
+      }
+
       // If you have a search drawer function, open it so the verses load
       if (typeof window.openSearchModal === "function") {
         window.openSearchModal();
@@ -3596,12 +3923,6 @@ function initBibleQueryBookChapterDropdowns() {
     syncSearchField(true);
   }
 
-  function selectChapter(ch) {
-    chapterLabel.textContent = String(ch);
-    // 👇 This auto-submits and triggers the reader update
-    syncSearchField(true);
-  }
-
   // ---- Click behavior ----
 
   // Click on the whole reference pill opens BOOK selection
@@ -3640,6 +3961,20 @@ function initBibleQueryBookChapterDropdowns() {
       closeAllDropdowns();
     }
   });
+
+  // ✅ NEW: Restore last opened book + chapter from localStorage (if available)
+  try {
+    const raw = localStorage.getItem("bb:lastScriptureRef");
+    if (raw) {
+      const saved = JSON.parse(raw);
+      if (saved && saved.book && saved.chapter) {
+        bookLabel.textContent = saved.book;
+        chapterLabel.textContent = String(saved.chapter);
+      }
+    }
+  } catch (err) {
+    console.warn("[BibleReader] Failed to restore last reference:", err);
+  }
 
   // Initial: clamp chapter to the valid range for the initial book
   const initialBook =

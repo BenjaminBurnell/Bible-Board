@@ -110,7 +110,7 @@ body.light {
   background-image: radial-gradient(circle at center,
       var(--bg-dots) 4px,
       transparent 4px);
-  background-size: 60px 60px;
+  background-size: 90px 90px;
 }
 
 /* ==================== Elements (board items) ==================== */
@@ -1625,7 +1625,7 @@ textarea:disabled {
   /* Hidden by default */
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(0, 0, 0, 0.3);
   backdrop-filter: blur(4px);
   z-index: 10040;
   align-items: center;
@@ -2109,7 +2109,7 @@ body.read-only .connection-handle {
 #note-modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(0, 0, 0, 0.3);
   backdrop-filter: blur(4px);
   z-index: 6000000;
   display: flex;
@@ -2717,7 +2717,7 @@ body.grouping-mode .board-item {
   gap: 10px;
   position: fixed !important;
   bottom: 15px;
-  z-index: 6000000;
+  z-index: 600000;
   left: calc(50% + var(--sidebar-width));
   transform: translateX(calc(-50% - (var(--sidebar-width) / 2)));
   display: none; /* default: hidden */
@@ -2892,6 +2892,7 @@ body.scripture-mode-on #bible-query-container {
 /* Bible Query Reader – fixed bottom card that mirrors the verses */
 #bible-query-reader {
   position: fixed;
+  height:100vh;
   left: var(--sidebar-width);
   right: 0px;
   bottom: 0px;
@@ -2911,6 +2912,22 @@ body.scripture-mode-on #bible-query-container {
   /* 🔁 Animation (similar to search-query-container) */
   opacity: 0;
   transition: opacity 0.25s ease, top 0.25s ease;
+}
+
+#bible-query-reader-content-container {
+  position: absolute;
+  right:0px;
+  left: 0px;
+  padding-bottom:25px;
+  height:fit-content;
+  background: var(--bg);
+  /* border-radius: 18px; */
+  /* border: 1px solid var(--fg-seethrough); */
+  overflow-y: hidden;
+  display:flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 350000;
 }
 
 /* When Scripture mode is on, show the full Bible reader container */
@@ -3001,8 +3018,13 @@ body.scripture-mode-on #bible-query-reader {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  z-index: 10002;
+  z-index: 10000000;
   cursor: pointer;
+}
+
+#bible-reader-add-to-board-btn > span {
+  font-size: 15px;
+  font-weight: 900;
 }
 
 #bible-reader-add-to-board-btn .material-symbols-outlined {
@@ -3086,6 +3108,35 @@ body.scripture-mode-on #bible-query-reader {
   font-weight:900;
   color:var(--fg);
   white-space: nowrap;
+}
+
+
+
+#bible-query-background-images-container {
+  width:calc(100vw - var(--sidebar-width));
+  height:100%;
+  overflow: hidden;
+  background:transparent;
+  position:absolute;
+  z-index: -1;
+  display: flex;
+  flex-direction: column;
+  align-items:center;
+}
+
+.bible-query-reader-img-container {
+  width:200px;
+  height:200px;
+  position:relative;
+}
+
+.bible-query-reader-img {
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  object-position: center;
+  filter: invert(var(--invert-num));
+  opacity: 0.03;
 }
 
 @media (max-width:935px) {
@@ -3194,7 +3245,7 @@ body.scripture-mode-on #scripture-mode-toggle {
 .verse-study-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(0, 0, 0, 0.3);
   backdrop-filter: blur(.25rem);
   display: flex;
   align-items: center;
@@ -3247,6 +3298,24 @@ body.scripture-mode-on #scripture-mode-toggle {
   overflow: hidden;
 }
 
+/* Small grey verse number at the start of the preview */
+.verse-study-preview-number {
+  display: inline-block;
+  font-size: 0.75rem;          /* smaller text */
+  font-weight: 700;
+  color: var(--muted);         /* grey */
+  vertical-align: top;         /* sit at the top of the line */
+  line-height: 1;
+  margin-right: 0.35rem;
+  position: relative;
+  top: 2px;                 /* nudge it up slightly */
+}
+
+/* Main preview text */
+.verse-study-preview-text {
+  display: inline;
+}
+
 .verse-study-actions {
   display: flex;
   justify-content: left;
@@ -3277,9 +3346,6 @@ body.scripture-mode-on #scripture-mode-toggle {
 }
 
 .verse-study-close {
-  position: absolute;
-  top: 25px;
-  right: 25px;
   border: 1px solid var(--border);
   background: var(--bg-dots);
   color: var(--muted);
@@ -3296,6 +3362,71 @@ body.scripture-mode-on #scripture-mode-toggle {
   color: var(--fg);
   background: var(--bg-alt);
 }
+
+/* Lay out title on left, buttons on right */
+.verse-study-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Container for the add + close buttons */
+.verse-study-header-buttons {
+  display: flex;
+  flex-direction: row-reverse;
+  align-items: center;
+  gap: 8px;
+  position:absolute;
+  top:25px;
+  right:25px;
+}
+
+/* Override the global absolute positioning for the close button
+   when it's inside the header */
+.verse-study-header .verse-study-close {
+  position: static;
+  top: auto;
+  right: auto;
+  margin: 0;
+}
+
+/* New header add button */
+.verse-study-header-add-btn {
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: rgba(24, 24, 27, 0.9);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--fg);
+  color: var(--bg);
+  border-radius: 50%;
+  width: 38px;
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+
+.verse-study-header-add-btn .material-symbols-outlined {
+  /* font-size: 22px; */
+}
+
+.verse-study-header-add-btn:hover {
+  opacity: 0.8;
+}
+
+
+
+
+
+
+
+
 
 
 #verse-study-sections {

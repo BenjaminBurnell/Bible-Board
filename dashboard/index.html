@@ -471,19 +471,58 @@
   </div>
 
   <div id="bible-query-reader" aria-live="polite">
-    <div id="bible-query-reader-header"></div>
-    <div id="bible-query-reader-fade-top"></div>
-    <div id="bible-query-reader-fade-bottom"></div>
-    <div id="bible-query-reader-content"></div>
+    <div id="bible-query-reader-content-container">
+      <div id="bible-query-reader-header"></div>
+      <div id="bible-query-reader-fade-top"></div>
+      <div id="bible-query-reader-fade-bottom"></div>
+      <div id="bible-query-reader-content"></div>
 
-    <div id="click-me-container">
-      <img id="click-me-img" src="../assets/Curved Arrow Img.png">
-      <div id="click-me-text">Click me</div>
-    </div>
+      <div id="click-me-container">
+        <img id="click-me-img" src="../assets/Curved Arrow Img.png">
+        <div id="click-me-text">Click me</div>
+      </div>
 
-    <div id="hold-for-more-container">
-      <img id="hold-for-more-img" src="../assets/Curved Arrow Img 2.png">
-      <div id="hold-for-more-text">Hold for more</div>
+      <div id="hold-for-more-container">
+        <img id="hold-for-more-img" src="../assets/Curved Arrow Img 2.png">
+        <div id="hold-for-more-text">Hold for more</div>
+      </div>
+
+      <div id="bible-query-background-images-container" style="display: none;">
+        <div class="bible-query-reader-img-container" style="margin-top:600px;margin-left: -900px;">
+          <img class="bible-query-reader-img" src="../assets/bible_stories_art/Moses Parting the Waters.png">
+        </div>
+
+        <div class="bible-query-reader-img-container" style="margin-top:300px;margin-left: 800px;">
+          <img class="bible-query-reader-img" src="../assets/bible_stories_art/Nativity Scene in Simple Lines.png">
+        </div>
+
+        <div class="bible-query-reader-img-container" style="margin-top:400px;margin-left: -950px;">
+          <img class="bible-query-reader-img" src="../assets/bible_stories_art/Noah's Ark with Giraffe and Elephant.png">
+        </div>
+
+        <div class="bible-query-reader-img-container" style="margin-top:500px;margin-left: 1000px;">
+          <img class="bible-query-reader-img" src="../assets/bible_stories_art/Shepherd Under Radiant Star.png">
+        </div>
+
+        <div class="bible-query-reader-img-container" style="margin-top:400px;margin-left: -950px;">
+          <img class="bible-query-reader-img" src="../assets/bible_stories_art/Jesus on Water Helping Hand.png">
+        </div>
+
+        <div class="bible-query-reader-img-container" style="margin-top:400px;margin-left: 950px;">
+          <img class="bible-query-reader-img" src="../assets/bible_stories_art/Carrying the Cross in Silence.png">
+        </div>
+
+        <div class="bible-query-reader-img-container" style="margin-top:400px;margin-left: -1050px;">
+          <img class="bible-query-reader-img" src="../assets/bible_stories_art/Minimalist Crucifixion Drawing in Stipples.png">
+        </div>
+
+        <div class="bible-query-reader-img-container" style="margin-top:400px;margin-left: 975px;">
+          <img class="bible-query-reader-img" src="../assets/bible_stories_art/Noah's Ark in Stippled Line Art.png">
+        </div>
+        <div class="bible-query-reader-img-container" style="margin-top:400px;margin-left: -875px;">
+          <img class="bible-query-reader-img" src="../assets/bible_stories_art/Textured Stone Archway Illustration.png">
+        </div>
+      </div>
     </div>
 
     <!-- NEW: Add to Board button inside reader -->
@@ -492,7 +531,12 @@
       type="button"
       class="bible-reader-add-btn"
       style="display: none;"
-    ></button>
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" class="icon icon-tabler icons-tabler-filled icon-tabler-square-rounded-plus">
+        <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+        <path d="M12 2l.324 .001l.318 .004l.616 .017l.299 .013l.579 .034l.553 .046c4.785 .464 6.732 2.411 7.196 7.196l.046 .553l.034 .579c.005 .098 .01 .198 .013 .299l.017 .616l.005 .642l-.005 .642l-.017 .616l-.013 .299l-.034 .579l-.046 .553c-.464 4.785 -2.411 6.732 -7.196 7.196l-.553 .046l-.579 .034c-.098 .005 -.198 .01 -.299 .013l-.616 .017l-.642 .005l-.642 -.005l-.616 -.017l-.299 -.013l-.579 -.034l-.553 -.046c-4.785 -.464 -6.732 -2.411 -7.196 -7.196l-.046 -.553l-.034 -.579a28.058 28.058 0 0 1 -.013 -.299l-.017 -.616c-.003 -.21 -.005 -.424 -.005 -.642l.001 -.324l.004 -.318l.017 -.616l.013 -.299l.034 -.579l.046 -.553c.464 -4.785 2.411 -6.732 7.196 -7.196l.553 -.046l.579 -.034c.098 -.005 .198 -.01 .299 -.013l.616 -.017c.21 -.003 .424 -.005 .642 -.005zm0 6a1 1 0 0 0 -1 1v2h-2l-.117 .007a1 1 0 0 0 .117 1.993h2v2l.007 .117a1 1 0 0 0 1.993 -.117v-2h2l.117 -.007a1 1 0 0 0 -.117 -1.993h-2v-2l-.007 -.117a1 1 0 0 0 -.993 -.883z" fill="currentColor" stroke-width="0"></path>
+      </svg>
+    </button>
 
     <button id="bible-query-reader-close" type="button" onclick="closeSearchQuery()" aria-label="Close reader">
       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" class="icon icon-tabler icons-tabler-filled icon-tabler-square-rounded-x">
@@ -507,17 +551,42 @@
   <!-- Verse study modal (opened by long-press / hold on a verse) -->
   <div id="verse-study-modal-backdrop" class="verse-study-backdrop" style="display:none;">
     <div class="verse-study-modal" role="dialog" aria-modal="true" aria-labelledby="verse-study-ref">
-      <div class="verse-study-header">
-        <div class="verse-study-heading">
-          <div id="verse-study-ref" class="verse-study-ref"></div>
-          <div id="verse-study-version" class="verse-study-version"></div>
+      <div class="verse-study-header" id="verse-study-header">
+        <div class="verse-study-header-main">
+          <h2 class="verse-study-ref" id="verse-study-ref">Genesis 1:2</h2>
+          <div class="verse-study-version" id="verse-study-version">NLT</div>
+          <p class="verse-study-preview" id="verse-study-preview"></p>
         </div>
-        <button type="button" class="verse-study-close" aria-label="Close">
-          <span class="material-symbols-outlined">close</span>
-        </button>
+
+        <div class="verse-study-header-buttons">
+          <!-- 🟢 NEW: Add-to-list button, hidden by default -->
+          <button
+            type="button"
+            class="verse-study-header-add-btn"
+            id="verse-study-header-add-btn"
+            style="display: none;"
+            aria-label="Add selected items to list"
+          >
+            <span class="material-symbols-outlined">add</span>
+          </button>
+
+          <!-- Existing close button -->
+          <button
+            type="button"
+            class="verse-study-close-btn verse-study-close"
+            aria-label="Close"
+          >
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
       </div>
 
-      <p id="verse-study-preview" class="verse-study-preview"></p>
+
+
+
+
+
+      <!-- <p id="verse-study-preview" class="verse-study-preview"></p> -->
 
       <div class="verse-study-actions">
         <button

@@ -723,7 +723,6 @@ function setVersion(version) {
     } catch (err) {
       console.warn("Version change refresh failed:", err);
     }
-
   });
 })();
 
@@ -919,7 +918,7 @@ const searchQueryFullContainer = document.getElementById(
   "search-query-full-container"
 );
 const loader = document.getElementById("loader");
-const floatingAddBtn = document.getElementById("floating-add-to-board-btn");
+const floatingAddBtn = document.getElementById("bible-reader-add-to-board-btn");
 
 // SONGS
 const songsContainer = document.getElementById("search-query-song-container");
@@ -1000,7 +999,6 @@ function isProAccount() {
   return !!window.BIBLEBOARD_IS_PRO;
 }
 
-
 function handleConnectionColorPlusClick(ev) {
   ev?.stopPropagation?.();
 
@@ -1058,8 +1056,6 @@ function findConnectionPathNearPoint(clientX, clientY) {
 
   return null;
 }
-
-
 
 // Injects the small bit of CSS needed for the color palette modal
 function ensureConnectionColorPaletteStyles() {
@@ -1239,9 +1235,15 @@ function ensureConnectionColorPaletteModal() {
 
   connectionColorPaletteBackdrop = backdrop;
   connectionColorPaletteModal = modal;
-  connectionColorPaletteListEl = modal.querySelector("[data-role='connection-color-list']");
-  connectionColorPaletteColorInput = modal.querySelector("#connection-color-picker-input");
-  connectionColorPaletteHexInput = modal.querySelector("#connection-color-hex-input");
+  connectionColorPaletteListEl = modal.querySelector(
+    "[data-role='connection-color-list']"
+  );
+  connectionColorPaletteColorInput = modal.querySelector(
+    "#connection-color-picker-input"
+  );
+  connectionColorPaletteHexInput = modal.querySelector(
+    "#connection-color-hex-input"
+  );
 
   const closeBtn = modal.querySelector(".connection-color-palette-close-btn");
   closeBtn.addEventListener("click", () => {
@@ -1309,36 +1311,6 @@ function closeConnectionColorPaletteModal() {
   if (!connectionColorPaletteBackdrop) return;
   connectionColorPaletteBackdrop.classList.remove("visible");
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 // --- Custom user connection colors (shared with board/) ---
 
@@ -1476,9 +1448,7 @@ function handleAddConnectionUserColor() {
 
   const existing = loadConnectionUserColors();
   // Move to front if already in list
-  const filtered = existing.filter(
-    (c) => normalizeConnectionHex(c) !== color
-  );
+  const filtered = existing.filter((c) => normalizeConnectionHex(c) !== color);
   filtered.unshift(color);
 
   // Optional limit
@@ -1511,9 +1481,7 @@ function handleRemoveConnectionUserColor(colorToRemove) {
   if (!target) return;
 
   const colors = loadConnectionUserColors();
-  const filtered = colors.filter(
-    (c) => normalizeConnectionHex(c) !== target
-  );
+  const filtered = colors.filter((c) => normalizeConnectionHex(c) !== target);
   saveConnectionUserColors(filtered);
   refreshConnectionColorPaletteList();
 
@@ -1547,17 +1515,12 @@ function applyConnectionColorFromPalette(color) {
       window.BoardAPI.setConnectionColor(hex);
     }
   } catch (err) {
-    console.warn(
-      "[Connections] Failed to apply color from palette:",
-      err
-    );
+    console.warn("[Connections] Failed to apply color from palette:", err);
   }
 
   // 2) Make sure this color is part of the small connection-line-menu list
   try {
-    if (
-      typeof window.BoardAPI.addUserConnectionColor === "function"
-    ) {
+    if (typeof window.BoardAPI.addUserConnectionColor === "function") {
       window.BoardAPI.addUserConnectionColor(hex);
     }
   } catch (err) {
@@ -1580,10 +1543,6 @@ function applyConnectionColorFromPalette(color) {
   closeConnectionColorPaletteModal();
 }
 
-
-
-
-
 function closeConnectionLineMenu() {
   clearConnectionHighlight?.();
 
@@ -1592,7 +1551,6 @@ function closeConnectionLineMenu() {
   activeConnectionPathForMenu = null;
   activeConnectionAnchor = null;
 }
-
 
 function updateConnectionLineMenuPosition() {
   // If menu isn't open, nothing to do
@@ -1622,10 +1580,8 @@ function updateConnectionLineMenuPosition() {
   let anchorX;
   let anchorY;
   if (activeConnectionAnchor) {
-    anchorX =
-      rect.left + rect.width * activeConnectionAnchor.relX;
-    anchorY =
-      rect.top + rect.height * activeConnectionAnchor.relY;
+    anchorX = rect.left + rect.width * activeConnectionAnchor.relX;
+    anchorY = rect.top + rect.height * activeConnectionAnchor.relY;
   } else {
     anchorX = rect.right;
     anchorY = rect.top + rect.height / 2;
@@ -1666,9 +1622,6 @@ function updateConnectionLineMenuPosition() {
   connectionLineMenuEl.style.left = `${x}px`;
   connectionLineMenuEl.style.top = `${y}px`;
 }
-
-
-
 
 function ensureConnectionLineMenu() {
   if (connectionLineMenuEl) return;
@@ -1713,15 +1666,22 @@ function ensureConnectionLineMenu() {
   // Persistent "+" button at the far right of the color row
   connectionColorPlusButton = document.createElement("button");
   connectionColorPlusButton.type = "button";
-  connectionColorPlusButton.className = "color-swatch connection-color-plus-btn";
-  connectionColorPlusButton.setAttribute("aria-label", "More connection colors");
+  connectionColorPlusButton.className =
+    "color-swatch connection-color-plus-btn";
+  connectionColorPlusButton.setAttribute(
+    "aria-label",
+    "More connection colors"
+  );
   connectionColorPlusButton.textContent = "+";
   connectionColorPlusButton.style.display = "flex";
   connectionColorPlusButton.style.alignItems = "center";
   connectionColorPlusButton.style.justifyContent = "center";
   connectionColorPlusButton.style.fontSize = "14px";
   connectionColorPlusButton.style.color = "var(--fg)";
-  connectionColorPlusButton.addEventListener("click", handleConnectionColorPlusClick);
+  connectionColorPlusButton.addEventListener(
+    "click",
+    handleConnectionColorPlusClick
+  );
 
   rebuildConnectionMenuColors = () => {
     colorRow.innerHTML = "";
@@ -1781,8 +1741,6 @@ function ensureConnectionLineMenu() {
   window.rebuildConnectionMenuColors = rebuildConnectionMenuColors;
 }
 
-
-
 function openConnectionLineMenu(path, clientX, clientY) {
   ensureConnectionLineMenu();
   activeConnectionPathForMenu = path;
@@ -1817,8 +1775,6 @@ function openConnectionLineMenu(path, clientX, clientY) {
   updateConnectionLineMenuPosition();
 }
 
-
-
 // Click on a connection line → show mini menu
 connectionsSvg.addEventListener("click", (ev) => {
   if (window.__readOnly) return;
@@ -1848,9 +1804,7 @@ connectionsSvg.addEventListener("click", (ev) => {
 
   if (window.BoardAPI && typeof window.BoardAPI.getConnections === "function") {
     const conns = window.BoardAPI.getConnections() || [];
-    const match = conns.find(
-      (c) => c.path === lineEl || c.hitPath === lineEl
-    );
+    const match = conns.find((c) => c.path === lineEl || c.hitPath === lineEl);
     if (match && match.path) {
       canonicalPath = match.path;
     }
@@ -1882,9 +1836,11 @@ connectionsSvg.addEventListener("click", (ev) => {
   openConnectionLineMenu(canonicalPath, ev.clientX, ev.clientY);
 });
 
-
 function clearConnectionHighlight() {
-  if (!window.BoardAPI || typeof window.BoardAPI.getConnections !== "function") {
+  if (
+    !window.BoardAPI ||
+    typeof window.BoardAPI.getConnections !== "function"
+  ) {
     return;
   }
   const conns = window.BoardAPI.getConnections() || [];
@@ -1896,7 +1852,10 @@ function clearConnectionHighlight() {
 }
 
 function highlightConnection(path) {
-  if (!window.BoardAPI || typeof window.BoardAPI.getConnections !== "function") {
+  if (
+    !window.BoardAPI ||
+    typeof window.BoardAPI.getConnections !== "function"
+  ) {
     return;
   }
   const conns = window.BoardAPI.getConnections() || [];
@@ -1910,8 +1869,6 @@ function highlightConnection(path) {
   });
 }
 
-
-
 // Click anywhere else on the page → close the menu
 document.addEventListener("click", (ev) => {
   if (!connectionLineMenuEl || connectionLineMenuEl.style.display === "none") {
@@ -1923,7 +1880,6 @@ document.addEventListener("click", (ev) => {
   }
   closeConnectionLineMenu();
 });
-
 
 // --- Viewport bars: DOM bootstrap ---
 let viewbarX = document.getElementById("viewbar-x");
@@ -2028,16 +1984,15 @@ function applyLayout(withTransition = true) {
 
     // Viewport: fade + slide
     if (viewport) {
-      viewport.style.transition =
-        "opacity 0.25s ease, transform 0.25s ease";
+      viewport.style.transition = "opacity 0.25s ease, transform 0.25s ease";
     }
   }
 
   if (searchDrawerOpen) {
     // === Drawer OPEN: panel fades in & up ===
     searchQueryContainer.style.zIndex = "10005";
-    searchQueryContainer.style.top = "0px";      // move up into place
-    searchQueryContainer.style.opacity = "1";    // fade in
+    searchQueryContainer.style.top = "0px"; // move up into place
+    searchQueryContainer.style.opacity = "1"; // fade in
 
     // Viewport fades out & slides up a bit
     if (viewport) {
@@ -2047,8 +2002,8 @@ function applyLayout(withTransition = true) {
     }
   } else {
     // === Drawer CLOSED: panel fades out & slightly down ===
-    searchQueryContainer.style.top = "20px";     // slide down
-    searchQueryContainer.style.opacity = "0";    // fade out
+    searchQueryContainer.style.top = "20px"; // slide down
+    searchQueryContainer.style.opacity = "0"; // fade out
 
     // After fade-out, drop zIndex so it's not clickable
     setTimeout(() => {
@@ -2070,8 +2025,6 @@ function applyLayout(withTransition = true) {
     interPanel.classList.toggle("open", interlinearOpen);
   }
 }
-
-
 
 // ==================== State ====================
 // ... (All state variables unchanged) ...
@@ -2109,7 +2062,7 @@ function syncHandleScaleVar() {
   // ====== 2) MENU SCALE (connection-line-menu bubble) ======
   let menuScale = base;
   const MIN_MENU_SCALE = 1;
-  const MAX_MENU_SCALE = .95; // ⬅️ cap the menu smaller than dots
+  const MAX_MENU_SCALE = 0.95; // ⬅️ cap the menu smaller than dots
 
   if (menuScale < MIN_MENU_SCALE) menuScale = MIN_MENU_SCALE;
   if (menuScale > MAX_MENU_SCALE) menuScale = MAX_MENU_SCALE;
@@ -2130,9 +2083,6 @@ function syncHandleScaleVar() {
     dotScale.toString()
   );
 }
-
-
-
 
 // --- BoardAPI shim (safe to re-declare) ---
 window.BoardAPI = window.BoardAPI || {};
@@ -2750,30 +2700,74 @@ function toggleSearchModeUI(activeMode) {
 
 window.toggleSearchModeUI = toggleSearchModeUI;
 
-/**
- * 1. helper function to toggle selection in the global map
- * Paste this near the bottom of script.js
- */
+// ------------------------------
+// Interlinear selection (DEBUG)
+// ------------------------------
 function toggleInterlinearSelection(btn, row, data) {
-  // Ensure the map exists
-  if (!window.pendingInterlinearAdds) window.pendingInterlinearAdds = new Map();
+  if (!window.pendingInterlinearAdds) {
+    window.pendingInterlinearAdds = new Map();
+  }
+  if (!window.pendingVerseAdds) {
+    window.pendingVerseAdds = new Map();
+  }
+  if (!window.pendingSongAdds) {
+    window.pendingSongAdds = new Map();
+  }
 
-  // Create a unique key based on reference + word
   const key = `${data.reference}::${data.surface}`;
 
-  if (window.pendingInterlinearAdds.has(key)) {
+  const wasSelected = window.pendingInterlinearAdds.has(key);
+
+  console.log("[VerseStudy Debug] toggleInterlinearSelection() called", {
+    key,
+    data,
+    wasSelectedBefore: wasSelected,
+    pendingInterlinearCountBefore: window.pendingInterlinearAdds.size,
+    pendingVerseCountBefore: window.pendingVerseAdds.size,
+    pendingSongCountBefore: window.pendingSongAdds.size,
+    rowExists: !!row,
+    btnExists: !!btn,
+  });
+
+  if (window.DEBUG_VERSE_STUDY) {
+    debugger;
+  }
+
+  if (wasSelected) {
     // REMOVE
     window.pendingInterlinearAdds.delete(key);
-    row.classList.remove("selected-for-add");
-    btn.classList.remove("selected");
+    if (btn) btn.classList.remove("selected");
+    if (row) row.classList.remove("selected-for-add");
   } else {
     // ADD
     window.pendingInterlinearAdds.set(key, data);
-    row.classList.add("selected-for-add");
-    btn.classList.add("selected");
+    if (btn) btn.classList.add("selected");
+    if (row) row.classList.add("selected-for-add");
   }
 
-  // Update the floating button (helper from script.js)
+  const vCount = window.pendingVerseAdds.size;
+  const sCount = window.pendingSongAdds.size;
+  const iCount = window.pendingInterlinearAdds.size;
+  const total = vCount + sCount + iCount;
+
+  console.log("[VerseStudy Debug] queues after toggleInterlinearSelection", {
+    vCount,
+    sCount,
+    iCount,
+    total,
+  });
+
+  if (typeof updateFloatingAddButton === "function") {
+    console.log(
+      "[VerseStudy Debug] calling updateFloatingAddButton() from toggleInterlinearSelection"
+    );
+    updateFloatingAddButton();
+  } else {
+    console.warn(
+      "[VerseStudy Debug] updateFloatingAddButton is NOT defined when toggling interlinear"
+    );
+  }
+
   if (typeof updateFloatingAddButton === "function") {
     updateFloatingAddButton();
   }
@@ -2790,11 +2784,7 @@ function renderVerseStudyInterlinearTokens(tokens, referenceTitle) {
   tokens.forEach((t, index) => {
     const surface = t.surface || "";
     const english =
-      t.translation ||
-      t.resolved_gloss ||
-      t.gloss ||
-      t.english ||
-      "";
+      t.translation || t.resolved_gloss || t.gloss || t.english || "";
     const translit = t.resolved_translit || t.translit || "";
     const morph = t.morph || "";
     const strong = t.strong || "";
@@ -2813,7 +2803,8 @@ function renderVerseStudyInterlinearTokens(tokens, referenceTitle) {
 
     const metaEl = document.createElement("div");
     metaEl.className = "interlinear-meta";
-    if (translit) metaEl.innerHTML += `<span class="meta-chip">${translit}</span>`;
+    if (translit)
+      metaEl.innerHTML += `<span class="meta-chip">${translit}</span>`;
     if (morph) metaEl.innerHTML += `<span class="meta-chip">${morph}</span>`;
     if (strong) metaEl.innerHTML += `<span class="meta-chip">${strong}</span>`;
 
@@ -2835,7 +2826,10 @@ function renderVerseStudyInterlinearTokens(tokens, referenceTitle) {
 
     // Match how we store keys in toggleInterlinearSelection
     const key = `${cardData.reference}::${surface}`;
-    if (window.pendingInterlinearAdds && window.pendingInterlinearAdds.has(key)) {
+    if (
+      window.pendingInterlinearAdds &&
+      window.pendingInterlinearAdds.has(key)
+    ) {
       row.classList.add("selected-for-add");
       addBtn.classList.add("selected");
     }
@@ -2859,8 +2853,6 @@ function renderVerseStudyInterlinearTokens(tokens, referenceTitle) {
     container.appendChild(row);
   });
 }
-
-
 
 // Fetch + render interlinear specifically for the verse-study modal
 async function openVerseStudyInterlinear(referenceString) {
@@ -2932,11 +2924,35 @@ async function openVerseStudyInterlinear(referenceString) {
   }
 }
 
-
-
 // --- NEW: Add global click listener for the floating button ---
-floatingAddBtn?.addEventListener("click", function () {
-  handleFloatingAddClick();
+floatingAddBtn?.addEventListener("click", function (e) {
+  if (window.DEBUG_FLOATING_ADD) {
+    console.log("[FloatingAdd Debug] floating-add-to-board-btn CLICK", {
+      time: new Date().toISOString(),
+      hasHandleFn: typeof handleFloatingAddClick,
+      pendingVerseAddsSize: window.pendingVerseAdds?.size,
+      pendingSongAddsSize: window.pendingSongAdds?.size,
+      pendingInterlinearAddsSize: window.pendingInterlinearAdds?.size,
+    });
+  }
+
+  try {
+    const result = handleFloatingAddClick?.();
+    // If the handler is async, attach a catch to surface errors
+    if (result && typeof result.then === "function") {
+      result.catch((err) => {
+        console.error(
+          "[FloatingAdd Debug] handleFloatingAddClick rejected:",
+          err
+        );
+      });
+    }
+  } catch (err) {
+    console.error(
+      "[FloatingAdd Debug] handleFloatingAddClick threw synchronously:",
+      err
+    );
+  }
 });
 
 function isTouchInsideUI(el) {
@@ -3156,7 +3172,6 @@ viewport.addEventListener(
   },
   { passive: true }
 );
-
 
 // Center only on a fresh board (Supabase restore sets __RESTORING / __RESTORED flags)
 window.addEventListener("load", () => {
@@ -3631,7 +3646,6 @@ function updateAllConnections() {
   }
 }
 
-
 // --- Connection drag / ghost line + snap-to-nearest-item (DEBUG) ---
 const SNAP_RADIUS = 200; // px distance in screen space
 
@@ -3670,7 +3684,7 @@ function startConnectionDrag(e, sourceEl) {
     return { x: cx, y: cy };
   }
 
-    // client (screen) coords -> board coords (same math as connections)
+  // client (screen) coords -> board coords (same math as connections)
   function clientToBoard(clientX, clientY) {
     return {
       x: (viewport.scrollLeft + (clientX - viewportRect.left)) / scale,
@@ -3685,10 +3699,8 @@ function startConnectionDrag(e, sourceEl) {
   // Bounds of an element in *board* coordinates
   function getElementBoundsBoard(el) {
     const r = el.getBoundingClientRect();
-    const left =
-      (viewport.scrollLeft + (r.left - viewportRect.left)) / scale;
-    const top =
-      (viewport.scrollTop + (r.top - viewportRect.top)) / scale;
+    const left = (viewport.scrollLeft + (r.left - viewportRect.left)) / scale;
+    const top = (viewport.scrollTop + (r.top - viewportRect.top)) / scale;
     const right = left + r.width / scale;
     const bottom = top + r.height / scale;
     return { left, top, right, bottom };
@@ -3729,8 +3741,6 @@ function startConnectionDrag(e, sourceEl) {
   }
 
   const src = getElementCenter(sourceEl);
-
-
 
   // Create the ghost dashed path if it doesn't exist yet
   if (!connectionDraftPath) {
@@ -3813,8 +3823,6 @@ function startConnectionDrag(e, sourceEl) {
       connectionDraftPath.style.strokeDasharray = "12 20";
     }
 
-
-
     if (DEBUG_CONNECTIONS) {
       console.log("[BB-CONN] updateDraft", {
         src: p1,
@@ -3827,7 +3835,6 @@ function startConnectionDrag(e, sourceEl) {
 
   // Initial position for the ghost line
   updateDraft(startPoint.clientX, startPoint.clientY);
-
 
   function onMove(ev) {
     const pt = ev.touches && ev.touches[0] ? ev.touches[0] : ev;
@@ -3879,7 +3886,6 @@ function startConnectionDrag(e, sourceEl) {
       }
     }
   }
-
 
   document.addEventListener("mousemove", onMove);
   document.addEventListener("mouseup", onUp);
@@ -3959,7 +3965,10 @@ function connectItems(a, b) {
 
   // 🔹 After creating a connection via user action, auto-open the mini menu
   // Skip this during board restore so you don't get random menus popping up
-  if (!window.__RESTORING_FROM_SUPABASE && typeof openConnectionLineMenu === "function") {
+  if (
+    !window.__RESTORING_FROM_SUPABASE &&
+    typeof openConnectionLineMenu === "function"
+  ) {
     // Use next frame so the browser has laid out the new path
     requestAnimationFrame(() => {
       try {
@@ -3987,13 +3996,14 @@ function connectItems(a, b) {
 
         openConnectionLineMenu(path, clientX, clientY);
       } catch (err) {
-        console.warn("[Connections] Failed to auto-open connection-line-menu:", err);
+        console.warn(
+          "[Connections] Failed to auto-open connection-line-menu:",
+          err
+        );
       }
     });
   }
 }
-
-
 
 /**
  * Remove a single connection by its path element.
@@ -4001,9 +4011,7 @@ function connectItems(a, b) {
 function disconnectLine(path) {
   if (window.__readOnly) return;
 
-  let idx = connections.findIndex(
-    (c) => c.path === path || c.hitPath === path
-  );
+  let idx = connections.findIndex((c) => c.path === path || c.hitPath === path);
   if (idx === -1) return;
 
   const conn = connections[idx];
@@ -4027,7 +4035,6 @@ function disconnectLine(path) {
   connections.splice(idx, 1);
   onBoardMutated("disconnect_line");
 }
-
 
 /**
  * Remove all connections touching the given element.
@@ -4059,7 +4066,6 @@ function removeConnectionsFor(el) {
 
   if (changed) onBoardMutated("remove_connections_for_item");
 }
-
 
 // --- Expose to other modules (undo-redo, colors, supabase, UI, etc.) ---
 
@@ -4257,8 +4263,6 @@ function attachSelectionFrame(el) {
   }
   el.appendChild(frame);
 }
-
-
 
 // ==================== Note Modal Logic ====================
 const noteModal = document.getElementById("note-modal-backdrop");
@@ -5725,8 +5729,12 @@ function closeSearchQuery() {
 
   // 🔹 Close the Bible Query reader with the same fade/slide animation
   const bibleReader = document.getElementById("bible-query-reader");
-  const bibleReaderHeader = document.getElementById("bible-query-reader-header");
-  const bibleReaderContent = document.getElementById("bible-query-reader-content");
+  const bibleReaderHeader = document.getElementById(
+    "bible-query-reader-header"
+  );
+  const bibleReaderContent = document.getElementById(
+    "bible-query-reader-content"
+  );
 
   if (bibleReader) {
     // Animate out
@@ -5765,8 +5773,6 @@ function closeSearchQuery() {
   }
   clearTimeout(searchDebounceTimer);
 }
-
-
 
 // ==================== Theme Toggle ====================
 // ... (Theme toggle logic unchanged) ...
@@ -5833,7 +5839,7 @@ function setConnectMode(on) {
 function selectItem(el) {
   // initial
   syncHandleScaleVar();
-  
+
   if (!el) return;
   if (selectedItem && selectedItem !== el) {
     selectedItem.classList.remove("selected-connection");
@@ -5891,7 +5897,12 @@ document.addEventListener("click", (e) => {
   // Allow deselecting in read-only, just don't do work if nothing is selected
   if (window.__readOnly && !selectedItem) return;
 
-  if (!insideWorkspace && !insideAction && !insideSearch && !insideColorToolbar) {
+  if (
+    !insideWorkspace &&
+    !insideAction &&
+    !insideSearch &&
+    !insideColorToolbar
+  ) {
     // 🔵 IMPORTANT: do NOT auto-close the search panel here anymore.
     // It should only close via Esc key or the Esc button.
 
@@ -5904,7 +5915,6 @@ document.addEventListener("click", (e) => {
     }
   }
 });
-
 
 // ... (keydown listener unchanged) ...
 document.addEventListener("keydown", (e) => {
@@ -6505,11 +6515,19 @@ function initCrossRefSelectionDelegation() {
   if (!container) return;
 
   container.addEventListener("click", (e) => {
+    console.log("[VerseStudy Debug] crossref container click", {
+      targetTag: e.target.tagName,
+      targetClass: e.target.className,
+    });
+
     const btn = e.target.closest(".search-query-verse-add-button");
     const card = e.target.closest(".search-query-verse-container");
+    console.log("[VerseStudy Debug] crossref derived elements", {
+      hasBtn: !!btn,
+      hasCard: !!card,
+    });
     if (!card) return;
 
-    // Verse metadata filled by fillVerseBatch(...)
     const reference = card.dataset.ref || card.dataset.reference;
     const text = card.dataset.text || "";
     const version =
@@ -6518,11 +6536,22 @@ function initCrossRefSelectionDelegation() {
         ? safeGetSelectedVersion()
         : "KJV");
 
-    if (!reference) return;
+    if (!reference) {
+      console.warn(
+        "[VerseStudy Debug] crossref click – NO reference on card dataset",
+        card.dataset
+      );
+      return;
+    }
 
     const verseData = { reference, text, version };
     const targetBtn =
       btn || card.querySelector(".search-query-verse-add-button");
+
+    console.log("[VerseStudy Debug] crossref verseData built", {
+      verseData,
+      targetBtnExists: !!targetBtn,
+    });
 
     if (
       verseData &&
@@ -6530,10 +6559,22 @@ function initCrossRefSelectionDelegation() {
       typeof window.toggleVerseSelection === "function"
     ) {
       if (btn) {
-        // Don't let the click bubble to the card itself
         e.stopPropagation();
       }
+      console.log(
+        "[VerseStudy Debug] calling window.toggleVerseSelection() from crossref",
+        { key: `${reference}::${version}` }
+      );
       window.toggleVerseSelection(verseData, targetBtn);
+    } else {
+      console.warn(
+        "[VerseStudy Debug] NOT calling toggleVerseSelection from crossref",
+        {
+          hasVerseData: !!verseData,
+          hasTargetBtn: !!targetBtn,
+          hasToggle: typeof window.toggleVerseSelection === "function",
+        }
+      );
     }
   });
 }
@@ -6711,6 +6752,28 @@ function syncSettingsPickerFromSearch() {
   if (searchPicker && settingsPicker) {
     settingsPicker.value = searchPicker.value;
   }
+}
+
+// Helper: parse "Genesis 1:1" into { book, chapter, verse }
+function parseFullRef(ref) {
+  const raw = String(ref || "").trim();
+
+  // Matches "Book Name 1:23"
+  const match = raw.match(/^(.+?)\s+(\d+):(\d+)$/);
+  if (!match) {
+    console.warn("[FloatingAdd Debug] parseFullRef could not parse ref:", raw);
+    return {
+      book: raw,
+      chapter: 0,
+      verse: 0,
+    };
+  }
+
+  return {
+    book: match[1],
+    chapter: parseInt(match[2], 10),
+    verse: parseInt(match[3], 10),
+  };
 }
 
 /**
@@ -6990,62 +7053,6 @@ function applyReadOnlyGuards(isReadOnly) {
       el.title = "";
     });
     // --- END NEW ---
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
     // 5. Restore search and tour (NEW)
     // if (searchForm) searchForm.style.display = ""; // Use '' to reset to CSS default
@@ -7391,7 +7398,7 @@ function buildBoardTourSteps() {
   //   },
   // ];
 
-  const steps = []
+  const steps = [];
   return steps;
 }
 
@@ -7820,7 +7827,9 @@ async function fetchAndRenderCrossrefs(reference) {
   content.innerHTML = "";
 
   try {
-    const url = `https://api.bibleboard.app/crossref?verse=${encodeURIComponent(reference)}`;
+    const url = `https://api.bibleboard.app/crossref?verse=${encodeURIComponent(
+      reference
+    )}`;
     const res = await fetch(url);
     if (!res.ok) throw new Error("CrossRef API error " + res.status);
 
@@ -7840,7 +7849,9 @@ async function fetchAndRenderCrossrefs(reference) {
             <div class="crossref-ref">${r.cross_ref}</div>
             <div class="crossref-text">${r.text || ""}</div>
           </div>
-          <button class="crossref-add-button" onclick="addBibleVerse('${r.cross_ref}')">Add</button>
+          <button class="crossref-add-button" onclick="addBibleVerse('${
+            r.cross_ref
+          }')">Add</button>
         </div>`
       )
       .join("");
@@ -7850,7 +7861,6 @@ async function fetchAndRenderCrossrefs(reference) {
     content.innerHTML = `<div style="color:red;">Error loading cross references.</div>`;
   }
 }
-
 
 // Update from context (entry point)
 function updateCrossrefsFromCurrentContext(force = false) {
@@ -8348,11 +8358,7 @@ async function openInterlinearForReference(reference) {
     content.innerHTML = tokens
       .map((w) => {
         const surface = w.surface ?? "";
-        const english =
-          w.english ||
-          w.translation ||
-          w.resolved_gloss ||
-          "";
+        const english = w.english || w.translation || w.resolved_gloss || "";
         const translit = w.translit || w.resolved_translit || "";
         const morph = w.morph || "";
         const strong = w.strong || "";
@@ -8379,8 +8385,6 @@ async function openInterlinearForReference(reference) {
   }
 }
 
-
-
 // Load cross references into the verse-study modal
 async function openCrossRefForReference(reference) {
   console.log("[VerseStudy Crossref] incoming reference:", reference);
@@ -8401,9 +8405,10 @@ async function openCrossRefForReference(reference) {
 
   try {
     // 1️⃣ Normalize the base verse (e.g. "Genesis 1:1")
-    const baseRef = typeof cleanRefForApi === "function"
-      ? cleanRefForApi(reference)
-      : String(reference || "").trim();
+    const baseRef =
+      typeof cleanRefForApi === "function"
+        ? cleanRefForApi(reference)
+        : String(reference || "").trim();
 
     if (!baseRef) {
       loader.style.display = "none";
@@ -8423,9 +8428,12 @@ async function openCrossRefForReference(reference) {
     window.__verseStudyCrossrefAbortController = controller;
 
     // 2️⃣ Build API URL (this uses CROSSREF_API_BASE = "https://full-bible-api.onrender.com/crossref")
-    const url = typeof buildCrossrefUrl === "function"
-      ? buildCrossrefUrl(baseRef)
-      : `https://full-bible-api.onrender.com/crossref/?verse=${encodeURIComponent(baseRef)}`;
+    const url =
+      typeof buildCrossrefUrl === "function"
+        ? buildCrossrefUrl(baseRef)
+        : `https://full-bible-api.onrender.com/crossref/?verse=${encodeURIComponent(
+            baseRef
+          )}`;
 
     console.log("[VerseStudy Crossref] Fetching:", url);
 
@@ -8448,14 +8456,16 @@ async function openCrossRefForReference(reference) {
     const version =
       typeof safeGetSelectedVersion === "function"
         ? safeGetSelectedVersion()
-        : (typeof getSelectedVersion === "function"
-            ? getSelectedVersion()
-            : "KJV");
+        : typeof getSelectedVersion === "function"
+        ? getSelectedVersion()
+        : "KJV";
 
     const rows = [];
     const MAX_RESULTS = 15; // you can tweak this
 
-    for (let i = 0; i < rawResults.length && rows.length < MAX_RESULTS; i++) {
+    // ⚡ NEW: Build tasks first instead of fetching one-by-one
+    const tasks = [];
+    for (let i = 0; i < rawResults.length && tasks.length < MAX_RESULTS; i++) {
       if (controller.signal.aborted) return;
 
       const item = rawResults[i];
@@ -8466,65 +8476,106 @@ async function openCrossRefForReference(reference) {
       if (!rawRef) continue;
 
       // Normalize to something like "John 1:1"
-      const cleanedCross = typeof cleanRefForApi === "function"
-        ? cleanRefForApi(rawRef)
-        : String(rawRef);
+      const cleanedCross =
+        typeof cleanRefForApi === "function"
+          ? cleanRefForApi(rawRef)
+          : String(rawRef);
 
       if (!cleanedCross) continue;
 
       // Skip multi-verse refs like "John 1:1-3"
-      if (typeof isMultiVerseReference === "function" &&
-          isMultiVerseReference(cleanedCross)) {
+      if (
+        typeof isMultiVerseReference === "function" &&
+        isMultiVerseReference(cleanedCross)
+      ) {
         continue;
       }
 
       const parts = parseReferenceToParts(cleanedCross);
       if (!parts) continue;
 
-      let text;
-      try {
-        text = await fetchVerseText(
-          parts.book,
-          parts.chapter,
-          parts.verse,
-          controller.signal,
-          version
-        );
-      } catch (err) {
-        if (controller.signal.aborted) return;
-        console.warn("Failed to load crossref verse", cleanedCross, err);
-        continue;
-      }
+      const displayRef =
+        typeof expandReferenceAbbrev === "function"
+          ? expandReferenceAbbrev(cleanedCross)
+          : cleanedCross;
 
-      if (!text || /not\s*found|unavailable|error/i.test(String(text))) {
-        continue;
-      }
+      tasks.push({ cleanedCross, parts, displayRef });
+    }
 
-      const displayRef = typeof expandReferenceAbbrev === "function"
-        ? expandReferenceAbbrev(cleanedCross)
-        : cleanedCross;
+    if (!tasks.length) {
+      loader.style.display = "none";
+      content.innerHTML = `<div style="color:var(--muted);">
+        No cross references with text found.
+      </div>`;
+      return;
+    }
 
-      const cleanText = typeof cleanDisplayVerse === "function"
-        ? cleanDisplayVerse(text)
-        : text;
+    // ⚡ NEW: Fetch verse text in parallel batches
+    const BATCH_SIZE = 5; // how many crossrefs to fetch at once
+    for (let i = 0; i < tasks.length; i += BATCH_SIZE) {
+      if (controller.signal.aborted) return;
 
-      rows.push(`
-        <div class="crossref-row search-query-verse-container"
-            data-ref="${displayRef}"
-            data-version="${version}"
-            data-text="${cleanText}">
-          <div class="crossref-main">
-            <div class="crossref-ref">${displayRef}</div>
-            <div class="crossref-text">${cleanText}</div>
+      const batch = tasks.slice(i, i + BATCH_SIZE);
+
+      const batchPromises = batch.map(async (task) => {
+        if (controller.signal.aborted) return null;
+
+        try {
+          const text = await fetchVerseText(
+            task.parts.book,
+            task.parts.chapter,
+            task.parts.verse,
+            controller.signal,
+            version
+          );
+
+          if (!text || /not\s*found|unavailable|error/i.test(String(text))) {
+            return null;
+          }
+
+          const cleanText =
+            typeof cleanDisplayVerse === "function"
+              ? cleanDisplayVerse(text)
+              : text;
+
+          return {
+            displayRef: task.displayRef,
+            cleanText,
+          };
+        } catch (err) {
+          if (controller.signal.aborted) return null;
+          console.warn(
+            "[VerseStudy Crossref] Failed to load crossref verse",
+            task.cleanedCross,
+            err
+          );
+          return null;
+        }
+      });
+
+      const batchResults = await Promise.all(batchPromises);
+      if (controller.signal.aborted) return;
+
+      for (const result of batchResults) {
+        if (!result) continue;
+
+        rows.push(`
+          <div class="crossref-row search-query-verse-container"
+              data-ref="${result.displayRef}"
+              data-version="${version}"
+              data-text="${result.cleanText}">
+            <div class="crossref-main">
+              <div class="crossref-ref">${result.displayRef}</div>
+              <div class="crossref-text">${result.cleanText}</div>
+            </div>
+            <button
+              type="button"
+              class="search-query-verse-add-button"
+              aria-label="Add ${result.displayRef} to board">
+            </button>
           </div>
-          <button
-            type="button"
-            class="search-query-verse-add-button"
-            aria-label="Add ${displayRef} to board">
-          </button>
-        </div>
-      `);
-
+        `);
+      }
     }
 
     loader.style.display = "none";
@@ -8538,7 +8589,7 @@ async function openCrossRefForReference(reference) {
 
     content.innerHTML = rows.join("");
 
-        // Wire up click handlers so cross-ref rows can be added to the
+    // Wire up click handlers so cross-ref rows can be added to the
     // same "Add to board" queue used by the Bible search + reader.
     try {
       // Ensure the global verse queue map exists
@@ -8555,8 +8606,7 @@ async function openCrossRefForReference(reference) {
         if (!btnEl) return;
 
         // Build the verse payload from data attributes
-        const reference =
-          rowEl.dataset.ref || rowEl.dataset.reference || "";
+        const reference = rowEl.dataset.ref || rowEl.dataset.reference || "";
         const text = rowEl.dataset.text || "";
         const version =
           rowEl.dataset.version ||
@@ -8603,7 +8653,6 @@ async function openCrossRefForReference(reference) {
         wiringErr
       );
     }
-
   } catch (err) {
     if (err.name === "AbortError") return;
     console.error("[VerseStudy Crossref] error:", err);
@@ -8615,152 +8664,153 @@ async function openCrossRefForReference(reference) {
 }
 
 
+// // This should already be in your script.js, but ensure
+// // it handles the visual toggling for the parent row correctly.
+// function toggleItemInQueue(btn, rowElement, data) {
+//   const queue = window.itemsToAddQueue;
+//   const floatBtn = document.getElementById("floating-add-to-board-btn");
 
-// This should already be in your script.js, but ensure
-// it handles the visual toggling for the parent row correctly.
-function toggleItemInQueue(btn, rowElement, data) {
-  const queue = window.itemsToAddQueue;
-  const floatBtn = document.getElementById("floating-add-to-board-btn");
+//   // Check if item is already in queue (simple object reference check might fail if recreating objs,
+//   // but for this UI lifecycle it's usually fine. If strict dedupe needed, use a unique ID).
 
-  // Check if item is already in queue (simple object reference check might fail if recreating objs,
-  // but for this UI lifecycle it's usually fine. If strict dedupe needed, use a unique ID).
+//   // Basic toggle logic
+//   if (btn.classList.contains("selected")) {
+//     // REMOVE
+//     btn.classList.remove("selected");
+//     rowElement.classList.remove("selected-for-add");
 
-  // Basic toggle logic
-  if (btn.classList.contains("selected")) {
-    // REMOVE
-    btn.classList.remove("selected");
-    rowElement.classList.remove("selected-for-add");
+//     // Find and delete from Set (since object references might differ, we might need to find by ID/content)
+//     // Simple approach: Iterate set and match specific props
+//     for (const i of queue) {
+//       if (
+//         i.type === data.type &&
+//         i.reference === data.reference &&
+//         i.surface === data.surface
+//       ) {
+//         // Unique check for Interlinear
+//         queue.delete(i);
+//         break;
+//       }
+//       // Add checks for verse/song uniqueness if needed
+//       if (i.type === "verse" && i.reference === data.reference) {
+//         queue.delete(i);
+//         break;
+//       }
+//     }
+//   } else {
+//     // ADD
+//     btn.classList.add("selected");
+//     rowElement.classList.add("selected-for-add");
+//     queue.add(data);
+//   }
 
-    // Find and delete from Set (since object references might differ, we might need to find by ID/content)
-    // Simple approach: Iterate set and match specific props
-    for (const i of queue) {
-      if (
-        i.type === data.type &&
-        i.reference === data.reference &&
-        i.surface === data.surface
-      ) {
-        // Unique check for Interlinear
-        queue.delete(i);
-        break;
-      }
-      // Add checks for verse/song uniqueness if needed
-      if (i.type === "verse" && i.reference === data.reference) {
-        queue.delete(i);
-        break;
-      }
-    }
-  } else {
-    // ADD
-    btn.classList.add("selected");
-    rowElement.classList.add("selected-for-add");
-    queue.add(data);
-  }
+//   // Update Floating Button
+//   if (queue.size > 0) {
+//     floatBtn.style.display = "flex";
+//     floatBtn.innerHTML = `<svg class="add-to-board-icon-open" .>.</svg> Add ${queue.size} to Board`;
 
-  // Update Floating Button
-  if (queue.size > 0) {
-    floatBtn.style.display = "flex";
-    floatBtn.innerHTML = `<svg class="add-to-board-icon-open" ...>...</svg> Add ${queue.size} to Board`;
-    // Add click listener only once or rely on global listener
-    floatBtn.onclick = flushItemsQueueToBoard;
-  } else {
-    floatBtn.style.display = "none";
-  }
-}
+//     // ❌ DO NOT set floatBtn.onclick here anymore.
+//     // We now have ONE global click handler that calls handleFloatingAddClick
+//     // which uses the new pending* maps.
+//     // floatBtn.onclick = flushItemsQueueToBoard;
+//   } else {
+//     floatBtn.style.display = "none";
+//   }
+// }
 
-/**
- * UPDATED: Handles 'interlinear' type in the flush queue.
- */
-async function flushItemsQueueToBoard() {
-  const floatBtn = document.getElementById("floating-add-to-board-btn");
-  const queue = window.itemsToAddQueue;
+// /**
+//  * UPDATED: Handles 'interlinear' type in the flush queue.
+//  */
+// async function flushItemsQueueToBoard() {
+//   const floatBtn = document.getElementById("floating-add-to-board-btn");
+//   const queue = window.itemsToAddQueue;
 
-  // Nothing queued → nothing to do
-  if (!queue || queue.size === 0) return;
+//   // Nothing queued → nothing to do
+//   if (!queue || queue.size === 0) return;
 
-  // 🔒 NEW: enforce the per-board limit ONLY on this bulk add action
-  if (typeof window.ensureCanAddBatch === "function") {
-    const canAdd = await window.ensureCanAddBatch(queue.size);
-    if (!canAdd) {
-      // IMPORTANT: do NOT clear the queue or selection.
-      // This lets a user upgrade and just click the button again
-      // without losing all the verses they’ve selected.
-      return;
-    }
-  }
+//   // 🔒 NEW: enforce the per-board limit ONLY on this bulk add action
+//   if (typeof window.ensureCanAddBatch === "function") {
+//     const canAdd = await window.ensureCanAddBatch(queue.size);
+//     if (!canAdd) {
+//       // IMPORTANT: do NOT clear the queue or selection.
+//       // This lets a user upgrade and just click the button again
+//       // without losing all the verses they’ve selected.
+//       return;
+//     }
+//   }
 
-  // 1. Hide the search/drawer UI
-  const searchContainer = document.getElementById("search-query-container");
-  const searchInput = document.getElementById("search-bar");
-  if (searchContainer) searchContainer.classList.remove("open");
-  if (searchInput) searchInput.value = "";
-  if (floatBtn) floatBtn.style.display = "none";
+//   // 1. Hide the search/drawer UI
+//   const searchContainer = document.getElementById("search-query-container");
+//   const searchInput = document.getElementById("search-bar");
+//   if (searchContainer) searchContainer.classList.remove("open");
+//   if (searchInput) searchInput.value = "";
+//   if (floatBtn) floatBtn.style.display = "none";
 
-  // 2. Calculate where to place new items visually (centered around viewport center)
-  const viewportEl = document.querySelector(".viewport");
-  const viewportRect = viewportEl.getBoundingClientRect();
-  const workspaceRect = workspace.getBoundingClientRect();
+//   // 2. Calculate where to place new items visually (centered around viewport center)
+//   const viewportEl = document.querySelector(".viewport");
+//   const viewportRect = viewportEl.getBoundingClientRect();
+//   const workspaceRect = workspace.getBoundingClientRect();
 
-  const centerX = viewport.scrollLeft + viewportRect.width / 2;
-  const centerY = viewport.scrollTop + viewportRect.height / 2;
+//   const centerX = viewport.scrollLeft + viewportRect.width / 2;
+//   const centerY = viewport.scrollTop + viewportRect.height / 2;
 
-  const offsetStep = 40;
-  const totalItems = queue.size;
-  const startX = centerX - ((totalItems - 1) * offsetStep) / 2;
-  const startY = centerY - ((totalItems - 1) * offsetStep) / 2;
+//   const offsetStep = 40;
+//   const totalItems = queue.size;
+//   const startX = centerX - ((totalItems - 1) * offsetStep) / 2;
+//   const startY = centerY - ((totalItems - 1) * offsetStep) / 2;
 
-  // Take a snapshot so index math is stable even if the Set changes
-  const items = Array.from(queue);
+//   // Take a snapshot so index math is stable even if the Set changes
+//   const items = Array.from(queue);
 
-  // 3. Iterate and Add
-  items.forEach((item, idx) => {
-    let newEl = null;
+//   // 3. Iterate and Add
+//   items.forEach((item, idx) => {
+//     let newEl = null;
 
-    if (item.type === "verse") {
-      // Add a verse card
-      newEl = window.BoardAPI.addBibleVerse(
-        item.reference,
-        item.text,
-        false,
-        item.version
-      );
-    } else if (item.type === "song") {
-      newEl = window.BoardAPI.addSongElement(item.song);
-    } else if (item.type === "interlinear") {
-      newEl = window.BoardAPI.addInterlinearCard(item);
-    }
+//     if (item.type === "verse") {
+//       // Add a verse card
+//       newEl = window.BoardAPI.addBibleVerse(
+//         item.reference,
+//         item.text,
+//         false,
+//         item.version
+//       );
+//     } else if (item.type === "song") {
+//       newEl = window.BoardAPI.addSongElement(item.song);
+//     } else if (item.type === "interlinear") {
+//       newEl = window.BoardAPI.addInterlinearCard(item);
+//     }
 
-    if (newEl) {
-      const x = startX + idx * offsetStep;
-      const y = startY + idx * offsetStep;
+//     if (newEl) {
+//       const x = startX + idx * offsetStep;
+//       const y = startY + idx * offsetStep;
 
-      newEl.style.left = `${Math.max(
-        0,
-        Math.min(x - workspaceRect.left, workspace.offsetWidth - newEl.offsetWidth)
-      )}px`;
-      newEl.style.top = `${Math.max(
-        0,
-        Math.min(y - workspaceRect.top, workspace.offsetHeight - newEl.offsetHeight)
-      )}px`;
+//       newEl.style.left = `${Math.max(
+//         0,
+//         Math.min(x - workspaceRect.left, workspace.offsetWidth - newEl.offsetWidth)
+//       )}px`;
+//       newEl.style.top = `${Math.max(
+//         0,
+//         Math.min(y - workspaceRect.top, workspace.offsetHeight - newEl.offsetHeight)
+//       )}px`;
 
-      newEl.classList.add("highlight-flash");
-      setTimeout(() => newEl.classList.remove("highlight-flash"), 800);
-    }
-  });
+//       newEl.classList.add("highlight-flash");
+//       setTimeout(() => newEl.classList.remove("highlight-flash"), 800);
+//     }
+//   });
 
-  // 5. Clean up
-  queue.clear();
+//   // 5. Clean up
+//   queue.clear();
 
-  // Remove "selected" styling from all buttons in the DOM
-  document
-    .querySelectorAll(".search-query-verse-add-button.selected")
-    .forEach((btn) => {
-      btn.classList.remove("selected");
-    });
-  document.querySelectorAll(".selected-for-add").forEach((row) => {
-    row.classList.remove("selected-for-add");
-  });
-}
-
+//   // Remove "selected" styling from all buttons in the DOM
+//   document
+//     .querySelectorAll(".search-query-verse-add-button.selected")
+//     .forEach((btn) => {
+//       btn.classList.remove("selected");
+//     });
+//   document.querySelectorAll(".selected-for-add").forEach((row) => {
+//     row.classList.remove("selected-for-add");
+//   });
+// }
 
 /* =================================================================
    SINGLE INTERLINEAR HANDLER (Paste at bottom of script.js)
@@ -9387,196 +9437,295 @@ function renderVerses(verses) {
   updateFloatingButton();
 }
 
-/* =============================================================================
-   UNIFIED SELECTION SYSTEM (Fixes Bible Search Separation)
-   Paste this at the bottom of script.js to overwrite separate logic.
-   ============================================================================= */
-
-// 1. GLOBAL SHARED STATE
-// All three modes will now write to these shared maps.
-window.pendingVerseAdds = window.pendingVerseAdds || new Map();
-window.pendingSongAdds = window.pendingSongAdds || new Map();
-window.pendingInterlinearAdds = window.pendingInterlinearAdds || new Map();
-
-// 2. UNIFIED VERSE TOGGLE
-// Handles logic for BOTH Chapter View (Ref Search) AND List View (Text Search)
+// 2. UNIFIED VERSE TOGGLE (DEBUG)
 function toggleVerseSelection(verseData, btnElement) {
-  // Create a unique key including version to prevent collisions
+  if (!window.pendingVerseAdds) window.pendingVerseAdds = new Map();
+  if (!window.pendingSongAdds) window.pendingSongAdds = new Map();
+  if (!window.pendingInterlinearAdds) window.pendingInterlinearAdds = new Map();
+
   const key = `${verseData.reference}::${verseData.version}`;
 
-  if (window.pendingVerseAdds.has(key)) {
+  const row = btnElement
+    ? btnElement.closest(
+        ".search-query-verse-container, .verse, .interlinear-row"
+      )
+    : null;
+
+  const wasSelected = window.pendingVerseAdds.has(key);
+
+  console.log("[VerseStudy Debug] toggleVerseSelection() called", {
+    verseData,
+    key,
+    wasSelectedBefore: wasSelected,
+    btnExists: !!btnElement,
+    rowExists: !!row,
+  });
+
+  if (window.DEBUG_VERSE_STUDY) {
+    debugger;
+  }
+
+  if (wasSelected) {
     // REMOVE
     window.pendingVerseAdds.delete(key);
     if (btnElement) btnElement.classList.remove("selected");
-
-    // Row can be a normal verse row or an interlinear row
-    const row = btnElement
-      ? btnElement.closest(".search-query-verse-container, .interlinear-row")
-      : null;
     if (row) row.classList.remove("selected-for-add");
   } else {
     // ADD
     window.pendingVerseAdds.set(key, verseData);
     if (btnElement) btnElement.classList.add("selected");
-
-    const row = btnElement
-      ? btnElement.closest(".search-query-verse-container, .interlinear-row")
-      : null;
     if (row) row.classList.add("selected-for-add");
   }
-
-  // Trigger the master button update
-  updateFloatingAddButton();
-}
-
-
-// 3. UNIFIED FLOATING BUTTON UPDATE
-// Counts items from ALL maps to show the total.
-function updateFloatingAddButton() {
-  const floatBtn = document.getElementById("floating-add-to-board-btn");
-  if (!floatBtn) return;
 
   const vCount = window.pendingVerseAdds.size;
   const sCount = window.pendingSongAdds.size;
   const iCount = window.pendingInterlinearAdds.size;
-
   const total = vCount + sCount + iCount;
 
-  if (total > 0) {
-    floatBtn.style.display = "inline-flex";
+  console.log("[VerseStudy Debug] queues after toggleVerseSelection", {
+    vCount,
+    sCount,
+    iCount,
+    total,
+  });
 
-    // Rebuild button content
-    floatBtn.innerHTML = "";
-
-    // Icon
-    const SVG_NS = "http://www.w3.org/2000/svg";
-    const icon = document.createElementNS(SVG_NS, "svg");
-    icon.setAttribute("class", "add-to-board-icon-open");
-    icon.setAttribute("viewBox", "0 -960 960 960");
-    const path = document.createElementNS(SVG_NS, "path");
-    path.setAttribute(
-      "d",
-      "M212-86q-53 0-89.5-36.5T86-212v-536q0-53 36.5-89.5T212-874h268v126H212v536h536v-268h126v268q0 53-36.5 89.5T748-86H212Zm207-246-87-87 329-329H560v-126h314v314H748v-101L419-332Z"
+  if (typeof updateFloatingAddButton === "function") {
+    console.log(
+      "[VerseStudy Debug] calling updateFloatingAddButton() from toggleVerseSelection"
     );
-    icon.appendChild(path);
-
-    // Text
-    const text = document.createElement("span");
-    text.textContent = `Add ${total} Item${total !== 1 ? "s" : ""}`;
-
-    floatBtn.appendChild(icon);
-    floatBtn.appendChild(text);
-
-    // Remove old listeners and attach the unified handler
-    const newBtn = floatBtn.cloneNode(true);
-    floatBtn.parentNode.replaceChild(newBtn, floatBtn);
-
-    newBtn.onclick = (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      handleFloatingAddClick();
-    };
+    updateFloatingAddButton();
   } else {
-    floatBtn.style.display = "none";
+    console.warn(
+      "[VerseStudy Debug] updateFloatingAddButton is NOT defined in toggleVerseSelection"
+    );
+  }
+
+  if (typeof updateFloatingAddButton === "function") {
+    updateFloatingAddButton();
   }
 }
 
-// --- BOARD ITEM LIMIT HELPERS (FREE PLAN) ---
-
-// Count how many items are currently on the open board.
-// Assumes each card has the class .board-item
-function getCurrentBoardItemCount() {
-  const workspace = document.getElementById("workspace");
-  if (!workspace) return 0;
-  return workspace.querySelectorAll(".board-item").length;
+// Ensure our global selection maps exist
+function ensureSelectionMaps() {
+  if (!window.pendingVerseAdds) window.pendingVerseAdds = new Map();
+  if (!window.pendingInterlinearAdds) window.pendingInterlinearAdds = new Map();
+  if (!window.pendingSongAdds) window.pendingSongAdds = new Map();
 }
 
-// Enforce per-board item limit for FREE users.
-// - Pro users (window.BIBLEBOARD_IS_PRO) are unlimited.
-// - Free users are limited to 100 items per board.
-// - Existing items are NEVER removed.
+// Helper to get total pending items
+function getTotalPendingItems() {
+  ensureSelectionMaps();
+  return (
+    window.pendingVerseAdds.size +
+    window.pendingInterlinearAdds.size +
+    window.pendingSongAdds.size
+  );
+}
+
+// Show/hide + label for the floating button
+function updateFloatingAddButton() {
+  ensureSelectionMaps();
+
+  const btn = document.getElementById("floating-add-to-board-btn");
+  if (!btn) return;
+
+  const total = getTotalPendingItems();
+
+  if (total <= 0) {
+    btn.style.display = "none";
+    btn.disabled = true;
+    return;
+  }
+
+  // Make the button visible and interactive
+  btn.style.display = "flex";
+  btn.disabled = false;
+
+  // Keep any existing icon, we only replace/insert the label span
+  let labelSpan = btn.querySelector(".add-to-board-label");
+  if (!labelSpan) {
+    labelSpan = document.createElement("span");
+    labelSpan.className = "add-to-board-label";
+    btn.appendChild(labelSpan);
+  }
+  labelSpan.textContent = `Add ${total} item${total === 1 ? "" : "s"}`;
+}
+
+// Expose globally so other files can call it if needed
+window.updateFloatingAddButton = updateFloatingAddButton;
+
+// Capacity check (you already have something like this, but keep it in one place)
 async function ensureCanAddBatch(batchSize) {
+  if (window.DEBUG_FLOATING_ADD) {
+    console.log("[FloatingAdd Debug] ensureCanAddBatch called", {
+      batchSize,
+      isPro: !!window.BIBLEBOARD_IS_PRO,
+      currentCount: getCurrentBoardItemCount(),
+    });
+  }
+
   // Pro users: unlimited
-  if (window.BIBLEBOARD_IS_PRO) return true;
+  if (window.BIBLEBOARD_IS_PRO) {
+    if (window.DEBUG_FLOATING_ADD) {
+      console.log("[FloatingAdd Debug] ensureCanAddBatch → true (PRO user)");
+    }
+    return true;
+  }
 
   const FREE_BOARD_ITEM_LIMIT = 100;
 
   const currentCount = getCurrentBoardItemCount();
   const projected = currentCount + batchSize;
 
-  // If this batch would push them over → block
   if (projected > FREE_BOARD_ITEM_LIMIT) {
-    if (typeof window.openUpgradeModal === "function") {
-      // Use your existing upgrade modal if available
-      window.openUpgradeModal("board-items-limit");
-    } else {
-      // Fallback: plain alert
-      alert(
-        `On the free plan you can have up to ${FREE_BOARD_ITEM_LIMIT} items per board.\n` +
-        `You currently have ${currentCount} item${currentCount !== 1 ? "s" : ""}, ` +
-        `and you are trying to add ${batchSize} more.`
-      );
+    if (window.DEBUG_FLOATING_ADD) {
+      console.log("[FloatingAdd Debug] ensureCanAddBatch → false (limit hit)", {
+        FREE_BOARD_ITEM_LIMIT,
+        currentCount,
+        batchSize,
+        projected,
+      });
     }
     return false;
   }
 
+  if (window.DEBUG_FLOATING_ADD) {
+    console.log("[FloatingAdd Debug] ensureCanAddBatch → true");
+  }
   return true;
 }
-
 
 // 4. UNIFIED "ADD TO BOARD" ACTION
 // Flushes all three queues to the board at once.
 async function handleFloatingAddClick() {
+  if (window.DEBUG_FLOATING_ADD) {
+    console.log("[FloatingAdd Debug] handleFloatingAddClick START");
+  }
+
   // Hide UI immediately
   if (typeof clearSelection === "function") clearSelection();
   if (typeof closeInterlinearPanel === "function") closeInterlinearPanel();
   if (typeof closeSearchQuery === "function") closeSearchQuery();
 
-  const verses = Array.from(window.pendingVerseAdds.values());
-  const songs = Array.from(window.pendingSongAdds.values());
-  const interlinear = Array.from(window.pendingInterlinearAdds.values());
+  const verses = Array.from(window.pendingVerseAdds?.values() || []);
+  const songs = Array.from(window.pendingSongAdds?.values() || []);
+  const interlinear = Array.from(window.pendingInterlinearAdds?.values() || []);
 
   const totalToAdd = verses.length + songs.length + interlinear.length;
-  if (totalToAdd === 0) return;
+
+  if (window.DEBUG_FLOATING_ADD) {
+    console.log("[FloatingAdd Debug] snapshot before canAdd check", {
+      versesCount: verses.length,
+      songsCount: songs.length,
+      interlinearCount: interlinear.length,
+      totalToAdd,
+      BoardAPI: window.BoardAPI ? Object.keys(window.BoardAPI) : null,
+    });
+  }
+
+  if (totalToAdd === 0) {
+    if (window.DEBUG_FLOATING_ADD) {
+      console.log("[FloatingAdd Debug] totalToAdd === 0, aborting");
+    }
+    return;
+  }
 
   // 🔒 Enforce free-plan limit ONLY on this bulk add
+  if (window.DEBUG_FLOATING_ADD) {
+    console.log("[FloatingAdd Debug] calling ensureCanAddBatch", {
+      totalToAdd,
+    });
+  }
   const canAdd = await ensureCanAddBatch(totalToAdd);
+  if (window.DEBUG_FLOATING_ADD) {
+    console.log("[FloatingAdd Debug] ensureCanAddBatch result", { canAdd });
+  }
   if (!canAdd) {
-    // Important: do NOT clear the queues.
-    // User can upgrade and click the button again.
+    // Do NOT clear the queues; let the user upgrade and then click again.
+    if (window.DEBUG_FLOATING_ADD) {
+      console.log(
+        "[FloatingAdd Debug] ensureCanAddBatch blocked add; keeping queues"
+      );
+    }
     return;
   }
 
   // Clear State (we're definitely adding them now)
-  window.pendingVerseAdds.clear();
-  window.pendingSongAdds.clear();
-  window.pendingInterlinearAdds.clear();
-  updateFloatingAddButton(); // Hide button
+  if (window.DEBUG_FLOATING_ADD) {
+    console.log("[FloatingAdd Debug] clearing queues & hiding button");
+  }
+  // Clear State (we're definitely adding them now)
+  if (
+    window.pendingVerseAdds &&
+    typeof window.pendingVerseAdds.clear === "function"
+  ) {
+    window.pendingVerseAdds.clear();
+  }
+  if (
+    window.pendingSongAdds &&
+    typeof window.pendingSongAdds.clear === "function"
+  ) {
+    window.pendingSongAdds.clear();
+  }
+  if (
+    window.pendingInterlinearAdds &&
+    typeof window.pendingInterlinearAdds.clear === "function"
+  ) {
+    window.pendingInterlinearAdds.clear();
+  }
 
-  let delay = 0.05;
+  // Also clear any verse-study specific selection (like cross-refs)
+  if (
+    window.pendingCrossRefAdds &&
+    typeof window.pendingCrossRefAdds.clear === "function"
+  ) {
+    window.pendingCrossRefAdds.clear();
+  }
+  if (typeof clearVerseStudySelections === "function") {
+    clearVerseStudySelections();
+  }
 
-  // --- PROCESS VERSES (Group continuous ranges) ---
-  if (verses.length > 0) {
-    // Helper to parse "Genesis 1:1" into parts for sorting
-    const parseFullRef = (ref) => {
-      // Matches "Book Chapter:Verse"
-      const parts = ref.match(/^(.+)\s+(\d+):(\d+)$/);
-      if (!parts) return { book: ref, chapter: 0, verse: 0 };
-      return {
-        book: parts[1],
-        chapter: parseInt(parts[2]),
-        verse: parseInt(parts[3]),
-      };
-    };
+  // Reset verse-study header buttons (Add / Clear), if present
+  if (typeof updateVerseStudyHeaderButtons === "function") {
+    window.verseStudySelectionCount = 0;
+    updateVerseStudyHeaderButtons();
+  }
 
-    // Sort by VERSION first, then by Book/Chapter/Verse
+  // Immediately hide the floating button based on the now-empty queues
+  if (typeof updateFloatingAddButton === "function") {
+    updateFloatingAddButton();
+  }
+
+  // Extra safety: hard-hide the button
+  const floatingAddBtnEl = document.getElementById(
+    "bible-reader-add-to-board-btn"
+  );
+  if (floatingAddBtnEl) {
+    floatingAddBtnEl.style.display = "none";
+  }
+
+  let delay = 0.25;
+
+  // --- ADD VERSES ---
+  if (window.DEBUG_FLOATING_ADD) {
+    console.log("[FloatingAdd Debug] ADD VERSES phase", {
+      verseCount: verses.length,
+      sample: verses.slice(0, 3),
+    });
+  }
+
+  if (!window.BoardAPI || typeof window.BoardAPI.addBibleVerse !== "function") {
+    if (window.DEBUG_FLOATING_ADD) {
+      console.warn(
+        "[FloatingAdd Debug] BoardAPI.addBibleVerse is missing",
+        window.BoardAPI
+      );
+    }
+  } else if (verses.length > 0) {
+    // Sort by reference to make grouping predictable
     verses.sort((a, b) => {
-      if (a.version < b.version) return -1;
-      if (a.version > b.version) return 1;
-
       const ra = parseFullRef(a.reference);
       const rb = parseFullRef(b.reference);
-
       if (ra.book !== rb.book) return ra.book.localeCompare(rb.book);
       if (ra.chapter !== rb.chapter) return ra.chapter - rb.chapter;
       return ra.verse - rb.verse;
@@ -9605,11 +9754,24 @@ async function handleFloatingAddClick() {
       }
     }
 
-    // Add Groups to Board
+    if (window.DEBUG_FLOATING_ADD) {
+      console.log("[FloatingAdd Debug] verse groups", {
+        groupCount: groups.length,
+        groupsPreview: groups.map((g) => g.map((v) => v.reference)),
+      });
+    }
+
+    // Add each group as either a single verse or a range
     groups.forEach((group) => {
       if (group.length === 1) {
-        // Single verse
         const v = group[0];
+        if (window.DEBUG_FLOATING_ADD) {
+          console.log("[FloatingAdd Debug] adding SINGLE verse", {
+            ref: v.reference,
+            version: v.version,
+            delay,
+          });
+        }
         window.BoardAPI.addBibleVerse(
           v.reference,
           v.text,
@@ -9618,20 +9780,26 @@ async function handleFloatingAddClick() {
           delay
         );
       } else {
-        // Verse range
         const first = group[0];
         const last = group[group.length - 1];
 
         const firstData = parseFullRef(first.reference);
         const baseRef = `${firstData.book} ${firstData.chapter}`;
-
         const startV = firstData.verse;
         const endV = parseFullRef(last.reference).verse;
-
         const combinedText = group.map((v) => v.text).join(" ");
 
+        const rangeRef = `${baseRef}:${startV}-${endV}`;
+        if (window.DEBUG_FLOATING_ADD) {
+          console.log("[FloatingAdd Debug] adding RANGE verse group", {
+            rangeRef,
+            version: first.version,
+            delay,
+          });
+        }
+
         window.BoardAPI.addBibleVerse(
-          `${baseRef}:${startV}-${endV}`,
+          rangeRef,
           combinedText,
           false,
           first.version,
@@ -9644,18 +9812,97 @@ async function handleFloatingAddClick() {
   }
 
   // --- ADD SONGS ---
+  if (window.DEBUG_FLOATING_ADD) {
+    console.log("[FloatingAdd Debug] ADD SONGS phase", {
+      songCount: songs.length,
+      sample: songs.slice(0, 3),
+      hasAddSongElement:
+        !!window.BoardAPI &&
+        typeof window.BoardAPI.addSongElement === "function",
+    });
+  }
   songs.forEach((song) => {
-    window.BoardAPI.addSongElement(song, delay);
+    if (
+      window.BoardAPI &&
+      typeof window.BoardAPI.addSongElement === "function"
+    ) {
+      window.BoardAPI.addSongElement(song, delay);
+    } else if (window.DEBUG_FLOATING_ADD) {
+      console.warn(
+        "[FloatingAdd Debug] Skipping song, addSongElement not available",
+        song
+      );
+    }
     delay += 0.15;
   });
 
   // --- ADD INTERLINEAR ---
+  if (window.DEBUG_FLOATING_ADD) {
+    console.log("[FloatingAdd Debug] ADD INTERLINEAR phase", {
+      interlinearCount: interlinear.length,
+      sample: interlinear.slice(0, 3),
+      hasAddInterlinear:
+        !!window.BoardAPI &&
+        typeof window.BoardAPI.addInterlinearCard === "function",
+    });
+  }
   interlinear.forEach((item) => {
-    window.BoardAPI.addInterlinearCard(item, delay);
+    if (
+      window.BoardAPI &&
+      typeof window.BoardAPI.addInterlinearCard === "function"
+    ) {
+      window.BoardAPI.addInterlinearCard(item, delay);
+    } else if (window.DEBUG_FLOATING_ADD) {
+      console.warn(
+        "[FloatingAdd Debug] Skipping interlinear, addInterlinearCard not available",
+        item
+      );
+    }
     delay += 0.15;
   });
+
+  if (window.DEBUG_FLOATING_ADD) {
+    console.log("[FloatingAdd Debug] handleFloatingAddClick DONE");
+  }
+
+  // --- After adding everything, exit Scripture mode like ESC ---
+  const body = document.body;
+  const scriptureBtn = document.getElementById("scripture-mode-toggle");
+  const scriptureContainer = document.getElementById("bible-query-container");
+  const reader = document.getElementById("bible-query-reader");
+
+  if (reader) reader.style.display = "none";
+  if (body) body.classList.remove("scripture-mode-on");
+  if (scriptureBtn) scriptureBtn.classList.remove("active");
+  if (scriptureContainer) scriptureContainer.style.display = "";
 }
 
+// Expose globally
+window.handleFloatingAddClick = handleFloatingAddClick;
+
+// Wire up the button once
+document.addEventListener("DOMContentLoaded", () => {
+  const btn = document.getElementById("floating-add-to-board-btn");
+  if (!btn) return;
+
+  // Make sure there is NO inline onclick in the HTML
+  btn.onclick = null;
+
+  btn.addEventListener("click", (e) => {
+    e.preventDefault();
+    handleFloatingAddClick();
+  });
+});
+
+// --- BOARD ITEM LIMIT HELPERS (FREE PLAN) ---
+
+// Count how many items are currently on the open board.
+// Assumes each card has the class .board-item
+function getCurrentBoardItemCount() {
+  const workspace = document.getElementById("workspace");
+  if (!workspace) return 0;
+  return workspace.querySelectorAll(".board-item").length;
+}
 
 /* =============================================================================
    RENDERER FIXES: Ensure Lists Check the Shared Queue
@@ -9846,8 +10093,6 @@ document.getElementById("grouping-mode-btn")?.addEventListener("click", (e) => {
   toggleGroupingMode();
 });
 
-
-
 function resetVerseStudySections() {
   const interSec = document.getElementById("interlinear-section");
   const crossSec = document.getElementById("crossref-section");
@@ -9861,4 +10106,3 @@ function resetVerseStudySections() {
   if (interBtn) interBtn.classList.remove("verse-study-tab-active");
   if (crossBtn) crossBtn.classList.remove("verse-study-tab-active");
 }
-
