@@ -1,0 +1,427 @@
+:root {
+  --bg: #171717;
+  --bg-seethroug: #20202050;
+  --bg-trasparent: #17171700;
+  --bg-dots: #1d1d1d;
+  --bg-alt: #202020;
+  --fg: #e6e6e6;
+  --fg-seethrough: #e6e6e620;
+  --accent: #67e495;
+  --border: #2f2f2f;
+  --muted: #8b949e;
+  
+  /* Dark Mode: High brightness to make a dark logo look white/visible */
+  --brightness: 1000%; 
+}
+
+/* Feedback page – minimal multi-step card, using only shared palette vars */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
+    "Segoe UI", sans-serif;
+  background: radial-gradient(circle at top left, var(--bg-dots), var(--bg));
+  color: var(--fg);
+}
+
+/* Outer shell + main card */
+
+.fb-shell {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+}
+
+.fb-card {
+  width: 100%;
+  max-width: 640px;
+  /* background: var(--bg); */
+  border-radius: 24px;
+  /* border: 1px solid var(--border); */
+  padding: 28px 28px 24px;
+  /* box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6); */
+}
+
+/* Tiny “logo” at the top */
+
+.fb-logo {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  background: radial-gradient(circle at 20% 20%, var(--accent), var(--bg-alt));
+  margin-bottom: 18px;
+  display:none;
+}
+
+/* Top title + subtitle */
+
+.fb-title {
+  font-size: 1.35rem;
+  font-weight: 650;
+  margin: 0 0 4px;
+  color: var(--fg);
+  text-align: center;
+}
+
+.fb-subtitle {
+  font-size: 0.86rem;
+  color: var(--muted);
+  margin: 0 0 18px;
+  text-align: center;
+  margin-bottom: 25px;
+}
+
+/* Status + signed-out notice */
+
+.fb-status {
+  font-size: 0.8rem;
+  margin-bottom: 10px;
+  color: var(--muted);
+  text-align: center;
+  display: none;
+}
+
+.fb-status-loading {
+  color: var(--muted);
+}
+
+.fb-status-error {
+  color: var(--accent);
+}
+
+.fb-status-success {
+  color: var(--accent);
+}
+
+.fb-notice {
+  font-size: 0.8rem;
+  border-radius: 14px;
+  border: 1px dashed var(--border);
+  background: var(--bg-seethroug);
+  padding: 8px 10px;
+  margin-bottom: 12px;
+}
+
+.fb-link {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.fb-link:hover {
+  text-decoration: underline;
+}
+
+/* Form layout */
+
+.fb-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0; /* only one section visible at a time */
+  margin-top: 4px;
+}
+
+/* Each “screen” */
+
+.fb-section {
+  padding: 22px 0 18px;
+  border-radius: 0;
+  border: none;
+}
+
+/* Question + tiny helper line */
+
+.fb-section-title {
+  font-size: 1.18rem;
+  font-weight: 650;
+  margin: 0 0 4px;
+  text-align:center;
+}
+
+.fb-section-subtitle {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin: 0 0 18px;
+  text-align:center;
+  margin-bottom: 30px;
+}
+
+/* Fields */
+
+.fb-row {
+  display: flex;
+  gap: 10px;
+}
+
+.fb-row-wrap {
+  flex-wrap: wrap;
+}
+
+.fb-field {
+  flex: 1 1 180px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.fb-field-spacer {
+  margin-top: 8px;
+}
+
+.fb-label {
+  font-size: 0.76rem;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+/* Inputs – minimal, pill style */
+
+.fb-input,
+.fb-select {
+  width: 100%;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  padding: 9px 12px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  background: var(--bg-alt);
+  color: var(--fg);
+  outline: none;
+}
+
+.fb-input::placeholder {
+  color: var(--muted);
+}
+
+.fb-textarea {
+  width: 100%;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  padding: 9px 12px;
+  font-size: 0.9rem;
+  font-weight: 400;
+  background: var(--bg-alt);
+  color: var(--fg);
+  min-height: 96px;
+  resize: none;
+  outline: none;
+}
+
+.fb-input:focus,
+.fb-select:focus,
+.fb-textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--fg-seethrough);
+}
+
+/* Footer / step nav */
+
+.fb-footer {
+  margin-top: 26px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.fb-footer-text {
+  font-size: 0.78rem;
+  color: var(--muted);
+  margin: 0;
+}
+
+.fb-footer-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Buttons like the refs: flat light primary, subtle secondary */
+
+.fb-primary-btn {
+  border-radius: 999px;
+  border: none;
+  padding: 9px 20px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  background: var(--fg);
+  color: var(--bg);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.fb-primary-btn[disabled] {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.fb-secondary-btn {
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  padding: 9px 16px;
+  font-size: 0.88rem;
+  font-weight: 500;
+  cursor: pointer;
+  background: var(--bg-alt);
+  color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.fb-secondary-btn[disabled] {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* Responsive */
+
+@media (max-width: 640px) {
+  .fb-card {
+    padding: 20px 18px 18px;
+  }
+
+  .fb-row {
+    flex-direction: column;
+  }
+}
+
+/* Option cards (1 per row) */
+
+.fb-option-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 6px;
+  margin-bottom: 12px;
+}
+
+.fb-option-card {
+  width: 100%;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: var(--bg-alt);
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  text-align: left;
+}
+
+.fb-option-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.fb-option-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--fg);
+}
+
+.fb-option-subtitle {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.fb-option-check {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: transparent;
+  flex-shrink: 0;
+}
+
+/* Active state */
+
+.fb-option-card--active {
+  border-color: var(--accent);
+  background: var(--bg-seethroug);
+}
+
+.fb-option-card--active .fb-option-check {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+
+
+
+
+/* Thank-you screen */
+
+.fb-thankyou {
+  padding: 22px 0 6px;
+}
+
+.fb-thankyou-title {
+  font-size: 1.2rem;
+  font-weight: 650;
+  margin: 0 0 4px;
+  color: var(--fg);
+}
+
+.fb-thankyou-subtitle {
+  font-size: 0.86rem;
+  color: var(--muted);
+  margin: 0 0 18px;
+}
+
+.fb-thankyou-actions {
+  margin-top: 6px;
+}
+
+.fb-thankyou-btn {
+  text-decoration: none;
+  justify-content: center;
+}
+
+
+
+
+/* Sign-in screen */
+
+.fb-signin {
+  padding: 22px 0 10px;
+  display: flex;
+  flex-direction: column;
+  justify-content:center !important;
+  align-items:center !important;
+  text-align:center;
+}
+
+.google-signin-button {
+    margin-top: 0px;
+}
+
+.fb-signin-title {
+  font-size: 1.15rem;
+  font-weight: 650;
+  margin: 0 0 4px;
+  color: var(--fg);
+  text-align: center;
+}
+
+.fb-signin-subtitle {
+  font-size: 0.86rem;
+  color: var(--muted);
+  margin: 0 0 18px;
+  text-align: center;
+}

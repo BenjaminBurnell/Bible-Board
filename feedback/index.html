@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>BibleBoard – Student Feedback</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Root styles (for global font / vars) -->
+    <link rel="stylesheet" href="../style.css" />
+    <!-- Feedback-only styles -->
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <div class="fb-shell">
+      <div class="fb-card">
+        <!-- Header: only visible on step 1 (controlled by JS) -->
+        <div id="fb-header-wrapper">
+          <div class="fb-logo"></div>
+
+          <h1 class="fb-title">Help improve BibleBoard</h1>
+          <p class="fb-subtitle">
+            These questions go straight to the people building BibleBoard. Take
+            your time and answer what you can — even short answers help a lot.
+          </p>
+
+          <div id="feedback-status" class="fb-status fb-status-loading">
+            Checking your session…
+          </div>
+        </div>
+
+        <div id="fb-not-logged-in" class="fb-signin" style="display: none">
+          <h2 class="fb-signin-title">Sign in to share your feedback</h2>
+          <p class="fb-signin-subtitle">
+            Use your BibleBoard account to complete this form.
+          </p>
+
+          <button class="google-signin-button" id="signin-btn">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="800px"
+              height="800px"
+              viewBox="-3 0 262 262"
+              preserveAspectRatio="xMidYMid"
+            >
+              <path
+                d="M255.878 133.451c0-10.734-.871-18.567-2.756-26.69H130.55v48.448h71.947c-1.45 12.04-9.283 30.172-26.69 42.356l-.244 1.622 38.755 30.023 2.685.268c24.659-22.774 38.875-56.282 38.875-96.027"
+                fill="#4285F4"
+              ></path>
+              <path
+                d="M130.55 261.1c35.248 0 64.839-11.605 86.453-31.622l-41.196-31.913c-11.024 7.688-25.82 13.055-45.257 13.055-34.523 0-63.824-22.773-74.269-54.25l-1.531.13-40.298 31.187-.527 1.465C35.393 231.798 79.49 261.1 130.55 261.1"
+                fill="#34A853"
+              ></path>
+              <path
+                d="M56.281 156.37c-2.756-8.123-4.351-16.827-4.351-25.82 0-8.994 1.595-17.697 4.206-25.82l-.073-1.73L15.26 71.312l-1.335.635C5.077 89.644 0 109.517 0 130.55s5.077 40.905 13.925 58.602l42.356-32.782"
+                fill="#FBBC05"
+              ></path>
+              <path
+                d="M130.55 50.479c24.514 0 41.05 10.589 50.479 19.438l36.844-35.974C195.245 12.91 165.798 0 130.55 0 79.49 0 35.393 29.301 13.925 71.947l42.211 32.783c10.59-31.477 39.891-54.251 74.414-54.251"
+                fill="#EB4335"
+              ></path>
+            </svg>
+            <span>Sign in with Google</span>
+          </button>
+        </div>
+
+        <form id="feedback-form" class="fb-form" style="display: none">
+          <!-- STEP 1: Basic info -->
+          <section class="fb-section">
+            <h2 class="fb-section-title">What is your name and email?</h2>
+            <p class="fb-section-subtitle">Enter your response below.</p>
+
+            <div class="fb-row">
+              <div class="fb-field">
+                <label class="fb-label" for="student-name"
+                  >Name (optional)</label
+                >
+                <input
+                  id="student-name"
+                  type="text"
+                  class="fb-input"
+                  placeholder="Name"
+                />
+              </div>
+
+              <div class="fb-field">
+                <label class="fb-label" for="student-email"
+                  >Email (optional)</label
+                >
+                <input
+                  id="student-email"
+                  type="email"
+                  class="fb-input"
+                  placeholder="Email"
+                />
+              </div>
+            </div>
+          </section>
+
+          <!-- STEP 2: School / program -->
+          <section class="fb-section">
+            <h2 class="fb-section-title">Where are you studying?</h2>
+            <p class="fb-section-subtitle">Enter your response below.</p>
+
+            <div class="fb-row">
+              <div class="fb-field">
+                <label class="fb-label" for="school-name">School</label>
+                <input
+                  id="school-name"
+                  type="text"
+                  class="fb-input"
+                  placeholder="School name"
+                />
+              </div>
+
+              <div class="fb-field">
+                <label class="fb-label" for="program-name"
+                  >Program / Major</label
+                >
+                <input
+                  id="program-name"
+                  type="text"
+                  class="fb-input"
+                  placeholder="Program or major"
+                />
+              </div>
+            </div>
+
+            <div class="fb-field fb-field-spacer">
+              <label class="fb-label" for="course-name"
+                >Course / Professor</label
+              >
+              <input
+                id="course-name"
+                type="text"
+                class="fb-input"
+                placeholder="Course / professor"
+              />
+            </div>
+          </section>
+
+          <!-- STEP 3: How helpful was BibleBoard? -->
+          <section class="fb-section">
+            <h2 class="fb-section-title">
+              How helpful was BibleBoard for this course?
+            </h2>
+            <p class="fb-section-subtitle">Select your answer below.</p>
+
+            <div class="fb-option-list">
+              <button
+                type="button"
+                class="fb-option-card"
+                data-target="usage-rating"
+                data-value="5"
+              >
+                <div class="fb-option-main">
+                  <div class="fb-option-title">Extremely helpful</div>
+                  <div class="fb-option-subtitle">I relied on it a lot.</div>
+                </div>
+                <div class="fb-option-check"></div>
+              </button>
+
+              <button
+                type="button"
+                class="fb-option-card"
+                data-target="usage-rating"
+                data-value="4"
+              >
+                <div class="fb-option-main">
+                  <div class="fb-option-title">Very helpful</div>
+                  <div class="fb-option-subtitle">It made my work easier.</div>
+                </div>
+                <div class="fb-option-check"></div>
+              </button>
+
+              <button
+                type="button"
+                class="fb-option-card"
+                data-target="usage-rating"
+                data-value="3"
+              >
+                <div class="fb-option-main">
+                  <div class="fb-option-title">Somewhat helpful</div>
+                  <div class="fb-option-subtitle">
+                    I used it here and there.
+                  </div>
+                </div>
+                <div class="fb-option-check"></div>
+              </button>
+
+              <button
+                type="button"
+                class="fb-option-card"
+                data-target="usage-rating"
+                data-value="2"
+              >
+                <div class="fb-option-main">
+                  <div class="fb-option-title">A little helpful</div>
+                  <div class="fb-option-subtitle">
+                    It helped in a few moments.
+                  </div>
+                </div>
+                <div class="fb-option-check"></div>
+              </button>
+
+              <button
+                type="button"
+                class="fb-option-card"
+                data-target="usage-rating"
+                data-value="1"
+              >
+                <div class="fb-option-main">
+                  <div class="fb-option-title">Not helpful</div>
+                  <div class="fb-option-subtitle">It didn’t really help.</div>
+                </div>
+                <div class="fb-option-check"></div>
+              </button>
+            </div>
+
+            <!-- Hidden input that JS & Supabase use -->
+            <input type="hidden" id="usage-rating" />
+          </section>
+
+          <!-- STEP 4: Recommend to another student -->
+          <section class="fb-section">
+            <h2 class="fb-section-title">
+              Would you recommend BibleBoard to another student?
+            </h2>
+            <p class="fb-section-subtitle">Select your answer below.</p>
+
+            <div class="fb-option-list">
+              <button
+                type="button"
+                class="fb-option-card"
+                data-target="recommend-rating"
+                data-value="definitely"
+              >
+                <div class="fb-option-main">
+                  <div class="fb-option-title">Definitely</div>
+                  <div class="fb-option-subtitle">
+                    I’d strongly recommend it.
+                  </div>
+                </div>
+                <div class="fb-option-check"></div>
+              </button>
+
+              <button
+                type="button"
+                class="fb-option-card"
+                data-target="recommend-rating"
+                data-value="probably"
+              >
+                <div class="fb-option-main">
+                  <div class="fb-option-title">Probably</div>
+                  <div class="fb-option-subtitle">
+                    I’d recommend it to most people.
+                  </div>
+                </div>
+                <div class="fb-option-check"></div>
+              </button>
+
+              <button
+                type="button"
+                class="fb-option-card"
+                data-target="recommend-rating"
+                data-value="maybe"
+              >
+                <div class="fb-option-main">
+                  <div class="fb-option-title">Maybe</div>
+                  <div class="fb-option-subtitle">Depends on the person.</div>
+                </div>
+                <div class="fb-option-check"></div>
+              </button>
+
+              <button
+                type="button"
+                class="fb-option-card"
+                data-target="recommend-rating"
+                data-value="probably-not"
+              >
+                <div class="fb-option-main">
+                  <div class="fb-option-title">Probably not</div>
+                  <div class="fb-option-subtitle">
+                    I’d be hesitant to recommend it.
+                  </div>
+                </div>
+                <div class="fb-option-check"></div>
+              </button>
+
+              <button
+                type="button"
+                class="fb-option-card"
+                data-target="recommend-rating"
+                data-value="no"
+              >
+                <div class="fb-option-main">
+                  <div class="fb-option-title">No</div>
+                  <div class="fb-option-subtitle">I wouldn’t recommend it.</div>
+                </div>
+                <div class="fb-option-check"></div>
+              </button>
+            </div>
+
+            <!-- Hidden input that JS & Supabase use -->
+            <input type="hidden" id="recommend-rating" />
+          </section>
+
+          <!-- STEP 4: Most helpful -->
+          <section class="fb-section">
+            <h2 class="fb-section-title">What did you find most helpful?</h2>
+            <p class="fb-section-subtitle">Enter your response below.</p>
+
+            <div class="fb-field">
+              <label class="fb-label" for="favorite-part">Your answer</label>
+              <textarea
+                id="favorite-part"
+                class="fb-textarea"
+                placeholder="Type your answer here"
+              ></textarea>
+            </div>
+          </section>
+
+          <!-- STEP 5: Confusing / broken -->
+          <section class="fb-section">
+            <h2 class="fb-section-title">What was confusing or frustrating?</h2>
+            <p class="fb-section-subtitle">Enter your response below.</p>
+
+            <div class="fb-field">
+              <label class="fb-label" for="confusing-part">Your answer</label>
+              <textarea
+                id="confusing-part"
+                class="fb-textarea"
+                placeholder="Type your answer here"
+              ></textarea>
+            </div>
+          </section>
+
+          <!-- STEP 6: Wishlist ONLY -->
+          <section class="fb-section">
+            <h2 class="fb-section-title">What would you change or add?</h2>
+            <p class="fb-section-subtitle">Enter your response below.</p>
+
+            <div class="fb-field">
+              <label class="fb-label" for="wishlist">Your answer</label>
+              <textarea
+                id="wishlist"
+                class="fb-textarea"
+                placeholder="Type your answer here"
+              ></textarea>
+            </div>
+          </section>
+
+          <!-- STEP 7: Consent YES / NO ONLY -->
+          <section class="fb-section">
+            <h2 class="fb-section-title">
+              Can we use short anonymous quotes from your feedback?
+            </h2>
+            <p class="fb-section-subtitle">Select your answer below.</p>
+
+            <div class="fb-option-list">
+              <button
+                type="button"
+                class="fb-option-card"
+                data-target="consent"
+                data-value="yes"
+              >
+                <div class="fb-option-main">
+                  <div class="fb-option-title">Yes</div>
+                  <div class="fb-option-subtitle">
+                    You can use short anonymous quotes from my answers.
+                  </div>
+                </div>
+                <div class="fb-option-check"></div>
+              </button>
+
+              <button
+                type="button"
+                class="fb-option-card"
+                data-target="consent"
+                data-value="no"
+              >
+                <div class="fb-option-main">
+                  <div class="fb-option-title">No</div>
+                  <div class="fb-option-subtitle">
+                    Please don’t use direct quotes from my answers.
+                  </div>
+                </div>
+                <div class="fb-option-check"></div>
+              </button>
+            </div>
+
+            <!-- Hidden input that JS & Supabase use -->
+            <input type="hidden" id="consent" />
+          </section>
+
+          <!-- Footer / step navigation -->
+          <div class="fb-footer">
+            <p class="fb-footer-text" id="fb-step-indicator">Question 1 of 6</p>
+            <div class="fb-footer-actions">
+              <button id="feedback-prev" class="fb-secondary-btn" type="button">
+                Back
+              </button>
+
+              <button id="feedback-next" class="fb-primary-btn" type="button">
+                Next
+              </button>
+
+              <button
+                id="feedback-submit"
+                class="fb-primary-btn"
+                type="submit"
+                style="display: none"
+              >
+                Submit
+              </button>
+            </div>
+          </div>
+        </form>
+        <div id="fb-thankyou" class="fb-thankyou" style="display: none">
+          <h2 class="fb-thankyou-title">Thank you for your feedback!</h2>
+          <p class="fb-thankyou-subtitle">
+            Your answers help shape how BibleBoard grows for future students.
+          </p>
+
+          <div class="fb-thankyou-actions">
+            <a href="/dashboard" class="fb-primary-btn fb-thankyou-btn">
+              Back to your dashboard
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Supabase + Feedback logic -->
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script type="module" src="../supabaseClient.js"></script>
+    <script type="module" src="./feedback.js"></script>
+  </body>
+</html>
