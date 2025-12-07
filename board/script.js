@@ -9882,7 +9882,11 @@ window.handleFloatingAddClick = handleFloatingAddClick;
 
 // Wire up the button once
 document.addEventListener("DOMContentLoaded", () => {
-  const btn = document.getElementById("floating-add-to-board-btn");
+  // Prefer the Bible Reader button, fall back to old id if it ever exists
+  const btn =
+    document.getElementById("bible-reader-add-to-board-btn") ||
+    document.getElementById("floating-add-to-board-btn");
+
   if (!btn) return;
 
   // Make sure there is NO inline onclick in the HTML
@@ -9893,6 +9897,7 @@ document.addEventListener("DOMContentLoaded", () => {
     handleFloatingAddClick();
   });
 });
+
 
 // --- BOARD ITEM LIMIT HELPERS (FREE PLAN) ---
 

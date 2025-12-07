@@ -2222,66 +2222,44 @@ if (
   !window.pendingInterlinearAdds ||
   !window.pendingInterlinearAdds.__isVerseStudyQueueWrapper
 ) {
-  const internal = new Map(); // all currently selected in the verse-study modal
-  const confirmed = new Set(); // the subset the user has "confirmed" via header +
+  const internal = new Map();
 
   window.pendingInterlinearAdds = {
     __isVerseStudyQueueWrapper: true,
     _internal: internal,
-    _confirmed: confirmed,
 
-    // 🔹 Used by renderVerseStudyInterlinearTokens & toggleInterlinearSelection
     has(key) {
       return internal.has(key);
     },
 
-    // 🔹 Used by toggleInterlinearSelection when selecting/deselecting items
     set(key, value) {
       internal.set(key, value);
     },
 
     delete(key) {
       internal.delete(key);
-      confirmed.delete(key);
     },
 
     clear() {
       internal.clear();
-      confirmed.clear();
     },
 
-    // 🔹 Called when the user clicks the verse-study header "+" button
-    confirmAll() {
-      for (const key of internal.keys()) {
-        confirmed.add(key);
-      }
-    },
+    // Kept for API compatibility – no-op for now
+    confirmAll() {},
 
-    // 🔹 Called when closing the verse-study modal (to drop unconfirmed picks)
-    clearUnconfirmed() {
-      for (const key of Array.from(internal.keys())) {
-        if (!confirmed.has(key)) {
-          internal.delete(key);
-        }
-      }
-    },
+    // Kept for API compatibility – no-op for now
+    clearUnconfirmed() {},
 
-    // ✅ What the floating button / queue should see: only confirmed items
     get size() {
-      return confirmed.size;
+      return internal.size;
     },
 
     values() {
-      const items = [];
-      for (const key of confirmed) {
-        if (internal.has(key)) {
-          items.push(internal.get(key));
-        }
-      }
-      return items.values();
+      return internal.values();
     },
   };
 }
+
 
 window.verseStudySelectionCount = window.verseStudySelectionCount || 0;
 
@@ -2879,11 +2857,24 @@ function initVerseStudyModal() {
     headerAddBtn.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
+
+      // Confirm any interlinear words currently selected
+      if (
+        window.pendingInterlinearAdds &&
+        typeof window.pendingInterlinearAdds.confirmAll === "function"
+      ) {
+        window.pendingInterlinearAdds.confirmAll();
+      }
+
+      // Update floating button count
+      if (typeof updateFloatingAddButton === "function") {
+        updateFloatingAddButton();
+      }
+
       closeVerseStudyModal();
-      // Queue contents (verses + interlinear) are already in the global maps,
-      // so the floating Add button will still show the correct count.
     });
   }
+
 
   // Header "Clear" button: clear ALL queued add-to-board items.
   if (headerClearBtn) {
