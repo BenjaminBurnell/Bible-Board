@@ -1,0 +1,115 @@
+{
+  "version": 1,
+  "updatedAt": "2025-12-07T03:38:35.385Z",
+  "title": "Abiding and Fruit",
+  "viewport": {
+    "scrollLeft": 3487.199951171875,
+    "scrollTop": 3708.800048828125,
+    "scale": 0.41723726976513453,
+    "centerX": 9862.973059641452,
+    "centerY": 9763.74917590965
+  },
+  "elements": [
+    {
+      "vkey": "v_fvgjd2wsswu",
+      "left": "9664.82px",
+      "top": "9566.24px",
+      "zIndex": "1772",
+      "type": "verse",
+      "text": "5       “Yes, I am the vine; you are the branches. Those who remain in me, and I in them, will produce much fruit. For apart from me you can do nothing.",
+      "reference": "- John 15:5 NLT"
+    },
+    {
+      "vkey": "v_n8xvh7bk1ol",
+      "left": "8882.82px",
+      "top": "9264.61px",
+      "zIndex": "1758",
+      "type": "note",
+      "html": "John 15:5 teaches that true spiritual fruit comes only from a dependent, ongoing connection to Jesus."
+    },
+    {
+      "vkey": "v_vjrlf9wousj",
+      "left": "10427.7px",
+      "top": "9771.16px",
+      "zIndex": "1764",
+      "type": "note",
+      "html": "Fruit in this verse is the visible evidence that a branch is really abiding in the vine."
+    },
+    {
+      "vkey": "v_wc6suqih5nh",
+      "left": "9998.39px",
+      "top": "10072.5px",
+      "zIndex": "1782",
+      "type": "verse",
+      "text": "22       But the Holy Spirit produces this kind of fruit in our lives: love, joy, peace, patience, kindness, goodness, faithfulness, 23       gentleness, and self-control. There is no law against these things!",
+      "reference": "- Galatians 5:22-23 NLT"
+    },
+    {
+      "vkey": "v_q7mkoci32r",
+      "left": "9047.82px",
+      "top": "9960.99px",
+      "zIndex": "1754",
+      "type": "verse",
+      "text": "1       Oh, the joys of those who do not follow the advice of the wicked, or stand around with sinners, or join in with mockers. 2       But they delight in the law of the Lord, meditating on it day and night. 3       They are like trees planted along the riverbank, bearing fruit each season. Their leaves never wither, and they prosper in all they do.",
+      "reference": "- Psalms 1:1-3 NLT"
+    },
+    {
+      "vkey": "64a9a736-5b0b-4a56-8706-5d2098cc9ce8",
+      "left": "10072.1px",
+      "top": "9216.79px",
+      "zIndex": "1762",
+      "type": "interlinear",
+      "surface": "μένων",
+      "english": "abide, continue, dwell, endure, be present, remain, stand, tarry (for), X thine own",
+      "translit": "men'-o",
+      "morph": "-PAPNSM-",
+      "strong": "",
+      "reference": "John 15:5 · word 9"
+    },
+    {
+      "vkey": "e9603a8f-b258-4b73-a0d9-a62f4f6595cc",
+      "left": "9586.24px",
+      "top": "9185.63px",
+      "zIndex": "1760",
+      "type": "interlinear",
+      "surface": "καρπὸν",
+      "english": "fruit",
+      "translit": "kar-pos'",
+      "morph": "----ASM-",
+      "strong": "",
+      "reference": "John 15:5 · word 17"
+    }
+  ],
+  "connections": [
+    {
+      "a": "v_n8xvh7bk1ol",
+      "b": "v_fvgjd2wsswu",
+      "color": "#67E8F9"
+    },
+    {
+      "a": "v_vjrlf9wousj",
+      "b": "v_fvgjd2wsswu",
+      "color": "#67E8F9"
+    },
+    {
+      "a": "v_wc6suqih5nh",
+      "b": "v_fvgjd2wsswu",
+      "color": "#BEF264"
+    },
+    {
+      "a": "v_q7mkoci32r",
+      "b": "v_fvgjd2wsswu",
+      "color": "#BEF264"
+    },
+    {
+      "a": "64a9a736-5b0b-4a56-8706-5d2098cc9ce8",
+      "b": "v_fvgjd2wsswu",
+      "color": "#FDBA74"
+    },
+    {
+      "a": "e9603a8f-b258-4b73-a0d9-a62f4f6595cc",
+      "b": "v_fvgjd2wsswu",
+      "color": "#FDBA74"
+    }
+  ]
+}

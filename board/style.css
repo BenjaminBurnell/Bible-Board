@@ -1076,14 +1076,42 @@ body:not(.light) #sun-icon {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  margin-bottom: 10px;      /* Add spacing between rows */
+  margin-bottom: 15px;      /* Add spacing between rows */
   transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.interlinear-card-surface {
+  font-weight: 600;
+  margin-bottom: 6px;
+  display:flex;
+  flex-direction: row;
+  align-items:center;
+}
+
+.interlinear-surface-main {
+  font-weight: 600;
+}
+
+.interlinear-original {
+  margin-left: 6px;
+  font-size: 1.1rem !important;
+  font-weight: 900 !important;
+  color: var(--muted) !important;
 }
 
 /* 2. Highlight style when selected (Same as verses) */
 .interlinear-row.selected-for-add {
   border-color: var(--accent);
   /* background: var(--bg-alt); */
+}
+
+/* Original language line in modal */
+.interlinear-original {
+  font-family: "Times New Roman", serif; /* Or any serif for Hebrew/Greek */
+  font-size: 1rem;
+  font-weight: 900;
+  color: var(--fg);
+  margin-top: 1px;
 }
 
 /* 3. Hide the OLD pill-shaped add button if it still exists in HTML */
@@ -1103,6 +1131,9 @@ body:not(.light) #sun-icon {
   font-weight: 900;
   line-height: 1.1;
   word-break: break-word;
+  display: flex;
+  flex-direction: row;
+  gap: 5px;
 }
 
 .interlinear-english {
@@ -1111,6 +1142,7 @@ body:not(.light) #sun-icon {
   font-weight: 800;
   color: var(--muted);
   opacity: 0.95;
+  margin-bottom:2px;
 }
 
 .interlinear-meta {
@@ -2651,10 +2683,11 @@ body.grouping-mode .board-item {
   max-width: calc(100% - 35px);
   display: flex;
   flex-direction: column;
+  gap: 5px;
 }
 
 .crossref-ref {
-  font-weight: 600;
+  font-weight: 800 !important;
   margin-bottom: 4px;
 }
 
@@ -3261,7 +3294,7 @@ body.scripture-mode-on #scripture-mode-toggle {
   border: 1px solid var(--border);
   border-radius: 26px;
   padding: 28px 30px;
-  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.55);
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.3);
   color: var(--fg);
 }
 
@@ -3317,6 +3350,13 @@ body.scripture-mode-on #scripture-mode-toggle {
 }
 
 .verse-study-actions {
+  width:100%;
+  overflow-x: scroll;
+  overflow-y: hidden;
+}
+
+#verse-study-action-buttons-container {
+  width:fit-content;
   display: flex;
   justify-content: left;
   flex-direction: row-reverse;
@@ -3337,6 +3377,7 @@ body.scripture-mode-on #scripture-mode-toggle {
   justify-content:center;
   align-items:center;
   gap: 5px;
+  white-space: nowrap;
 }
 
 .verse-study-action-btn:hover {
@@ -3455,6 +3496,14 @@ body.scripture-mode-on #scripture-mode-toggle {
   left:0px;
 }
 
+#crossref-section {
+  padding:35px 3px;
+}
+
+#interlinear-section {
+  padding:41px 0px;
+}
+
 .verse-study-section {
   /* background: var(--bg-alt); */
   border-radius: 12px;
@@ -3558,7 +3607,6 @@ body.scripture-mode-on #scripture-mode-toggle {
 
   #interlinear-section-content {
     width:calc(100vw - 50px);
-
   }
 
   /* 
@@ -3596,7 +3644,7 @@ body.scripture-mode-on #scripture-mode-toggle {
   min-width: 0;
 }
 .crossref-ref {
-  font-weight: 600;
+  font-weight: 800;
   margin-bottom: 4px;
 }
 .crossref-text {

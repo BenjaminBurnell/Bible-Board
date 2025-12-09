@@ -61,6 +61,82 @@ function getShareUrl() {
 
 // ==================== Performance Helpers ====================
 
+
+function splitUniqueAttributesPreservingParens(raw) {
+  const parts = [];
+  let current = "";
+  let depth = 0; // parenthesis depth
+
+  for (let i = 0; i < raw.length; i++) {
+    const ch = raw[i];
+
+    if (ch === "(") {
+      depth += 1;
+      current += ch;
+    } else if (ch === ")") {
+      if (depth > 0) depth -= 1;
+      current += ch;
+    } else if (ch === "," && depth === 0) {
+      // comma at top level => split here
+      if (current.trim()) {
+        parts.push(current.trim());
+      }
+      current = "";
+    } else {
+      current += ch;
+    }
+  }
+
+  if (current.trim()) {
+    parts.push(current.trim());
+  }
+
+  return parts;
+}
+
+function resetVerseStudySectionState() {
+  const mapping = {
+    "interlinear-section": {
+      loader: "interlinear-section-loader",
+      content: "interlinear-section-content",
+    },
+    "crossref-section": {
+      loader: "crossref-section-loader",
+      content: "crossref-section-content",
+    },
+    "bookinfo-section": {
+      loader: "bookinfo-section-loader",
+      content: "bookinfo-section-content",
+    },
+  };
+
+  Object.entries(mapping).forEach(([sectionId, ids]) => {
+    const sec = document.getElementById(sectionId);
+    if (!sec) return;
+
+    delete sec.dataset.loadedRef;
+
+    const loader = document.getElementById(ids.loader);
+    const content = document.getElementById(ids.content);
+
+    if (loader) loader.style.display = "none";
+    if (content) content.innerHTML = "";
+  });
+}
+
+// Call THIS when you open the verse-study modal for a new verse
+async function initVerseStudyModalForReference(referenceString) {
+  resetVerseStudySectionState();
+
+  // Preload all three; only Interlinear actually switches the tab
+  await openVerseStudyInterlinear(referenceString, { skipTabSwitch: true, forceReload: true });
+  openVerseStudyBookInfo(referenceString, { skipTabSwitch: true, forceReload: true });
+  openCrossRefForReference(referenceString, { skipTabSwitch: false, forceReload: true });
+}
+
+window.initVerseStudyModalForReference = initVerseStudyModalForReference;
+
+
 // --- Z-ORDER HELPERS ---
 function bringToFront(el) {
   if (!el || window.__readOnly) return;
@@ -242,6 +318,88 @@ const bibleBookCodes = {
   Jude: "JUD",
   Revelation: "REV",
 };
+
+
+
+// Short 1–2 sentence descriptions for each book.
+// Keyed by the 3-letter code used in bibleBookCodes.
+const BOOK_DESCRIPTIONS = {
+  GEN: "Genesis introduces God as Creator, humanity’s fall, and the beginnings of God’s covenant with Abraham’s family.",
+  EXO: "Exodus tells how God rescues Israel from slavery in Egypt and makes them His covenant people at Sinai.",
+  LEV: "Leviticus lays out laws and sacrifices that teach Israel how a holy God lives among an unholy people.",
+  NUM: "Numbers follows Israel’s wandering in the wilderness, mixing census lists with stories of doubt and faith.",
+  DEU: "Deuteronomy is Moses’ final set of sermons, calling Israel to love God and obey the covenant before entering the land.",
+
+  JOS: "Joshua recounts Israel’s entry into the promised land and God’s faithfulness in giving them a home.",
+  JDG: "Judges shows a repeating cycle of sin, oppression, crying out, and deliverance through imperfect leaders.",
+  RUT: "Ruth is a story of loyal love and God’s quiet providence, leading to the family line of King David.",
+  "1SA": "1 Samuel traces Israel’s transition from judges to monarchy, focusing on Samuel, Saul, and David’s rise.",
+  "2SA": "2 Samuel follows David’s reign—his victories, sins, and God’s enduring promise to his house.",
+  "1KI": "1 Kings tells of Solomon’s glory and the division of the kingdom into Israel (north) and Judah (south).",
+  "2KI": "2 Kings continues the story of the divided kingdoms, leading to exile because of persistent unfaithfulness.",
+  "1CH": "1 Chronicles retells David’s story with a focus on worship, the temple, and God’s covenant promises.",
+  "2CH": "2 Chronicles highlights the kings of Judah, emphasizing faithfulness, worship, and the consequences of sin.",
+  EZR: "Ezra describes the return from exile and the rebuilding of the temple under Zerubbabel and Ezra.",
+  NEH: "Nehemiah recounts rebuilding Jerusalem’s walls and restoring the community’s spiritual life.",
+  EST: "Esther tells how God preserves His people in Persia through the courage of Esther and Mordecai.",
+  JOB: "Job wrestles with innocent suffering, asking why the righteous suffer and how God rules the world.",
+  PSA: "Psalms is a collection of songs and prayers expressing the full range of human emotion before God.",
+  PRO: "Proverbs gathers wise sayings that teach skillful living in the fear of the Lord.",
+  ECC: "Ecclesiastes reflects on the fleeting nature of life and the search for meaning under the sun.",
+  SNG: "Song of Songs is a poetic celebration of love and intimacy, often read as reflecting God’s love.",
+  
+  ISA: "Isaiah combines warnings of judgment with stunning promises of salvation and the coming Servant.",
+  JER: "Jeremiah calls Judah to repentance before exile and offers hope in a new covenant.",
+  LAM: "Lamentations is a series of poems grieving Jerusalem’s destruction yet still appealing to God’s mercy.",
+  EZK: "Ezekiel blends vivid visions, symbolic acts, and promises of restoration after judgment.",
+  DAN: "Daniel tells stories of faith under empire and visions of God’s everlasting kingdom.",
+  
+  HOS: "Hosea uses Hosea’s broken marriage as a picture of God’s faithful love toward unfaithful Israel.",
+  JOL: "Joel calls for repentance and foretells the outpouring of God’s Spirit.",
+  AMO: "Amos thunders against social injustice and empty religion in Israel.",
+  OBA: "Obadiah pronounces judgment on Edom for pride and violence against Judah.",
+  JON: "Jonah tells of a reluctant prophet and God’s surprising mercy toward enemies.",
+  MIC: "Micah confronts injustice and promises a coming ruler from Bethlehem.",
+  NAH: "Nahum announces God’s judgment on violent Nineveh.",
+  HAB: "Habakkuk wrestles with God’s justice and learns to trust Him amid evil.",
+  ZEP: "Zephaniah warns of the “day of the Lord” and promises restoration for the humble.",
+  HAG: "Haggai urges the returned exiles to rebuild the temple and reorder their priorities.",
+  ZEC: "Zechariah uses visions and oracles to encourage the rebuilding community and point to a coming king.",
+  MAL: "Malachi challenges spiritual apathy and looks ahead to the Lord’s coming.",
+  
+  MAT: "Matthew presents Jesus as the promised Messiah and new Moses, fulfilling Old Testament expectations.",
+  MRK: "Mark tells a fast-paced story of Jesus’ authority, suffering, and call to discipleship.",
+  LUK: "Luke emphasizes Jesus’ compassion for outsiders and the certainty of God’s saving plan.",
+  JHN: "John highlights Jesus’ identity as the eternal Word and Son of God who brings life.",
+  ACT: "Acts traces the spread of the gospel from Jerusalem to the ends of the earth by the Spirit’s power.",
+  
+  ROM: "Romans lays out the good news of God’s righteousness, justification by faith, and a transformed life.",
+  "1CO": "1 Corinthians addresses problems in a young church and applies the gospel to division, sin, and worship.",
+  "2CO": "2 Corinthians shows Paul’s vulnerable defense of his ministry and the power of God in weakness.",
+  GAL: "Galatians insists that we are justified by faith in Christ alone, not by works of the law.",
+  EPH: "Ephesians celebrates God’s plan to unite all things in Christ and calls the church to live it out.",
+  PHP: "Philippians is a warm letter about joy, partnership in the gospel, and humble Christlike living.",
+  COL: "Colossians exalts Christ as supreme over all and warns against teachings that diminish Him.",
+  "1TH": "1 Thessalonians encourages a young church to stand firm in hope as they wait for Jesus’ return.",
+  "2TH": "2 Thessalonians clarifies misunderstandings about the day of the Lord and urges steady faithfulness.",
+  "1TI": "1 Timothy gives guidance for church leadership, sound teaching, and godly living.",
+  "2TI": "2 Timothy is Paul’s final letter, urging Timothy to endure and guard the gospel.",
+  TIT: "Titus instructs on appointing leaders and living out the gospel on the island of Crete.",
+  PHM: "Philemon is a personal appeal for reconciliation between a master and his runaway slave, now a brother.",
+  
+  HEB: "Hebrews shows Jesus as the ultimate priest, sacrifice, and fulfillment of the Old Covenant.",
+  JAS: "James calls believers to a living, practical faith expressed in actions.",
+  "1PE": "1 Peter encourages suffering Christians with hope and identity as God’s chosen people.",
+  "2PE": "2 Peter warns against false teachers and reminds believers of the coming renewal.",
+  "1JN": "1 John emphasizes assurance, love, and walking in the light with God.",
+  "2JN": "2 John warns against welcoming teachers who deny Christ.",
+  "3JN": "3 John commends faithful hospitality and warns about prideful opposition.",
+  JUD: "Jude urges believers to contend for the faith against corrupt teachers.",
+  REV: "Revelation uses vivid imagery to show Christ’s victory, final judgment, and the new creation.",
+};
+
+// Expose for any other modules if needed
+window.BOOK_DESCRIPTIONS = BOOK_DESCRIPTIONS;
 
 // Reverse bibleBookCodes mapping:
 const codeToFullBook = {};
@@ -607,6 +765,14 @@ const FETCH_STRATEGIES = [
       credentials: "omit",
     }),
 ];
+
+function normalizeVerseStudyRef(ref) {
+  if (!ref) return "";
+  // collapse whitespace so "John  3:16" and "John 3:16" match
+  return String(ref).trim().replace(/\s+/g, " ");
+}
+
+
 /**
  * (Existing)
  */
@@ -2774,57 +2940,155 @@ function toggleInterlinearSelection(btn, row, data) {
 }
 
 // RENDER INTERLINEAR WORDS INSIDE THE VERSE-STUDY MODAL
-// Uses the same queue + selection behavior as the search-query container.
+// Groups helper words like "in the" onto the next lexical word,
+// and shows the original Hebrew/Greek (lemma + translit) on its own line.
 function renderVerseStudyInterlinearTokens(tokens, referenceTitle) {
   const container = document.getElementById("interlinear-section-content");
   if (!container) return;
 
   container.innerHTML = "";
 
-  tokens.forEach((t, index) => {
+  if (!tokens || tokens.length === 0) return;
+
+  const grouped = [];
+  let pendingPrefix = [];
+
+  (tokens || []).forEach((t) => {
     const surface = t.surface || "";
     const english =
       t.translation || t.resolved_gloss || t.gloss || t.english || "";
     const translit = t.resolved_translit || t.translit || "";
     const morph = t.morph || "";
     const strong = t.strong || "";
+    const lemma = t.resolved_lemma || t.lemma || "";
+
+    // Does this token actually have interlinear / lex data?
+    const hasLexical =
+      !!(lemma || translit || morph || strong || (english && english.trim()));
+
+    if (!hasLexical) {
+      // No lex data: treat as prefix (e.g., "In", "the", "And")
+      if (surface && surface.trim()) {
+        pendingPrefix.push(surface);
+      }
+      return; // don't create a row yet
+    }
+
+    // This token DOES have lex data → flush a grouped row:
+    let phraseSurface = surface || "";
+    if (pendingPrefix.length > 0) {
+      phraseSurface = pendingPrefix.join(" ") + " " + phraseSurface;
+    }
+
+    grouped.push({
+      phraseSurface,
+      token: t,
+      english,
+      translit,
+      morph,
+      strong,
+      lemma,
+    });
+
+    // Reset prefix for the next group
+    pendingPrefix = [];
+  });
+
+  grouped.forEach((group, idx) => {
+    const t = group.token;
+    const surface = group.phraseSurface;
+    const english = group.english;
+    const translit = group.translit;
+    const morph = group.morph;
+    const strong = group.strong;
+    const lemma = group.lemma;
+
+    // Use the API's own index if present; fallback to grouped index
+    const wordIndex = t.index || idx + 1;
 
     // --- ROW ---
     const row = document.createElement("div");
     row.className = "interlinear-row";
 
+    // 1) English phrase (e.g., "And the earth")
     const surfaceEl = document.createElement("div");
     surfaceEl.className = "interlinear-surface";
     surfaceEl.textContent = surface;
 
+    // 2) Original language line (lemma + transliteration)
+    const originalEl = document.createElement("div");
+    originalEl.className = "interlinear-original";
+    let originalText = "";
+
+    if (lemma && translit) {
+      // originalText = `${lemma} · ${translit}`;
+      originalText = ` · ${lemma}`;
+    } else if (lemma) {
+      originalText = lemma;
+    } else if (translit) {
+      originalText = translit;
+    }
+
+    if (originalText) {
+      originalEl.textContent = originalText;
+    }
+
+    if (originalText) surfaceEl.appendChild(originalEl);
+
+    // 3) Gloss / definition (full Strong's description)
     const englishEl = document.createElement("div");
     englishEl.className = "interlinear-english";
     englishEl.textContent = english;
 
+    // 4) Chips (translit, morph, Strong's)
     const metaEl = document.createElement("div");
     metaEl.className = "interlinear-meta";
-    if (translit)
-      metaEl.innerHTML += `<span class="meta-chip">${translit}</span>`;
-    if (morph) metaEl.innerHTML += `<span class="meta-chip">${morph}</span>`;
-    if (strong) metaEl.innerHTML += `<span class="meta-chip">${strong}</span>`;
 
-    // --- THE ADD BUTTON (same class as search-query) ---
+    // Transliteration chip
+    if (translit) {
+      metaEl.innerHTML += `<span class="meta-chip">${translit}</span>`;
+    }
+
+    // Morphology: decode tag → human labels if you have decodeMorphologyTag()
+    if (morph) {
+      const labels =
+        typeof decodeMorphologyTag === "function"
+          ? decodeMorphologyTag(morph)
+          : [];
+      if (labels && labels.length > 0) {
+        labels.forEach((label) => {
+          const pill = document.createElement("span");
+          pill.className = "meta-chip morph-pill";
+          pill.textContent = label;
+          metaEl.appendChild(pill);
+        });
+      } else {
+        metaEl.innerHTML += `<span class="meta-chip">${morph}</span>`;
+      }
+    }
+
+    // Strong’s number chip
+    if (strong) {
+      metaEl.innerHTML += `<span class="meta-chip">${strong}</span>`;
+    }
+
+    // --- ADD BUTTON ---
     const addBtn = document.createElement("div");
     addBtn.className = "search-query-verse-add-button";
+    addBtn.style.right = "7px"
 
-    // Data payload that gets added to the queue
+    // Payload for “add to board”
     const cardData = {
       type: "interlinear",
-      surface,
-      english,
+      surface,        // e.g. "And the earth"
+      english,        // gloss / definition from the head token
       translit,
       morph,
       strong,
-      // e.g. "Genesis 1:1 · word 1"
-      reference: `${referenceTitle} · word ${index + 1}`,
+      lemma,
+      reference: `${referenceTitle} · word ${wordIndex}`,
     };
 
-    // Match how we store keys in toggleInterlinearSelection
     const key = `${cardData.reference}::${surface}`;
     if (
       window.pendingInterlinearAdds &&
@@ -2834,7 +3098,6 @@ function renderVerseStudyInterlinearTokens(tokens, referenceTitle) {
       addBtn.classList.add("selected");
     }
 
-    // --- CLICK HANDLERS (same behavior as search) ---
     addBtn.onclick = (e) => {
       e.stopPropagation();
       toggleInterlinearSelection(addBtn, row, cardData);
@@ -2844,30 +3107,53 @@ function renderVerseStudyInterlinearTokens(tokens, referenceTitle) {
       toggleInterlinearSelection(addBtn, row, cardData);
     };
 
-    // Assemble
+    // Assemble row  
     row.appendChild(surfaceEl);
     row.appendChild(englishEl);
     row.appendChild(metaEl);
     row.appendChild(addBtn);
 
+
     container.appendChild(row);
   });
 }
 
-// Fetch + render interlinear specifically for the verse-study modal
-async function openVerseStudyInterlinear(referenceString) {
-  // These are the modal-specific elements
+
+
+
+
+// BEFORE:
+// async function openVerseStudyInterlinear(referenceString) {
+
+async function openVerseStudyInterlinear(referenceString, options = {}) {
+  const { skipTabSwitch = false, forceReload = false } = options;
+
+  const normalizedRef = normalizeVerseStudyRef(referenceString);
+
   const interSec = document.getElementById("interlinear-section");
   const loader = document.getElementById("interlinear-section-loader");
   const content = document.getElementById("interlinear-section-content");
 
   if (!interSec || !loader || !content) return;
 
-  // Show only the interlinear section in the modal
-  if (typeof resetVerseStudySections === "function") {
-    resetVerseStudySections();
+  const alreadyLoadedFor = interSec.dataset.loadedRef || "";
+
+  // ✅ If this section is already loaded for this verse, just switch tab & bail
+  if (!forceReload && alreadyLoadedFor === normalizedRef && content.innerHTML.trim() !== "") {
+    if (!skipTabSwitch) {
+      activateVerseStudyTab("verse-study-open-interlinear", "interlinear-section");
+      loader.style.display = "none";
+    }
+    return;
   }
-  interSec.style.display = "block";
+
+  // Mark which verse this section is now loading for
+  interSec.dataset.loadedRef = normalizedRef;
+
+  if (!skipTabSwitch) {
+    activateVerseStudyTab("verse-study-open-interlinear", "interlinear-section");
+  }
+
   loader.style.display = "flex";
   content.innerHTML = "";
 
@@ -2921,6 +3207,261 @@ async function openVerseStudyInterlinear(referenceString) {
     console.error("Verse-study interlinear fetch failed:", err);
     loader.style.display = "none";
     content.innerHTML = `<div style="color:red;">Error loading interlinear data.</div>`;
+  }
+}
+
+
+// BEFORE:
+// async function openVerseStudyBookInfo(referenceString) {
+
+async function openVerseStudyBookInfo(referenceString, options = {}) {
+  const { skipTabSwitch = false, forceReload = false } = options;
+
+  const normalizedRef = normalizeVerseStudyRef(referenceString);
+
+  const bookSec = document.getElementById("bookinfo-section");
+  const loader = document.getElementById("bookinfo-section-loader");
+  const content = document.getElementById("bookinfo-section-content");
+
+  if (!bookSec || !loader || !content) {
+    console.warn("[VerseStudy BookInfo] Missing DOM elements");
+    return;
+  }
+
+  const alreadyLoadedFor = bookSec.dataset.loadedRef || "";
+
+  if (!forceReload && alreadyLoadedFor === normalizedRef && content.innerHTML.trim() !== "") {
+    if (!skipTabSwitch) {
+      activateVerseStudyTab("verse-study-open-bookinfo", "bookinfo-section");
+      loader.style.display = "none";
+    }
+    return;
+  }
+
+  bookSec.dataset.loadedRef = normalizedRef;
+
+  if (!skipTabSwitch) {
+    activateVerseStudyTab("verse-study-open-bookinfo", "bookinfo-section");
+  }
+
+  loader.style.display = "flex";
+  content.innerHTML = "";
+
+  const bookBtn = document.getElementById("verse-study-open-bookinfo");
+  if (bookBtn) {
+    bookBtn.classList.add("verse-study-tab-active");
+  }
+
+  // Parse "Genesis 1:1", "Romans 8:1", etc.
+  let ref = null;
+  if (typeof parseFullRef === "function") {
+    ref = parseFullRef(referenceString);
+  } else if (window.findBibleVerseReference) {
+    ref = window.findBibleVerseReference(referenceString);
+  }
+
+  if (!ref || !ref.book || !ref.chapter || !ref.verse) {
+    loader.style.display = "none";
+    content.innerHTML = `<div style="color:var(--muted)">Couldn’t parse "${escapeHtml(
+      referenceString
+    )}".</div>`;
+    return;
+  }
+
+  // Build /meta/verse query: ?book=Romans&chapter=8&verse=1
+  const params = new URLSearchParams({
+    book: ref.book,
+    chapter: String(ref.chapter),
+    verse: String(ref.verse),
+  });
+
+  const apiUrl = `${META_VERSE_API_BASE}?${params.toString()}`;
+
+  try {
+    const resp = await fetch(apiUrl, { mode: "cors" });
+    if (!resp.ok) throw new Error(`Bad status ${resp.status}`);
+
+    const data = await resp.json();
+    loader.style.display = "none";
+
+    const bookMeta = data && data.book_meta ? data.book_meta : {};
+    const authorInfo = bookMeta.author_info || {};
+    const bookTitle = bookMeta.title || ref.book || "Unknown book";
+
+    // Figure out book code so we can look up a description
+    let bookCode = null;
+    if (
+      window.bibleBookCodes &&
+      bookTitle &&
+      window.bibleBookCodes[bookTitle]
+    ) {
+      bookCode = window.bibleBookCodes[bookTitle];
+    }
+
+    let bookDescription = "";
+    if (bookCode && window.BOOK_DESCRIPTIONS) {
+      bookDescription = window.BOOK_DESCRIPTIONS[bookCode] || "";
+    }
+
+    // Author display + dedicated “About AUTHOR” section
+    const authorName =
+      authorInfo.name || bookMeta.author || "" || "Unknown author";
+
+    const detailLines = [];
+    if (authorInfo.sex && String(authorInfo.sex).trim() !== "") {
+      detailLines.push(
+        `<div><strong>Sex:</strong> ${escapeHtml(String(authorInfo.sex))}</div>`
+      );
+    }
+    if (authorInfo.tribe && String(authorInfo.tribe).trim() !== "") {
+      detailLines.push(
+        `<div><strong>Tribe:</strong> ${escapeHtml(String(authorInfo.tribe))}</div>`
+      );
+    }
+    if (
+      authorInfo.occupations &&
+      Array.isArray(authorInfo.occupations) &&
+      authorInfo.occupations.length > 0
+    ) {
+      detailLines.push(
+        `<div><strong>Occupations:</strong> ${escapeHtml(
+          authorInfo.occupations.join(", ")
+        )}</div>`
+      );
+    }
+    if (
+      authorInfo.description &&
+      String(authorInfo.description).trim() !== ""
+    ) {
+      const rawUnique = String(authorInfo.description).trim();
+
+      // Split on commas that are NOT inside parentheses
+      const parts = splitUniqueAttributesPreservingParens(rawUnique).filter(
+        Boolean
+      );
+
+
+      if (parts.length > 0) {
+        const itemsHtml = parts
+          .map((p) => `<li>${escapeHtml(p)}</li>`)
+          .join("");
+
+        detailLines.push(
+          `
+          <div class="bookinfo-unique-attributes-block">
+            <div class="bookinfo-unique-attributes-title">
+              Unique Attributes:
+            </div>
+            <ul class="bookinfo-unique-attributes-list">
+              ${itemsHtml}
+            </ul>
+          </div>
+          `
+        );
+      }
+    }
+
+
+
+    // Simple name for the “Author” row
+    let authorHtml = "";
+    // New: full “About AUTHOR” block
+    let authorDetailsHtml = "";
+
+    if (authorName && authorName.trim() !== "") {
+      authorHtml = `<span>${escapeHtml(authorName)}</span>`;
+
+      if (detailLines.length > 0) {
+        authorDetailsHtml = `
+          <div class="bookinfo-author-section">
+            <div class="bookinfo-author-section-title">
+              About Author
+            </div>
+            <div class="bookinfo-author-section-body">
+              ${detailLines.join("")}
+            </div>
+          </div>
+        `;
+      }
+    }
+
+
+    const rawDateWritten =
+      (bookMeta.date_written && String(bookMeta.date_written).trim()) || "";
+    const dateWritten = formatBookDateWritten(rawDateWritten);
+
+    const placeWritten =
+      (bookMeta.place_written && String(bookMeta.place_written).trim()) || "";
+    const audience =
+      (bookMeta.audience && String(bookMeta.audience).trim()) || "";
+
+    let rowsHtml = "";
+
+    if (authorHtml) {
+      rowsHtml += `
+        <div class="bookinfo-row">
+          <div class="bookinfo-label">Author</div>
+          <div class="bookinfo-value">${authorHtml}</div>
+        </div>`;
+    }
+
+    if (dateWritten) {
+      rowsHtml += `
+        <div class="bookinfo-row">
+          <div class="bookinfo-label">Written</div>
+          <div class="bookinfo-value">${escapeHtml(dateWritten)}</div>
+        </div>`;
+    }
+
+    if (placeWritten) {
+      rowsHtml += `
+        <div class="bookinfo-row">
+          <div class="bookinfo-label">Place</div>
+          <div class="bookinfo-value">${escapeHtml(placeWritten)}</div>
+        </div>`;
+    }
+
+    if (audience) {
+      rowsHtml += `
+        <div class="bookinfo-row">
+          <div class="bookinfo-label">Audience</div>
+          <div class="bookinfo-value">${escapeHtml(audience)}</div>
+        </div>`;
+    }
+
+    if (!rowsHtml && !bookDescription) {
+      content.innerHTML = `<div style="color:var(--muted)">No book information available yet for ${escapeHtml(
+        bookTitle
+      )}.</div>`;
+      return;
+    }
+
+    content.innerHTML = `
+      <div class="bookinfo-header">
+        <div class="bookinfo-title">Book of ${escapeHtml(bookTitle)}</div>
+        <div class="bookinfo-subtitle">
+          Background for ${escapeHtml(
+            `${ref.book} ${ref.chapter}:${ref.verse}`
+          )}
+        </div>
+      </div>
+      <div class="bookinfo-meta">
+        ${rowsHtml}
+      </div>
+      ${authorDetailsHtml || ""}
+      ${
+        bookDescription
+          ? `<div class="bookinfo-description">${escapeHtml(
+              bookDescription
+            )}</div>`
+          : ""
+      }
+    `;
+
+  } catch (err) {
+    console.error("[VerseStudy BookInfo] fetch failed:", err);
+    loader.style.display = "none";
+    content.innerHTML = `<div style="color:red;">Error loading book info.</div>`;
   }
 }
 
@@ -5727,7 +6268,7 @@ async function searchForQuery(event) {
 function closeSearchQuery() {
   searchDrawerOpen = false;
 
-  // 🔹 Close the Bible Query reader with the same fade/slide animation
+  // Close the Bible Query reader with the same fade/slide animation
   const bibleReader = document.getElementById("bible-query-reader");
   const bibleReaderHeader = document.getElementById(
     "bible-query-reader-header"
@@ -6124,14 +6665,10 @@ function renderInterlinearTokens(tokens, referenceTitle) {
     return;
   }
 
-  tokens.forEach((token, index) => {
-    // Create the Row
-    const row = document.createElement("div");
-    row.className = "interlinear-row";
-
+  (tokens || []).forEach((token, index) => {
     // Extract Data with safe fallbacks
     const surface =
-      token.text || token.surface || token.original || token.word || "?";
+      token.text || token.surface || token.original || token.word || "";
     const english =
       token.gloss ||
       token.english ||
@@ -6140,19 +6677,38 @@ function renderInterlinearTokens(tokens, referenceTitle) {
       token.meaning ||
       token.trans ||
       token.translation ||
-      "?";
+      "";
     const translit = token.translit || token.transliteration || "";
     const morph = token.morph || token.grammar || "";
     const strong = token.strong || token.strongs || "";
+    const lemma = token.resolved_lemma || token.lemma || "";
+
+    // 🔒 Filter out tokens that are just bare English words with no lex data
+    const hasLexical =
+      !!(
+        lemma ||
+        translit ||
+        morph ||
+        strong ||
+        (english && english.trim().length > 0)
+      );
+
+    if (!hasLexical) {
+      return;
+    }
+
+    // Create the Row
+    const row = document.createElement("div");
+    row.className = "interlinear-row";
 
     // Build Content
     const surfaceEl = document.createElement("div");
     surfaceEl.className = "interlinear-surface";
-    surfaceEl.textContent = surface;
+    surfaceEl.textContent = surface || "?";
 
     const englishEl = document.createElement("div");
     englishEl.className = "interlinear-english";
-    englishEl.textContent = english;
+    englishEl.textContent = english || "?";
 
     const metaEl = document.createElement("div");
     metaEl.className = "interlinear-meta";
@@ -6186,16 +6742,13 @@ function renderInterlinearTokens(tokens, referenceTitle) {
       addBtn.classList.add("selected");
     }
 
-    // --- CLICK HANDLERS (New Logic) ---
-
-    // 1. Button Click (Stop propagation to prevent double-toggle)
+    // CLICK HANDLERS
     addBtn.onclick = (e) => {
       e.stopPropagation();
       toggleInterlinearSelection(addBtn, row, cardData);
     };
 
-    // 2. Row Click (Same action as button)
-    row.onclick = (e) => {
+    row.onclick = () => {
       toggleInterlinearSelection(addBtn, row, cardData);
     };
 
@@ -6208,6 +6761,7 @@ function renderInterlinearTokens(tokens, referenceTitle) {
     list.appendChild(row);
   });
 }
+
 
 // Parse selected verse reference ("– Genesis 1:1 KJV")
 function parseSelectedVerseRef() {
@@ -6774,6 +7328,62 @@ function parseFullRef(ref) {
     chapter: parseInt(match[2], 10),
     verse: parseInt(match[3], 10),
   };
+}
+
+// Format date_written from the API into something like "1000 B.C. - 900 B.C."
+// Handles raw values like "-1000--900", "-1000", "57", etc.
+// If the string already has BC/AD markers, it is returned as-is.
+function formatBookDateWritten(raw) {
+  if (!raw) return "";
+  const trimmed = String(raw).trim();
+
+  // If the API already includes BC / AD markers, just trust it.
+  if (/[Bb]\.?C\.?|[Aa]\.?D\.?/.test(trimmed)) {
+    return trimmed;
+  }
+
+  // Range: e.g. "-1000--900" or "50-60"
+  const mRange = trimmed.match(/^(-?\d+)\s*-\s*(-?\d+)$/);
+  if (mRange) {
+    let y1 = parseInt(mRange[1], 10);
+    let y2 = parseInt(mRange[2], 10);
+    if (Number.isNaN(y1) || Number.isNaN(y2)) return trimmed;
+
+    // Both BC
+    if (y1 < 0 && y2 < 0) {
+      y1 = Math.abs(y1);
+      y2 = Math.abs(y2);
+      // Chronological: older (bigger BC number) to newer (smaller BC number)
+      const from = Math.max(y1, y2);
+      const to = Math.min(y1, y2);
+      return `${from} B.C. - ${to} B.C.`;
+    }
+
+    // Both AD
+    if (y1 > 0 && y2 > 0) {
+      const from = Math.min(y1, y2);
+      const to = Math.max(y1, y2);
+      return `${from} A.D. - ${to} A.D.`;
+    }
+
+    // Mixed case (BC -> AD or similar) – just fall back to raw for now
+    return trimmed;
+  }
+
+  // Single year: "-1000" or "57"
+  const mSingle = trimmed.match(/^(-?\d+)$/);
+  if (mSingle) {
+    let y = parseInt(mSingle[1], 10);
+    if (Number.isNaN(y)) return trimmed;
+
+    if (y < 0) {
+      return `${Math.abs(y)} B.C.`;
+    }
+    return `${y} A.D.`;
+  }
+
+  // Fallback for anything else like "mid-50s", "early 60s", etc.
+  return trimmed;
 }
 
 /**
@@ -7590,6 +8200,9 @@ function setupBoardSettingsPanel() {
 // API Endpoint
 const CROSSREF_API_BASE = "https://full-bible-api.onrender.com/crossref";
 
+// Book / author metadata for verse-study modal
+const META_VERSE_API_BASE = "https://full-bible-api.onrender.com/meta/verse";
+
 let crossRefResults = [];
 let crossRefRenderedCount = 0;
 let crossRefAbortController = null;
@@ -7614,6 +8227,55 @@ function normalizeRef(ref) {
 }
 
 // Helpers
+
+// Turn something like "----NSM-" into ["Noun", "Singular", "Masculine"]
+function decodeMorphologyTag(rawTag) {
+  if (!rawTag || typeof rawTag !== "string") return [];
+
+  // Example input: "----NSM-"
+  // Strip hyphens and whitespace
+  const tag = rawTag.replace(/-/g, "").trim();
+  if (!tag) return [];
+
+  const MORPH_MAP = {
+    // Part of speech
+    N: "Noun",
+    V: "Verb",
+    A: "Adjective",
+    P: "Pronoun",
+    R: "Adverb",
+    C: "Conjunction",
+    D: "Particle",
+    T: "Article",
+    // Number
+    S: "Singular",
+    P: "Plural",
+    // Gender
+    M: "Masculine",
+    F: "Feminine",
+    Nn: "Neuter", // if you ever need a separate key
+    // Case (Greek)
+    G: "Genitive",
+    Dd: "Dative",
+    Aac: "Accusative",
+    L: "Locative",
+    I: "Instrumental",
+    // You can expand this as you find codes in your data
+  };
+
+  const result = [];
+
+  // Simple version: treat each letter separately
+  for (const ch of tag) {
+    const label = MORPH_MAP[ch];
+    if (label && !result.includes(label)) {
+      result.push(label);
+    }
+  }
+
+  return result;
+}
+
 function isMultiVerseReference(ref) {
   if (!ref) return false;
 
@@ -7664,13 +8326,12 @@ function cleanRefForApi(rawRef) {
   if (!rawRef) return "";
   let ref = String(rawRef).trim();
 
-  // Try to parse with the helper you already have
   const parts = parseReferenceToParts(ref); // { book, chapter, verse } or null
 
   if (parts) {
     let { book, chapter, verse } = parts;
 
-    // Normalize the book using bibleBookCodes (handles "1 Peter", "1 peter", etc.)
+    // Try to normalize via bibleBookCodes first
     const target = book.toLowerCase().replace(/[^a-z0-9]/g, "");
 
     let canonicalBook = null;
@@ -7682,12 +8343,24 @@ function cleanRefForApi(rawRef) {
       }
     }
 
-    // Fallback: simple title-case if not found in bibleBookCodes
+    // Fallbacks if we didn't find an exact match
     if (!canonicalBook) {
-      canonicalBook = book
-        .split(/\s+/)
-        .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
-        .join(" ");
+      // 1️⃣ Use expandReferenceAbbrev to handle things like "Matt", "Mt", etc.
+      if (typeof expandReferenceAbbrev === "function") {
+        const expanded = expandReferenceAbbrev(`${book} ${chapter}:${verse}`);
+        const expandedParts = parseReferenceToParts(expanded);
+        if (expandedParts && expandedParts.book) {
+          canonicalBook = expandedParts.book; // e.g. "Matt" → "Matthew"
+        }
+      }
+
+      // 2️⃣ Final fallback: basic title-case
+      if (!canonicalBook) {
+        canonicalBook = book
+          .split(/\s+/)
+          .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+          .join(" ");
+      }
     }
 
     return `${canonicalBook} ${chapter}:${verse}`;
@@ -7697,6 +8370,7 @@ function cleanRefForApi(rawRef) {
   ref = ref.replace(/(\D+)(\d+:\d+)/, "$1 $2");
   return ref.trim();
 }
+
 
 // Build valid API URL
 function buildCrossrefUrl(ref) {
@@ -8385,9 +9059,20 @@ async function openInterlinearForReference(reference) {
   }
 }
 
-// Load cross references into the verse-study modal
-async function openCrossRefForReference(reference) {
+// BEFORE:
+// async function openCrossRefForReference(reference) {
+
+async function openCrossRefForReference(reference, options = {}) {
+  const { skipTabSwitch = false, forceReload = false } = options;
+
   console.log("[VerseStudy Crossref] incoming reference:", reference);
+
+  const normalizedRef = normalizeVerseStudyRef(reference);
+
+  // 1. Set Tab State Immediately (unless we're preloading)
+  if (!skipTabSwitch) {
+    activateVerseStudyTab("verse-study-open-crossref", "crossref-section");
+  }
 
   const crossSec = document.getElementById("crossref-section");
   const loader = document.getElementById("crossref-section-loader");
@@ -8398,8 +9083,18 @@ async function openCrossRefForReference(reference) {
     return;
   }
 
-  // Show the section + loader
-  crossSec.style.display = "block";
+  const alreadyLoadedFor = crossSec.dataset.loadedRef || "";
+
+  if (!forceReload && alreadyLoadedFor === normalizedRef && content.innerHTML.trim() !== "") {
+    // Content already loaded for this verse
+    if (!skipTabSwitch) {
+      loader.style.display = "none";
+    }
+    return;
+  }
+
+  crossSec.dataset.loadedRef = normalizedRef;
+
   loader.style.display = "flex";
   content.innerHTML = "";
 
@@ -9079,6 +9774,85 @@ function attachInterlinearEvents(el) {
    Uses 'startDragMouse' directly to ensure compatibility with your board.
    ============================================================================= */
 
+// function addInterlinearCard(data, delay = 0) {
+//   if (!workspace) return;
+
+//   const el = document.createElement("div");
+//   el.className = "board-item interlinear-card";
+//   el.dataset.type = "interlinear";
+
+//   // Save data for persistence + legacy boards
+//   el.dataset.reference = data.reference || "";
+//   el.dataset.surface = data.surface || "";
+//   el.dataset.english = data.english || "";
+//   el.dataset.translit = data.translit || "";
+//   el.dataset.lemma = data.lemma || "";
+//   el.dataset.morph = data.morph || "";
+//   el.dataset.strong = data.strong || "";
+//   el.dataset.translation = data.translation || "";
+
+//   // --- NEW: surface + original word: "Paul, · Παῦλος" ---
+//   const displaySurface = data.surface || "?";
+//   // Prefer lemma for Greek/Hebrew form, fall back to translit if needed
+//   const originalWord = data.lemma || data.resolved_lemma || data.translit || "";
+
+//   const surfaceLine = originalWord
+//     ? `<span class="interlinear-surface-main">${displaySurface}</span>` +
+//       `<span class="interlinear-original"> · ${originalWord}</span>`
+//     : displaySurface;
+
+//   // Build meta chips
+//   const metaChips = [];
+
+//   if (data.translit) {
+//     metaChips.push(
+//       `<span class="meta-chip">${data.translit}</span>`
+//     );
+//   }
+
+//   if (data.morph) {
+//     const labels = typeof decodeMorphologyTag === "function"
+//       ? decodeMorphologyTag(data.morph)
+//       : [data.morph];
+
+//     labels.forEach((label) => {
+//       metaChips.push(`<span class="meta-chip">${label}</span>`);
+//     });
+//   }
+
+//   if (data.strong) {
+//     metaChips.push(
+//       `<span class="meta-chip">${data.strong}</span>`
+//     );
+//   }
+
+//   el.innerHTML = `
+//     <div class="interlinear-card-inner">
+//       <div class="interlinear-card-header">
+//         <span class="interlinear-card-label">INTERLINEAR</span>
+//         <span class="interlinear-card-ref">${data.reference || ""}</span>
+//       </div>
+//       <div class="interlinear-card-body">
+//         <div class="interlinear-card-surface">
+//           ${surfaceLine}
+//         </div>
+//         <div class="interlinear-card-english">
+//           ${data.english || ""}
+//         </div>
+//         <div class="interlinear-card-meta">
+//           ${metaChips.join("")}
+//         </div>
+//       </div>
+//     </div>
+//   `;
+
+//   workspace.appendChild(el);
+//   placeNewItem(el, delay);
+//   attachInterlinearEvents(el);
+//   onBoardMutated("item_add_interlinear");
+// }
+
+
 function addInterlinearCard(data, delay = 0) {
   const el = document.createElement("div");
   el.className = "board-item interlinear-card";
@@ -9101,6 +9875,16 @@ function addInterlinearCard(data, delay = 0) {
   el.dataset.morph = data.morph || "";
   el.dataset.strong = data.strong || "";
   el.dataset.reference = data.reference || "";
+
+  // --- NEW: surface + original word: "Paul, · Παῦλος" ---
+  const displaySurface = data.surface || "?";
+  // Prefer lemma for Greek/Hebrew form, fall back to translit if needed
+  const originalWord = data.lemma || data.resolved_lemma || data.translit || "";
+
+  const surfaceLine = originalWord
+    ? `<strong class="interlinear-surface-main">${displaySurface}</strong>` +
+      `<span class="interlinear-original"> · ${originalWord}</span>`
+    : displaySurface;
 
   // --- Position (Center of Viewport) ---
   const viewport = document.querySelector(".viewport");
@@ -9127,7 +9911,10 @@ function addInterlinearCard(data, delay = 0) {
         <span class="interlinear-card-badge">Interlinear</span>
         <span class="interlinear-card-ref">${data.reference || ""}</span>
       </div>
-      <div class="interlinear-card-surface">${data.surface || "?"}</div>
+      <div>
+      <div class="interlinear-card-surface">
+        ${surfaceLine}
+      </div>
       <div class="interlinear-card-english">${data.english || "?"}</div>
       <div class="interlinear-card-meta">
         ${
@@ -9387,6 +10174,8 @@ function renderVerses(verses) {
     row.dataset.status = "ready"; // Mark ready for CSS animations
 
     // Dataset for unified selection + cross-tab syncing
+
+    console.log(verse)
     row.dataset.ref = verse.reference;
     row.dataset.text = verse.text;
     row.dataset.version = verse.version;
@@ -9865,17 +10654,25 @@ async function handleFloatingAddClick() {
     console.log("[FloatingAdd Debug] handleFloatingAddClick DONE");
   }
 
-  // --- After adding everything, exit Scripture mode like ESC ---
-  const body = document.body;
-  const scriptureBtn = document.getElementById("scripture-mode-toggle");
-  const scriptureContainer = document.getElementById("bible-query-container");
-  const reader = document.getElementById("bible-query-reader");
+  // --- After adding everything, exit Scripture mode gracefully (like ESC) ---
+  // We already called closeSearchQuery() at the top of this function, which
+  // runs the fade/slide animation and then hides the reader after 250ms.
+  // Here we only reset the Scripture mode visuals *after* that animation.
+  setTimeout(() => {
+    const body = document.body;
+    const scriptureBtn = document.getElementById("scripture-mode-toggle");
+    const scriptureContainer = document.getElementById(
+      "bible-query-container"
+    );
+    const reader = document.getElementById("bible-query-reader");
 
-  if (reader) reader.style.display = "none";
-  if (body) body.classList.remove("scripture-mode-on");
-  if (scriptureBtn) scriptureBtn.classList.remove("active");
-  if (scriptureContainer) scriptureContainer.style.display = "";
+    // handle that so the animation can play.
+    if (body) body.classList.remove("scripture-mode-on");
+    if (scriptureBtn) scriptureBtn.classList.remove("active");
+    if (scriptureContainer) scriptureContainer.style.display = "";
+  }, 260);
 }
+
 
 // Expose globally
 window.handleFloatingAddClick = handleFloatingAddClick;
@@ -10098,16 +10895,71 @@ document.getElementById("grouping-mode-btn")?.addEventListener("click", (e) => {
   toggleGroupingMode();
 });
 
+// --- UNIFIED TAB HELPERS ---
+
 function resetVerseStudySections() {
-  const interSec = document.getElementById("interlinear-section");
-  const crossSec = document.getElementById("crossref-section");
+  // 1. Hide all sections
+  const sections = [
+    "interlinear-section", 
+    "crossref-section", 
+    "bookinfo-section"
+  ];
+  sections.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = "none";
+  });
 
-  if (interSec) interSec.style.display = "none";
-  if (crossSec) crossSec.style.display = "none";
-
-  const interBtn = document.getElementById("verse-study-open-interlinear");
-  const crossBtn = document.getElementById("verse-study-open-crossref");
-
-  if (interBtn) interBtn.classList.remove("verse-study-tab-active");
-  if (crossBtn) crossBtn.classList.remove("verse-study-tab-active");
+  // 2. Deactivate all buttons
+  const buttons = [
+    "verse-study-open-interlinear", 
+    "verse-study-open-crossref", 
+    "verse-study-open-bookinfo"
+  ];
+  buttons.forEach(id => {
+    const btn = document.getElementById(id);
+    if (btn) btn.classList.remove("verse-study-tab-active");
+  });
+  
+  // 3. Hide Book Info content specifically (extra safety)
+  const bookContent = document.getElementById("bookinfo-section-content");
+  if (bookContent) bookContent.style.display = "none";
 }
+
+/**
+ * Activates a specific tab and hides others.
+ * @param {string} btnId - ID of the button to highlight
+ * @param {string} sectionId - ID of the section to show
+ */
+function activateVerseStudyTab(btnId, sectionId) {
+  // 1. Hide all sections visually (but DO NOT clear innerHTML)
+  const sections = ["interlinear-section", "crossref-section", "bookinfo-section"];
+  sections.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = "none";
+  });
+
+  const bookContent = document.getElementById("bookinfo-section-content");
+  if (bookContent) bookContent.style.display = "none";
+
+  // 2. Deactivate all buttons
+  const buttons = ["verse-study-open-interlinear", "verse-study-open-crossref", "verse-study-open-bookinfo"];
+  buttons.forEach(id => {
+    const btn = document.getElementById(id);
+    if (btn) btn.classList.remove("verse-study-tab-active");
+  });
+
+  // 3. Activate target
+  const btn = document.getElementById(btnId);
+  const sec = document.getElementById(sectionId);
+
+  if (btn) btn.classList.add("verse-study-tab-active");
+  if (sec) sec.style.display = "block";
+
+  if (sectionId === 'bookinfo-section' && bookContent) {
+    bookContent.style.display = "block";
+  }
+}
+
+// Expose globally
+window.activateVerseStudyTab = activateVerseStudyTab;
+window.resetVerseStudySections = resetVerseStudySections;

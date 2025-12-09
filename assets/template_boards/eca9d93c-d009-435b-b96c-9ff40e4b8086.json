@@ -1,0 +1,115 @@
+{
+  "version": 1,
+  "updatedAt": "2025-12-07T03:38:58.975Z",
+  "title": "Peace in the Middle of Anxiety",
+  "viewport": {
+    "scrollLeft": 3292.800048828125,
+    "scrollTop": 3441.60009765625,
+    "scale": 0.3919225261558063,
+    "centerX": 10004.018108592809,
+    "centerY": 9712.634114179393
+  },
+  "elements": [
+    {
+      "vkey": "v_9t3u7eblidt",
+      "left": "9802.34px",
+      "top": "9452.16px",
+      "zIndex": "1598",
+      "type": "verse",
+      "text": "6                Don’t worry about anything; instead, pray about everything. Tell God what you need, and thank him for all he has done. 7                Then you will experience God’s peace, which exceeds anything we can understand. His peace will guard your hearts and minds as you live in Christ Jesus.",
+      "reference": "- Philippians 4:6-7 NLT"
+    },
+    {
+      "vkey": "v_jb0ve176h5j",
+      "left": "9468.28px",
+      "top": "9096.88px",
+      "zIndex": "1551",
+      "type": "note",
+      "html": "In this passage, God replaces anxiety with a pattern of prayer, petition, and thanksgiving that leads to His peace."
+    },
+    {
+      "vkey": "v_dkcbrbb7qie",
+      "left": "10511.6px",
+      "top": "9219.84px",
+      "zIndex": "1600",
+      "type": "note",
+      "html": "God's peace in this verse is pictured like a guard that protects our hearts and minds in Christ even when circumstances don't change."
+    },
+    {
+      "vkey": "v_rgmgxlfqxsl",
+      "left": "9038.78px",
+      "top": "9426.73px",
+      "zIndex": "1553",
+      "type": "verse",
+      "text": "Give all your worries and cares to God, for he cares about you.",
+      "reference": "- 1 Peter 5:7 NLT"
+    },
+    {
+      "vkey": "v_tgnqhh7957",
+      "left": "10054.9px",
+      "top": "9920.43px",
+      "zIndex": "1596",
+      "type": "verse",
+      "text": "31                “So don’t worry about these things, saying, ‘What will we eat? What will we drink? What will we wear?’ 32                These things dominate the thoughts of unbelievers, but your heavenly Father already knows all your needs. 33                Seek the Kingdom of God above all else, and live righteously, and he will give you everything you need.",
+      "reference": "- Matthew 6:31-33 NLT"
+    },
+    {
+      "vkey": "eccd4247-1790-4fcf-9fc0-45aa3dcdb97e",
+      "left": "9146.15px",
+      "top": "9877.92px",
+      "zIndex": "1584",
+      "type": "interlinear",
+      "surface": "ὑπερέχουσα",
+      "english": "better, excellency, higher, pass, supreme",
+      "translit": "hoop-er-ekh'-o",
+      "morph": "-PAPNSF-",
+      "strong": "",
+      "reference": "Philippians 4:7 · word 7"
+    },
+    {
+      "vkey": "bf37f190-c71d-4940-9ab7-256e3f8b4697",
+      "left": "10554.3px",
+      "top": "9719.79px",
+      "zIndex": "1594",
+      "type": "interlinear",
+      "surface": "εἰρήνη",
+      "english": "one, peace, quietness, rest, + set at one again",
+      "translit": "i-ray'-nay",
+      "morph": "----NSF-",
+      "strong": "",
+      "reference": "Philippians 4:7 · word 3"
+    }
+  ],
+  "connections": [
+    {
+      "a": "v_9t3u7eblidt",
+      "b": "v_jb0ve176h5j",
+      "color": "#67E8F9"
+    },
+    {
+      "a": "v_9t3u7eblidt",
+      "b": "v_dkcbrbb7qie",
+      "color": "#67E8F9"
+    },
+    {
+      "a": "v_rgmgxlfqxsl",
+      "b": "v_9t3u7eblidt",
+      "color": "#BEF264"
+    },
+    {
+      "a": "v_tgnqhh7957",
+      "b": "v_9t3u7eblidt",
+      "color": "#BEF264"
+    },
+    {
+      "a": "eccd4247-1790-4fcf-9fc0-45aa3dcdb97e",
+      "b": "v_9t3u7eblidt",
+      "color": "#FDBA74"
+    },
+    {
+      "a": "bf37f190-c71d-4940-9ab7-256e3f8b4697",
+      "b": "v_9t3u7eblidt",
+      "color": "#FDBA74"
+    }
+  ]
+}

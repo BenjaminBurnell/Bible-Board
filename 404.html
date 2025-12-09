@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Page Not Found | BibleBoard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="style.css">
+    <style>
+      :root {
+        --bg: #171717;
+        --bg-seethroug: #20202050;
+        --bg-trasparent: #17171700;
+        --bg-dots: #1d1d1d;
+        --bg-alt: #202020;
+        --fg: #e6e6e6;
+        --fg-seethrough: #e6e6e620;
+        --accent: #67e495;
+        --border: #2f2f2f;
+        --muted: #8b949e;
+
+        /* Dark Mode: High brightness to make a dark logo look white/visible */
+        --brightness: 1000%;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--bg);
+        color: var(--fg);
+      }
+      .wrapper {
+        text-align: center;
+        padding: 2rem 1.5rem;
+        max-width: 480px;
+      }
+      h1 {
+        font-size: 3rem;
+        margin-bottom: 0.25rem;
+      }
+      h2 {
+        font-size: 1.25rem;
+        margin-top: 0;
+        color: var(--muted);
+      }
+      p {
+        margin: 1rem 0 1.5rem;
+        color: var(--muted);
+      }
+      a.button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.7rem 1.4rem;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        text-decoration: none;
+        color: var(--muted);
+        font-weight: 600;
+        font-size: 0.95rem;
+        background: var(--bg-dots);
+      }
+      a.button:hover {
+        border-color: var(--border);
+        opacity: 0.7;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="wrapper">
+      <h1>404</h1>
+      <h2>That page doesn’t seem to exist</h2>
+      <p>
+        The link might be broken, or the page may have been moved.<br />
+        Let’s take you back to BibleBoard.
+      </p>
+      <a class="button" href="/dashboard/">Back to dashboard</a>
+    </main>
+  </body>
+</html>

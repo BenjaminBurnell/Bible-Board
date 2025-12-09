@@ -793,6 +793,33 @@ function getDashboardRedirectURL() {
   return `${window.location.origin}/dashboard/`;
 }
 
+async function redirectIfSignedIn() {
+  const sb = getLandingSupabaseClient();
+  if (!sb) return;
+
+  try {
+    const { data, error } = await sb.auth.getSession();
+    console.log("[Landing] getSession result:", data, error);
+
+    if (error) {
+      console.warn("[Landing] getSession error:", error);
+      return;
+    }
+
+    if (data && data.session) {
+      const redirectTo = getDashboardRedirectURL();
+      console.log("[Landing] Active session found – redirecting to:", redirectTo);
+      // Use replace so the landing page doesn't stay in history
+      window.location.replace(redirectTo);
+    } else {
+      console.log("[Landing] No active session – staying on landing page.");
+    }
+  } catch (err) {
+    console.error("[Landing] redirectIfSignedIn failed:", err);
+  }
+}
+
+
 async function startGoogleSignIn(event) {
   if (event) event.preventDefault();
 
@@ -821,6 +848,11 @@ async function startGoogleSignIn(event) {
 
 // Attach to buttons once DOM is ready
 document.addEventListener("DOMContentLoaded", () => {
+  // 1) If they already have a Supabase session, send them straight to the dashboard
+  redirectIfSignedIn();
+
+  // 2) Otherwise, wire up the sign-in buttons as usual
+
   // All "Get Started" buttons (nav + footer)
   document.querySelectorAll(".action-button").forEach((btn) => {
     btn.addEventListener("click", startGoogleSignIn);

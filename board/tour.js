@@ -1,283 +1,201 @@
 // // board/tour.js
-// // Lightweight onboarding for Scripture Mode in BibleBoard.
-// // Replaces the old multi-page tour with a small, tap-through guide.
+// // Simple one-step onboarding: a glowing curved arrow that draws in
+// // and points at the "Open Scripture" button (#scripture-mode-toggle).
 
 // (function () {
-//   const STORAGE_KEY = "bb_scripture_onboarding_v3";
+//   const STORAGE_KEY = "bb_scripture_arrow_seen_v1";
+//   // SVG is 260x260, but we’ll render it smaller
+//   const ARROW_VIEWBOX_SIZE = 260;
+//   const ARROW_SCALE = 0.3; // 👈 tweak this (0.6, 0.5, etc.) to make smaller/bigger
 
-//   // Five simple steps focused on Scripture mode.
-//   const STEPS = [
-//     {
-//       id: "open-scripture",
-//       target: "#scripture-mode-toggle",
-//       title: "Open Scripture Mode",
-//       text: "Tap here to open Scripture Mode and read the Bible alongside your board.",
-//       placement: "bottom", // bubble sits under the button, arrow points up
-//     },
-//     {
-//       id: "select-verses",
-//       target: "#bible-query-reader-content",
-//       title: "Select verses",
-//       text: "Tap a verse, then tap another to select a range you want to work with.",
-//       placement: "bottom",
-//     },
-//     {
-//       id: "add-to-board",
-//       target: "#bible-reader-add-to-board-btn",
-//       title: "Add verses to your board",
-//       text: "When you’re happy with the selection, tap here to drop those verses onto your board.",
-//       placement: "top",
-//     },
-//     {
-//       id: "go-deeper",
-//       target: "#bible-query-reader-content",
-//       title: "Hold to go deeper",
-//       text: "Hold on a verse to open deeper study tools like interlinear and cross-references.",
-//       placement: "bottom",
-//     },
-//   ];
+//   const ARROW_BOX_SIZE = ARROW_VIEWBOX_SIZE * ARROW_SCALE;
 
+//   // Tip of the arrow in *SVG* coords (from your SVG: ~130, 235)
+//   const TIP_X = 130;
+//   const TIP_Y = 350;
 
-//   let state = {
-//     active: false,
-//     index: 0,
-//     overlay: null,
-//     highlight: null,
-//     tooltip: null,
-//     titleEl: null,
-//     textEl: null,
-//     counterEl: null,
-//     skipBtn: null,
-//   };
+//   function createArrowSvg() {
+//     const svgNS = "http://www.w3.org/2000/svg";
 
-//   function createUi() {
-//     if (state.overlay) return;
+//     const svg = document.createElementNS(svgNS, "svg");
+//     svg.setAttribute("viewBox", "0 0 260 260");
+//     svg.setAttribute("class", "bb-tour-arrow-svg");
 
+//     // === <defs> glow filter (from your SVG, slight rename of id) ===
+//     const defs = document.createElementNS(svgNS, "defs");
+//     const filter = document.createElementNS(svgNS, "filter");
+//     filter.setAttribute("id", "bb-tour-glow");
+//     filter.setAttribute("x", "-50%");
+//     filter.setAttribute("y", "-50%");
+//     filter.setAttribute("width", "200%");
+//     filter.setAttribute("height", "200%");
+
+//     const feGaussianBlur = document.createElementNS(svgNS, "feGaussianBlur");
+//     feGaussianBlur.setAttribute("in", "SourceGraphic");
+//     feGaussianBlur.setAttribute("stdDeviation", "4");
+//     feGaussianBlur.setAttribute("result", "blur");
+
+//     const feMerge = document.createElementNS(svgNS, "feMerge");
+//     const feMergeNodeBlur = document.createElementNS(svgNS, "feMergeNode");
+//     feMergeNodeBlur.setAttribute("in", "blur");
+//     const feMergeNodeSource = document.createElementNS(svgNS, "feMergeNode");
+//     feMergeNodeSource.setAttribute("in", "SourceGraphic");
+
+//     feMerge.appendChild(feMergeNodeBlur);
+//     feMerge.appendChild(feMergeNodeSource);
+
+//     filter.appendChild(feGaussianBlur);
+//     filter.appendChild(feMerge);
+//     defs.appendChild(filter);
+//     svg.appendChild(defs);
+
+//     // Group that uses the glow filter
+//     const g = document.createElementNS(svgNS, "g");
+//     g.setAttribute("filter", "url(#bb-tour-glow)");
+//     svg.appendChild(g);
+
+//     // === Main arrow shape (your exact path) ===
+//     const mainD =
+//       "M 65 35 L 90 32 L 93 40 L 98 55 L 96 60 L 102 65 " +
+//       "Q 120 90 135 120 L 138 125 L 145 130 L 180 120 L 185 125 " +
+//       "L 160 160 L 155 168 L 130 235 L 105 168 L 98 160 L 75 125 " +
+//       "L 80 120 L 110 132 Q 95 100 78 70 L 75 65 L 80 60 L 75 40 Z";
+
+//     // Filled body (white)
+//     const fillPath = document.createElementNS(svgNS, "path");
+//     fillPath.setAttribute("class", "bb-tour-arrow-fill");
+//     fillPath.setAttribute("d", mainD);
+//     g.appendChild(fillPath);
+
+//     // Outline for the draw animation (same shape, stroke only)
+//     const outlinePath = document.createElementNS(svgNS, "path");
+//     outlinePath.setAttribute("class", "bb-tour-arrow-outline");
+//     outlinePath.setAttribute("d", mainD);
+//     g.appendChild(outlinePath);
+
+//     // === Cracks (your second path, kept as one multi-segment path) ===
+//     const cracksD =
+//       "M 85 50 L 90 55 " +
+//       "M 125 115 L 130 118 " +
+//       "M 148 145 L 152 148 " +
+//       "M 115 180 L 118 175 " +
+//       "M 130 200 L 130 195 " +
+//       "M 95 85 Q 100 90 97 95";
+
+//     const cracksPath = document.createElementNS(svgNS, "path");
+//     cracksPath.setAttribute("class", "bb-tour-arrow-crack");
+//     cracksPath.setAttribute("d", cracksD);
+//     g.appendChild(cracksPath);
+
+//     return svg;
+//   }
+
+//   function positionArrow(targetEl, wrapper, label) {
+//     const rect = targetEl.getBoundingClientRect();
+
+//     const targetCenterX = rect.left + rect.width / 2;
+//     const targetCenterY = rect.top + rect.height / 2;
+
+//     // Scale the tip position from SVG space into rendered pixel space
+//     const tipX = TIP_X * ARROW_SCALE;
+//     const tipY = TIP_Y * ARROW_SCALE;
+
+//     const left = targetCenterX - tipX;
+//     const top = targetCenterY - tipY;
+
+//     wrapper.style.left = `${left}px`;
+//     wrapper.style.top = `${top}px`;
+
+//     // Label near the tail (top-ish area of the box)
+//     const labelOffsetX = -60;
+//     const labelOffsetY = -20;
+//     label.style.left = `${left + labelOffsetX}px`;
+//     label.style.top = `${top + labelOffsetY}px`;
+//   }
+
+//   function showArrow(targetEl) {
 //     const overlay = document.createElement("div");
-//     overlay.id = "bb-onboarding-overlay";
+//     overlay.className = "bb-tour-arrow-overlay";
 
-//     const highlight = document.createElement("div");
-//     highlight.id = "bb-onboarding-highlight";
+//     const wrapper = document.createElement("div");
+//     wrapper.className = "bb-tour-arrow-wrapper";
+//     wrapper.style.width = `${ARROW_BOX_SIZE}px`;
+//     wrapper.style.height = `${ARROW_BOX_SIZE}px`;
 
-//     const tooltip = document.createElement("div");
-//     tooltip.id = "bb-onboarding-tooltip";
+//     const svg = createArrowSvg();
+//     wrapper.appendChild(svg);
 
-//     const bubble = document.createElement("div");
-//     bubble.className = "bb-onboarding-bubble";
+//     const label = document.createElement("div");
+//     label.className = "bb-tour-arrow-label";
+//     label.textContent = "Tap here to open Scripture Mode.";
 
-//     const arrow = document.createElement("div");
-//     arrow.className = "bb-onboarding-arrow";
-//     bubble.appendChild(arrow);
-
-//     const body = document.createElement("div");
-//     body.className = "bb-onboarding-body";
-
-//     const titleEl = document.createElement("div");
-//     titleEl.className = "bb-onboarding-title";
-
-//     const textEl = document.createElement("div");
-//     textEl.className = "bb-onboarding-text";
-
-//     body.appendChild(titleEl);
-//     body.appendChild(textEl);
-//     bubble.appendChild(body);
-
-//     const footer = document.createElement("div");
-//     footer.className = "bb-onboarding-footer";
-
-//     const counterEl = document.createElement("div");
-//     counterEl.className = "bb-onboarding-counter";
-
-//     const skipBtn = document.createElement("button");
-//     skipBtn.type = "button";
-//     skipBtn.className = "bb-onboarding-skip";
-//     skipBtn.textContent = "Skip";
-
-//     footer.appendChild(counterEl);
-//     footer.appendChild(skipBtn);
-
-//     tooltip.appendChild(bubble);
-//     tooltip.appendChild(footer);
-
-//     overlay.appendChild(highlight);
-//     overlay.appendChild(tooltip);
+//     overlay.appendChild(wrapper);
+//     overlay.appendChild(label);
 //     document.body.appendChild(overlay);
 
-//     // Click anywhere (except Skip) to advance
-//     overlay.addEventListener("click", (ev) => {
-//       if (!state.active) return;
-//       if (ev.target === skipBtn) return;
-//       ev.stopPropagation();
-//       ev.preventDefault();
-//       nextStep();
-//     });
-
-//     skipBtn.addEventListener("click", (ev) => {
-//       ev.stopPropagation();
-//       ev.preventDefault();
-//       endTour(true);
-//     });
-
-//     state.overlay = overlay;
-//     state.highlight = highlight;
-//     state.tooltip = tooltip;
-//     state.titleEl = titleEl;
-//     state.textEl = textEl;
-//     state.counterEl = counterEl;
-//     state.skipBtn = skipBtn;
-//   }
-
-//   function positionForStep(step) {
-//     const { highlight, tooltip } = state;
-//     if (!highlight || !tooltip) return;
-
-//     const targetEl = step.target
-//       ? document.querySelector(step.target)
-//       : null;
-
-//     const rect = targetEl && targetEl.getBoundingClientRect
-//       ? targetEl.getBoundingClientRect()
-//       : null;
-
-//     const hasTarget = rect && rect.width > 0 && rect.height > 0;
-
-//     tooltip.classList.remove("bb-placement-top", "bb-placement-bottom");
-
-//     if (hasTarget) {
-//       const padding = 8;
-
-//       // Highlight ring
-//       highlight.style.display = "block";
-//       highlight.style.left = rect.left - padding + "px";
-//       highlight.style.top = rect.top - padding + "px";
-//       highlight.style.width = rect.width + padding * 2 + "px";
-//       highlight.style.height = rect.height + padding * 2 + "px";
-
-//       // Tooltip
-//       tooltip.style.display = "block";
-
-//       const centerX = rect.left + rect.width / 2;
-//       tooltip.style.left = centerX + "px";
-//       tooltip.style.transform = "translateX(-50%)";
-
-//       const placement = step.placement === "top" ? "top" : "bottom";
-//       tooltip.classList.add(
-//         placement === "top" ? "bb-placement-top" : "bb-placement-bottom"
-//       );
-
-//       // We need a measurement after contents are set
-//       const tooltipRect = tooltip.getBoundingClientRect();
-//       let top;
-//       if (placement === "top") {
-//         // Tooltip above target
-//         top = rect.top - tooltipRect.height - 12;
-//         if (top < 12) top = 12;
-//       } else {
-//         // Tooltip below target
-//         top = rect.bottom + 12;
-//         if (top + tooltipRect.height > window.innerHeight - 12) {
-//           top = window.innerHeight - 12 - tooltipRect.height;
-//         }
-//       }
-//       tooltip.style.top = top + "px";
-//     } else {
-//       // No valid target – center tooltip, hide highlight
-//       highlight.style.display = "none";
-//       tooltip.style.display = "block";
-//       tooltip.style.left = "50%";
-//       tooltip.style.top = "50%";
-//       tooltip.style.transform = "translate(-50%, -50%)";
-//     }
-//   }
-
-//   function showStep(index) {
-//     if (index < 0 || index >= STEPS.length) {
-//       endTour(true);
-//       return;
+//     function reposition() {
+//       if (!document.body.contains(targetEl)) return;
+//       positionArrow(targetEl, wrapper, label);
 //     }
 
-//     state.index = index;
-//     const step = STEPS[index];
+//     // Position now + on resize/scroll
+//     reposition();
+//     window.addEventListener("resize", reposition);
+//     window.addEventListener("scroll", reposition, { passive: true });
 
-//     state.titleEl.textContent = step.title || "";
-//     state.textEl.textContent = step.text || "";
-//     state.counterEl.textContent = `${index + 1} of ${STEPS.length}`;
-
-//     positionForStep(step);
-//   }
-
-//   function nextStep() {
-//     showStep(state.index + 1);
-//   }
-
-//   function startTour() {
-//     if (state.active) return;
-//     createUi();
-//     state.active = true;
-//     state.overlay.style.display = "block";
-//     showStep(0);
-//   }
-
-//   function endTour(markSeen) {
-//     if (!state.active) return;
-//     state.active = false;
-
-//     if (state.overlay) {
-//       state.overlay.style.display = "none";
-//     }
-//     if (markSeen) {
+//     function dismiss() {
+//       if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+//       window.removeEventListener("resize", reposition);
+//       window.removeEventListener("scroll", reposition);
 //       try {
-//         localStorage.setItem(STORAGE_KEY, "done");
-//       } catch (err) {
-//         console.warn("Failed to persist onboarding state:", err);
-//       }
-//     }
-//   }
-
-//   // Auto-start the tour the first time Scripture Mode is opened.
-//   function setupAutoStart() {
-//     document.addEventListener("DOMContentLoaded", () => {
-//       try {
-//         if (localStorage.getItem(STORAGE_KEY) === "done") return;
+//         localStorage.setItem(STORAGE_KEY, "1");
 //       } catch {
 //         // ignore
 //       }
+//     }
 
-//       const btn = document.getElementById("scripture-mode-toggle");
-//       if (!btn) return;
+//     // Hide the arrow when they actually open Scripture Mode
+//     targetEl.addEventListener("click", dismiss, { once: true });
 
-//       btn.addEventListener(
-//         "click",
-//         () => {
-//           // Wait a bit for the reader to animate in.
-//           setTimeout(() => {
-//             try {
-//               if (localStorage.getItem(STORAGE_KEY) === "done") return;
-//             } catch {
-//               // ignore
-//             }
-//             startTour();
-//           }, 500);
-//         },
-//         { once: true }
-//       );
-//     });
+//     return { overlay, dismiss };
 //   }
 
-//   setupAutoStart();
+//   function maybeShowArrow() {
+//     // Only show once per browser unless manually reset
+//     try {
+//       if (localStorage.getItem(STORAGE_KEY) === "1") return;
+//     } catch {
+//       // ignore storage failures
+//     }
 
-//   // Expose a small API for debugging / manual triggering.
-//   window.BibleBoardScriptureTour = {
-//     start: () => {
+//     const targetEl = document.getElementById("scripture-mode-toggle");
+//     if (!targetEl) return;
+
+//     // Small delay to let layout settle
+//     setTimeout(() => {
+//       if (!document.body.contains(targetEl)) return;
+//       showArrow(targetEl);
+//     }, 400);
+//   }
+
+//   // Auto-run when the board page is ready
+//   if (document.readyState === "loading") {
+//     document.addEventListener("DOMContentLoaded", maybeShowArrow);
+//   } else {
+//     maybeShowArrow();
+//   }
+
+//   // Optional global API if you ever want to retrigger from the console
+//   window.BibleBoardScriptureArrowTour = {
+//     start() {
 //       try {
 //         localStorage.removeItem(STORAGE_KEY);
 //       } catch {
 //         // ignore
 //       }
-//       startTour();
+//       maybeShowArrow();
 //     },
-//     skip: () => endTour(true),
-//     reset: () => {
+//     reset() {
 //       try {
 //         localStorage.removeItem(STORAGE_KEY);
 //       } catch {

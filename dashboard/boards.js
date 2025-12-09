@@ -17,10 +17,7 @@ function ensureToastContainer() {
   return container;
 }
 
-function showToast(
-  message,
-  { variant = "success", duration = 4500 } = {}
-) {
+function showToast(message, { variant = "success", duration = 4500 } = {}) {
   const container = ensureToastContainer();
 
   const toast = document.createElement("div");
@@ -29,7 +26,13 @@ function showToast(
   toast.innerHTML = `
     <div class="bb-toast-icon">
       <span class="material-symbols-rounded">
-        ${variant === "success" ? "check_circle" : variant === "error" ? "error" : "info"}
+        ${
+          variant === "success"
+            ? "check_circle"
+            : variant === "error"
+            ? "error"
+            : "info"
+        }
       </span>
     </div>
     <div class="bb-toast-message">${message}</div>
@@ -63,10 +66,32 @@ function showToast(
   toast.addEventListener("mouseenter", () => clearTimeout(timeoutId));
 }
 
-
 const BUCKET = "bible-boards";
 const FREE_BOARD_LIMIT = 3; // The maximum number of boards for a free user
 const FREE_ITEM_LIMIT_PER_BOARD = 100;
+
+// Pre-made template boards shown in the "get started" hero
+const TEMPLATE_BOARDS = [
+  {
+    id: "no-condemnation",
+    title: "No Condemnation",
+    subtitle: "Romans 8:1 with assurance-focused passages.",
+    templateFile: "91625a1c-efc3-4b4d-8e2b-6a1d67d8c670.json",
+  },
+  {
+    id: "abiding-fruit",
+    title: "Abiding & Fruit",
+    subtitle: "John 15 with fruit-bearing cross references.",
+    templateFile: "a1f23dd2-4879-486b-801a-b5a63a332224.json",
+  },
+  {
+    id: "peace-anxiety",
+    title: "Peace in the Middle of Anxiety",
+    subtitle: "Philippians 4 with comfort & trust passages.",
+    templateFile: "eca9d93c-d009-435b-b96c-9ff40e4b8086.json",
+  },
+];
+
 
 // ==================== PROMO CODE LOGIC (client-side hashes) ====================
 
@@ -152,9 +177,12 @@ async function redeemPromoCodeFromUI() {
     }
 
     // ✅ Promo success toast
-    showToast("Student promo applied — you now have BibleBoard Pro for 3 months 🎓", {
-      variant: "success",
-    });
+    showToast(
+      "Student promo applied — you now have BibleBoard Pro for 3 months 🎓",
+      {
+        variant: "success",
+      }
+    );
 
     // Optional: clear input on success attempt
     input.value = "";
@@ -1407,7 +1435,257 @@ async function fetchBoardDetails(user, file) {
   }
 }
 
+
+
+
+
+
+
+
+// function renderNoBoardsGetStarted() {
+//    const mainContentContainer = document.getElementById("bible-board-container");
+//   if (!mainContentContainer) return;
+
+//   mainContentContainer.innerHTML = `
+//     <svg id="connections" class="connections"></svg>
+//     <div class="get-started-root">
+//       <div class="get-started-card">
+//         <h1 class="get-started-header">What would you like to study today?</h1>
+//         <p class="get-started-subtext">
+//           Start from a pre-made BibleBoard template or create a brand new board.
+//         </p>
+//         <div class="get-started-options">
+//           ${TEMPLATE_BOARDS.map(
+//             (tpl) => `
+//             <button
+//               type="button"
+//               class="get-started-option"
+//               data-template-id="${tpl.id}"
+//             >
+//               <div class="get-started-option-label">${tpl.title}</div>
+//               <div class="get-started-option-hint">${tpl.subtitle}</div>
+//             </button>
+//           `
+//           ).join("")}
+//         </div>
+//       </div>
+//     </div>
+//   `;
+
+//   // For now, just log which template was chosen.
+//   // We can wire this up to actually create a board from the template next.
+//     // Wire up click handlers for each template option
+//   TEMPLATE_BOARDS.forEach((tpl) => {
+//     const btn = workspace.querySelector(
+//       `.get-started-option[data-template-id="${tpl.id}"]`
+//     );
+//     if (!btn) return;
+
+//     btn.addEventListener("click", () => {
+//       // Create a new board on this user's account from the template
+//       handleTemplateBoardClick(tpl);
+//     });
+//   });
+// }
+
+function hideGetStartedHero() {
+  const hero = document.querySelector(".get-started-root");
+  if (hero) {
+    hero.style.display = "none";
+  }
+}
+
+
+function renderNoBoardsGetStarted() {
+  console.log("[GetStarted] renderNoBoardsGetStarted called");
+
+  // 1. Target the specific container you requested
+  const container = document.getElementById("bible-board-container");
+  if (!container) {
+    console.warn("[GetStarted] #bible-board-container not found");
+    return;
+  }
+
+  // 2. Check if hero already exists. If so, just show it.
+  const existingHero = document.querySelector(".get-started-root");
+  if (existingHero) {
+    existingHero.style.display = "flex";
+    return;
+  }
+
+  // 3. Inject CSS Styles
+  // We use position: absolute to overlay it on top of the board content
+  // We use z-index to ensure it sits above the canvas but below modals
+  if (!document.getElementById("get-started-styles")) {
+    const style = document.createElement("style");
+    style.id = "get-started-styles";
+    // style.textContent = `
+    //   .get-started-root {
+    //     position: absolute;
+    //     top: 0;
+    //     left: 0;
+    //     right: 0;
+    //     bottom: 0;
+    //     display: flex;
+    //     align-items: center;
+    //     justify-content: center;
+    //     z-index: 50; 
+    //     background: var(--bg, #020617); /* Covers the empty lines/grid behind it */
+    //   }
+    //   .get-started-card {
+    //     background: var(--bg-alt, #151515);
+    //     border: 1px solid var(--border, #333);
+    //     border-radius: 16px;
+    //     padding: 40px;
+    //     max-width: 500px;
+    //     width: 90%;
+    //     text-align: center;
+    //     box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    //     color: var(--fg, #ffffff);
+    //   }
+    //   .get-started-header {
+    //     font-size: 24px;
+    //     font-weight: 700;
+    //     margin-bottom: 12px;
+    //     color: var(--fg, #ffffff);
+    //   }
+    //   .get-started-subtext {
+    //     font-size: 14px;
+    //     color: var(--muted, #888);
+    //     margin-bottom: 30px;
+    //     line-height: 1.5;
+    //   }
+    //   .get-started-options {
+    //     display: flex;
+    //     flex-direction: column;
+    //     gap: 12px;
+    //     margin-bottom: 24px;
+    //   }
+    //   .get-started-option {
+    //     background: var(--bg-seethrough, rgba(255,255,255,0.05));
+    //     border: 1px solid var(--border, #444);
+    //     padding: 16px;
+    //     border-radius: 12px;
+    //     cursor: pointer;
+    //     transition: all 0.2s ease;
+    //     text-align: left;
+    //   }
+    //   .get-started-option:hover {
+    //     background: var(--bg-hover, rgba(255,255,255,0.1));
+    //     border-color: var(--accent, #4ade80);
+    //   }
+    //   .get-started-option-label {
+    //     font-weight: 600;
+    //     font-size: 15px;
+    //     color: var(--fg, #fff);
+    //     margin-bottom: 4px;
+    //   }
+    //   .get-started-option-hint {
+    //     font-size: 12px;
+    //     color: var(--muted, #888);
+    //   }
+    //   .get-started-new-board-btn {
+    //     background: transparent;
+    //     border: none;
+    //     color: var(--muted, #888);
+    //     font-size: 13px;
+    //     cursor: pointer;
+    //     text-decoration: underline;
+    //   }
+    //   .get-started-new-board-btn:hover {
+    //     color: var(--fg, #fff);
+    //   }
+    // `;
+    document.head.appendChild(style);
+  }
+
+  // 4. Build the HTML
+  const heroHTML = `
+    <div class="get-started-root">
+      <div class="get-started-card">
+        <h1 class="get-started-header">What would you like to study today?</h1>
+        <p class="get-started-subtext">
+          Start from a pre-made BibleBoard template or create a brand new board.
+        </p>
+
+        <div class="get-started-options">
+          ${TEMPLATE_BOARDS.map(
+            (tpl) => `
+              <button
+                type="button"
+                class="get-started-option"
+                data-template-id="${tpl.id}"
+              >
+                <div class="get-started-option-label">${tpl.title}</div>
+                <div class="get-started-option-hint">${tpl.subtitle}</div>
+              </button>
+            `
+          ).join("")}
+        </div>
+
+        <div id="get-started-board-or-section">
+          <div id="get-started-board-or-text">or</div>
+        </div>
+
+        <button
+          id="get-started-new-board-btn"
+          class="get-started-new-board-btn"
+          type="button"
+        >
+          Start with a blank board
+        </button>
+      </div>
+    </div>
+  `;
+
+  // 5. Inject safely using insertAdjacentHTML to avoid destroying siblings
+  container.insertAdjacentHTML("beforeend", heroHTML);
+
+  // 6. Wire up events
+  const newHero = document.querySelector(".get-started-root");
+  
+  TEMPLATE_BOARDS.forEach((tpl) => {
+    const selector = `.get-started-option[data-template-id="${tpl.id}"]`;
+    const btn = newHero.querySelector(selector);
+    if (btn) {
+      btn.addEventListener("click", () => {
+        handleTemplateBoardClick(tpl);
+      });
+    }
+  });
+
+  const blankBtn = newHero.querySelector("#get-started-new-board-btn");
+  if (blankBtn) {
+    blankBtn.addEventListener("click", () => {
+      handleNewBoard();
+    });
+  }
+}
+
+
+function clearGetStartedHero() {
+  const hero = document.querySelector(".get-started-root");
+  if (hero && hero.parentElement) {
+    console.log("[GetStarted] clearing hero");
+    hero.parentElement.removeChild(hero);
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
 // --- Load all boards for the current user ---
+
+
 async function loadBoards() {
   try {
     boardsLoaded = false;
@@ -1455,15 +1733,30 @@ async function loadBoards() {
       return;
     }
 
-    // Only count files that are board JSONs
+    // if (!boardFiles || boardFiles.length === 0) {
+    //   // console.log(
+    //   //   "[Boards] No board files found; auto-creating first board..."
+    //   // );
+    //   loadedBoards = [];
+    //   renderSidebarBoards([]);
+    //   boardsLoaded = true;
+    //   if (typeof updateBoardCreateButtonState === "function") {
+    //     updateBoardCreateButtonState();
+    //   }
+
+    //   // Auto-create a first board for this user.
+    //   // handleNewBoard(true) skips the “plan not ready yet” block,
+    //   // but still respects FREE_BOARD_LIMIT / PRO rules.
+    //   await handleNewBoard(true);
+    //   return;
+    // }
+
     const boardFiles = Array.isArray(files)
       ? files.filter((f) => f.name.endsWith(".json"))
       : [];
 
+    // ... inside loadBoards empty check ...
     if (!boardFiles || boardFiles.length === 0) {
-      // console.log(
-      //   "[Boards] No board files found; auto-creating first board..."
-      // );
       loadedBoards = [];
       renderSidebarBoards([]);
       boardsLoaded = true;
@@ -1471,24 +1764,46 @@ async function loadBoards() {
         updateBoardCreateButtonState();
       }
 
-      // Auto-create a first board for this user.
-      // handleNewBoard(true) skips the “plan not ready yet” block,
-      // but still respects FREE_BOARD_LIMIT / PRO rules.
-      await handleNewBoard(true);
+      // Clear URL params
+      const newUrl = new URL(window.location);
+      newUrl.searchParams.delete("board");
+      newUrl.searchParams.delete("owner");
+      window.history.replaceState({}, "", newUrl);
+
+      // Render the hero
+      renderNoBoardsGetStarted();
+      renderStatus('No boards yet. Get started creating.');
       return;
     }
+
 
     // Download and parse all boards
     const boardResults = await Promise.all(
       boardFiles.map((file) => fetchBoardDetails(user, file))
     );
 
+    // if (boards.length === 0) {
+    //   // Files existed but none parsed correctly – treat as "no boards"
+    //   console.warn(
+    //     "[Boards] Board files found but none parsed; auto-creating new board."
+    //   );
+    //   loadedBoards = [];
+    //   renderSidebarBoards([]);
+    //   boardsLoaded = true;
+    //   if (typeof updateBoardCreateButtonState === "function") {
+    //     updateBoardCreateButtonState();
+    //   }
+
+    //   await handleNewBoard(true);
+    //   return;
+    // }
+
     const boards = boardResults.filter(Boolean);
 
     if (boards.length === 0) {
       // Files existed but none parsed correctly – treat as "no boards"
       console.warn(
-        "[Boards] Board files found but none parsed; auto-creating new board."
+        "[Boards] Board files found but none parsed; treating as empty state."
       );
       loadedBoards = [];
       renderSidebarBoards([]);
@@ -1497,7 +1812,19 @@ async function loadBoards() {
         updateBoardCreateButtonState();
       }
 
-      await handleNewBoard(true);
+      const newUrl = new URL(window.location);
+      newUrl.searchParams.delete("board");
+      newUrl.searchParams.delete("owner");
+      window.history.replaceState({}, "", newUrl);
+
+      const workspace = document.getElementById("workspace");
+      if (workspace) {
+        workspace.innerHTML =
+          '<svg id="connections" class="connections"></svg>';
+      }
+
+      renderNoBoardsGetStarted();
+      renderStatus('No boards yet. Get started creating.');
       return;
     }
 
@@ -1508,6 +1835,7 @@ async function loadBoards() {
         new Date(a.updatedAt || a.createdAt)
     );
 
+
     // console.log(
     //   "[Boards][loadBoards] SORTED from storage:",
     //   sorted.map((b) => ({
@@ -1517,6 +1845,9 @@ async function loadBoards() {
     //     path: b.path,
     //   }))
     // );
+
+    // ✅ We now have at least one board – hide the get-started overlay
+    hideGetStartedHero();
 
     loadedBoards = sorted;
     renderSidebarBoards(sorted);
@@ -1559,7 +1890,7 @@ async function loadBoards() {
           workspace.innerHTML =
             '<svg id="connections" class="connections"></svg>';
         }
-        renderStatus('No boards yet. Click "New Board" to get started.');
+        renderStatus("No boards yet. Get started creating.");
       }
     } else if (sorted.length > 0) {
       switchBoard(sorted[0].id, user.id);
@@ -1657,6 +1988,178 @@ async function handleNewBoard(isInitialLoad = false) {
   }
 }
 
+
+
+
+
+
+
+
+
+async function loadTemplateBoardData(templateFile) {
+  const url = `../assets/template_boards/${templateFile}`;
+  console.log("[GetStarted] loadTemplateBoardData: fetching", url);
+
+  try {
+    const res = await fetch(url, { cache: "no-cache" });
+    console.log(
+      "[GetStarted] loadTemplateBoardData: response status",
+      res.status
+    );
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}`);
+    }
+    const json = await res.json();
+    console.log(
+      "[GetStarted] loadTemplateBoardData: template loaded. elements:",
+      Array.isArray(json.elements) ? json.elements.length : "n/a",
+      "connections:",
+      Array.isArray(json.connections) ? json.connections.length : "n/a"
+    );
+    return json;
+  } catch (err) {
+    console.error("[GetStarted] Failed to load template", templateFile, err);
+    showToast("Couldn't load that template. Please try again.", {
+      variant: "error",
+    });
+    throw err;
+  }
+}
+
+
+
+
+
+
+
+// Create a new board file in Supabase using a template JSON
+async function createBoardFileFromTemplate(boardId, templateJson, explicitTitle) {
+  console.log("[Templates] createBoardFileFromTemplate", boardId);
+
+  let originalContent = "";
+  if (newBoardBtn) {
+    originalContent = newBoardBtn.innerHTML;
+    newBoardBtn.disabled = true;
+    const label = document.getElementById("new-board-btn-sidebar-text");
+    if (label) label.textContent = "Creating...";
+  }
+
+  try {
+    if (!currentUser || !currentUser.id) {
+      throw new Error("No current user for template board creation");
+    }
+
+    const path = `${currentUser.id}/boards/${boardId}.json`;
+    const now = new Date().toISOString();
+
+    // Mapping 'elements' -> 'items' for the viewer
+    const sourceItems = Array.isArray(templateJson.items)
+      ? templateJson.items
+      : Array.isArray(templateJson.elements)
+      ? templateJson.elements
+      : [];
+
+    const connections = Array.isArray(templateJson.connections)
+      ? templateJson.connections
+      : [];
+
+    const boardJson = {
+      ...templateJson,
+      id: boardId,
+      title: explicitTitle || templateJson.title || "Untitled Board",
+      description: templateJson.description || "",
+      createdAt: now,
+      updatedAt: now,
+      background: templateJson.background || { type: "solid", color: "#020617" },
+      items: sourceItems, // Viewer needs this
+      elements: sourceItems, // Backup
+      connections,
+    };
+
+    const blob = new Blob([JSON.stringify(boardJson, null, 2)], {
+      type: "application/json",
+    });
+
+    const { error } = await sb.storage.from(BUCKET).upload(path, blob, {
+      contentType: "application/json",
+      cacheControl: "0",
+      upsert: true,
+    });
+
+    if (error) throw error;
+
+    // Update URL and reload
+    const newUrl = new URL(window.location);
+    newUrl.searchParams.set("board", boardId);
+    newUrl.searchParams.set("owner", currentUser.id);
+    window.history.replaceState({}, "", newUrl.toString());
+
+    await loadBoards(); // This will trigger hideGetStartedHero()
+    
+    return true;
+  } catch (err) {
+    console.error("Template creation failed:", err);
+    showToast("Failed to create board.", { variant: "error" });
+  } finally {
+    if (newBoardBtn) {
+      newBoardBtn.disabled = false;
+      if (originalContent) newBoardBtn.innerHTML = originalContent;
+    }
+  }
+}
+
+
+
+
+
+async function handleTemplateBoardClick(tpl) {
+  console.log("[Templates] handleTemplateBoardClick", tpl);
+
+  if (isCreatingBoard) return;
+  isCreatingBoard = true;
+  updateBoardCreateButtonState?.();
+
+  try {
+    // Ensure user exists (you already have this logic somewhere)
+    let user = currentUser;
+    if (!user && typeof ensureUser === "function") {
+      user = await ensureUser();
+      if (user) currentUser = user;
+    }
+    if (!user) {
+      alert("Please sign in first.");
+      return;
+    }
+
+    // Respect free vs pro board limit
+    const isPro = !!window.BIBLEBOARD_IS_PRO;
+    const currentCount = loadedBoards.length;
+    if (!isPro && currentCount >= FREE_BOARD_LIMIT) {
+      openUpgradeModal?.();
+      return;
+    }
+
+    // 👉 Load template JSON and create board from it
+    const templateJson = await loadTemplateBoardData(tpl.templateFile);
+    const newId = crypto.randomUUID();
+    await createBoardFileFromTemplate(newId, templateJson, tpl.title);
+  } finally {
+    isCreatingBoard = false;
+    updateBoardCreateButtonState?.();
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
 /**
  * Performs the actual Supabase Storage file creation.
  * @param {string} boardId The ID for the new board.
@@ -1751,19 +2254,24 @@ async function handleUpgrade() {
     await SubscriptionService.subscribe("monthly");
 
     // ✅ Show success toast once payment completes
-    showToast("You’re all set! BibleBoard Pro is now active on your account 🙌", {
-      variant: "success",
-    });
+    showToast(
+      "You’re all set! BibleBoard Pro is now active on your account 🙌",
+      {
+        variant: "success",
+      }
+    );
   } catch (err) {
     console.error("Error starting subscription:", err);
 
     // Optional error toast
-    showToast("Something went wrong starting your subscription. Please try again.", {
-      variant: "error",
-    });
+    showToast(
+      "Something went wrong starting your subscription. Please try again.",
+      {
+        variant: "error",
+      }
+    );
   }
 }
-
 
 // ==================== USER PROFILE LOGIC (ChatGPT Style) ====================
 
@@ -2040,6 +2548,70 @@ function highlightText(text, term) {
   return text.replace(regex, `<span class="highlight-match">$1</span>`);
 }
 
+
+async function hardSignOutAndRedirect() {
+  console.log("[Boards] Starting HARD sign out");
+
+  // 1) Try normal Supabase signOut
+  try {
+    const { error } = await sb.auth.signOut();
+    if (error) {
+      console.error("[Boards] sb.auth.signOut() error:", error);
+    } else {
+      console.log("[Boards] sb.auth.signOut() completed");
+    }
+  } catch (err) {
+    console.error("[Boards] sb.auth.signOut() threw:", err);
+  }
+
+  // 2) Nuclear option: clear storage
+  try {
+    if (typeof window !== "undefined") {
+      if (window.localStorage) {
+        console.log("[Boards] Clearing localStorage");
+        window.localStorage.clear();
+      }
+      if (window.sessionStorage) {
+        console.log("[Boards] Clearing sessionStorage");
+        window.sessionStorage.clear();
+      }
+    }
+  } catch (err) {
+    console.warn("[Boards] Failed clearing storage:", err);
+  }
+
+  // 3) Extra safety: clear cookies (anything JWT-ish on this domain)
+  try {
+    document.cookie.split(";").forEach((c) => {
+      document.cookie = c
+        .replace(/^ +/, "")
+        .replace(
+          /=.*/,
+          "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/"
+        );
+    });
+    console.log("[Boards] Cleared cookies");
+  } catch (err) {
+    console.warn("[Boards] Failed clearing cookies:", err);
+  }
+
+  // 4) Optional sanity check: see if Supabase still thinks we have a user
+  try {
+    const { data, error } = await sb.auth.getUser();
+    console.log("[Boards] Post-hard-signout getUser:", { data, error });
+  } catch (err) {
+    console.warn("[Boards] getUser after hard signout threw (non-fatal):", err);
+  }
+
+  // 5) Finally, go to the landing page
+  console.log("[Boards] Redirecting to landing page after HARD signout");
+  window.location.href = "/";
+}
+
+
+
+
+
 // ==================== APP INIT ====================
 
 async function init() {
@@ -2113,36 +2685,36 @@ async function init() {
   if (signoutBtn) {
     signoutBtn.onclick = async (e) => {
       e.preventDefault();
-      closeProfileMenu();
+      console.log("[Boards] Signout button clicked");
 
       try {
-        // Prefer your SubscriptionService logout if it exists
+        closeProfileMenu();
+      } catch (err) {
+        console.warn("[Boards] closeProfileMenu failed (non-fatal):", err);
+      }
+
+      // Try your subscription logout first (if it exists),
+      // but don't let it block the hard signout.
+      try {
         if (typeof SubscriptionService?.logout === "function") {
+          console.log("[Boards] Calling SubscriptionService.logout()");
           await SubscriptionService.logout();
         } else {
           console.warn(
-            "[Boards] SubscriptionService.logout missing, using Supabase directly."
+            "[Boards] SubscriptionService.logout missing; skipping."
           );
-          await sb.auth.signOut();
         }
       } catch (err) {
-        console.error(
-          "[Boards] Error during SubscriptionService.logout, falling back to Supabase signOut:",
-          err
-        );
-        try {
-          await sb.auth.signOut();
-        } catch (innerErr) {
-          console.error("[Boards] Supabase signOut also failed:", innerErr);
-        }
+        console.error("[Boards] SubscriptionService.logout threw:", err);
       }
 
-      // Force redirect after sign out so it *feels* like it worked
-      window.location.href = "../";
-      // Alternatively, if you prefer to reuse your auth handler:
-      // await handleAuthChange(null, true);
+      // Now do the nuclear Supabase + storage + cookie clear + redirect
+      await hardSignOutAndRedirect();
     };
   }
+
+
+
 
   // 5. Buttons
   if (newBoardBtn) newBoardBtn.onclick = handleNewBoard;
@@ -2259,7 +2831,6 @@ if (
     },
   };
 }
-
 
 window.verseStudySelectionCount = window.verseStudySelectionCount || 0;
 
@@ -2516,199 +3087,6 @@ function parseFullRef(ref) {
   return { book, chapter, verse };
 }
 
-// 4. Master Flush Function
-// Takes items from all queues and adds them to the board
-async function handleFloatingAddClick() {
-  // Hide UI immediately
-  if (typeof clearSelection === "function") clearSelection();
-  if (typeof closeInterlinearPanel === "function") closeInterlinearPanel();
-  if (typeof closeSearchQuery === "function") closeSearchQuery();
-
-  const verses = Array.from(window.pendingVerseAdds.values());
-  const songs = Array.from(window.pendingSongAdds.values());
-  const interlinear = Array.from(window.pendingInterlinearAdds.values());
-
-  const totalToAdd = verses.length + songs.length + interlinear.length;
-  if (totalToAdd === 0) return;
-
-  // 🔒 Enforce free-plan limit ONLY on this bulk add
-  const canAdd = await ensureCanAddBatch(totalToAdd);
-  if (!canAdd) {
-    // Do NOT clear the queues; let the user upgrade and then click again.
-    return;
-  }
-
-  // Clear State (we're definitely adding them now)
-  window.pendingVerseAdds.clear();
-  window.pendingSongAdds.clear();
-  window.pendingInterlinearAdds.clear();
-
-  // Immediately hide the floating button
-  updateFloatingAddButton();
-
-  let delay = 0.25;
-
-  // --- ADD VERSES ---
-  if (verses.length > 0) {
-    // Sort by reference to make grouping predictable
-    verses.sort((a, b) => {
-      const pa = parseFullRef(a.reference);
-      const pb = parseFullRef(b.reference);
-
-      if (pa.book !== pb.book) return pa.book.localeCompare(pb.book);
-      if (pa.chapter !== pb.chapter) return pa.chapter - pb.chapter;
-      return pa.verse - pb.verse;
-    });
-
-    // Group continuous verses
-    let groups = [[verses[0]]];
-
-    for (let i = 1; i < verses.length; i++) {
-      const prevGroup = groups[groups.length - 1];
-      const prev = prevGroup[prevGroup.length - 1];
-      const curr = verses[i];
-
-      const prevData = parseFullRef(prev.reference);
-      const currData = parseFullRef(curr.reference);
-
-      // Same Version + Book + Chapter + next verse?
-      if (
-        prev.version === curr.version &&
-        prevData.book === currData.book &&
-        prevData.chapter === currData.chapter &&
-        currData.verse === prevData.verse + 1
-      ) {
-        prevGroup.push(curr);
-      } else {
-        groups.push([curr]);
-      }
-    }
-
-    // Add Groups to Board
-    groups.forEach((group) => {
-      if (group.length === 1) {
-        // Single Verse
-        const v = group[0];
-        window.BoardAPI.addBibleVerse(
-          v.reference,
-          v.text,
-          false,
-          v.version,
-          delay
-        );
-      } else {
-        // Verse Range
-        const first = group[0];
-        const last = group[group.length - 1];
-
-        const firstData = parseFullRef(first.reference);
-        const baseRef = `${firstData.book} ${firstData.chapter}`;
-
-        const startV = firstData.verse;
-        const endV = parseFullRef(last.reference).verse;
-
-        const combinedText = group.map((v) => v.text).join(" ");
-
-        window.BoardAPI.addBibleVerse(
-          `${baseRef}:${startV}-${endV}`,
-          combinedText,
-          false,
-          first.version,
-          delay
-        );
-      }
-      delay += 0.15;
-    });
-  }
-
-  // --- ADD SONGS ---
-  songs.forEach((song) => {
-    window.BoardAPI.addSongElement(song, delay);
-    delay += 0.15;
-  });
-
-  // --- ADD INTERLINEAR ---
-  interlinear.forEach((item) => {
-    window.BoardAPI.addInterlinearCard(item, delay);
-    delay += 0.15;
-  });
-
-  // Cleanup Visuals
-  document
-    .querySelectorAll(".selected-for-add")
-    .forEach((el) => el.classList.remove("selected-for-add"));
-  document
-    .querySelectorAll(".search-query-verse-add-button.selected")
-    .forEach((el) => el.classList.remove("selected"));
-  closeBibleReaderAndExitScriptureMode();
-}
-
-// Helper: figure out if the user is Pro and enforce the limit for batch adds
-async function canAddMoreBoardItems(batchSize) {
-  try {
-    // If you have a global SubscriptionService from your RevenueCat integration,
-    // try to use it to detect Pro users.
-    if (window.SubscriptionService) {
-      // 1) Preferred: async check
-      if (
-        typeof window.SubscriptionService.hasActiveSubscription === "function"
-      ) {
-        const hasSub = await window.SubscriptionService.hasActiveSubscription();
-        if (hasSub) return true; // Pro → no limit
-      }
-
-      // 2) Fallbacks: common flags/properties you might be using
-      if (
-        window.SubscriptionService.isProUser === true ||
-        window.SubscriptionService.hasProAccess === true ||
-        window.SubscriptionService.currentPlan === "pro" ||
-        window.SubscriptionService.currentPlan === "plus"
-      ) {
-        return true; // Pro → no limit
-      }
-    }
-
-    // 3) Optional: simple global flag you can set yourself after checking entitlements
-    if (window.BIBLEBOARD_PRO_ENABLED === true) {
-      return true; // Pro → no limit
-    }
-  } catch (err) {
-    console.warn("Error checking subscription status:", err);
-    // If we can't verify, we fall through and treat them as free
-  }
-
-  // At this point, we treat the user as FREE and enforce the 100-item limit.
-  const workspace = document.getElementById("workspace");
-  const currentCount = workspace
-    ? workspace.querySelectorAll(".board-item").length
-    : 0;
-
-  const projected = currentCount + batchSize;
-
-  if (
-    currentCount >= FREE_BOARD_ITEM_LIMIT ||
-    projected > FREE_BOARD_ITEM_LIMIT
-  ) {
-    // Show your nice upgrade modal if available, otherwise fall back to alert
-    if (typeof window.openUpgradeModal === "function") {
-      // You can pass a reason string if your modal cares, or just call with no args.
-      window.openUpgradeModal("board-items-limit");
-    } else {
-      alert(
-        `Board item limit reached.\n\n` +
-          `On the free plan you can have up to ${FREE_BOARD_ITEM_LIMIT} items per board.\n` +
-          `You currently have ${currentCount} item${
-            currentCount !== 1 ? "s" : ""
-          }. ` +
-          `Remove some items or upgrade to Pro to add more.`
-      );
-    }
-    return false;
-  }
-
-  return true;
-}
-
 // Keeps track of which verse the modal is currently showing
 window.currentVerseStudyData = null;
 
@@ -2716,9 +3094,10 @@ function openVerseStudyModal(verseData) {
   const backdrop = document.getElementById("verse-study-modal-backdrop");
   if (!backdrop || !verseData) return;
 
+  // Store data globally for tab switching
   window.currentVerseStudyData = verseData;
 
-  // Reset verse-study selection header state for this open
+  // Reset header button state (Add/Clear buttons)
   if (typeof window !== "undefined") {
     window.verseStudySelectionCount = 0;
   }
@@ -2726,6 +3105,7 @@ function openVerseStudyModal(verseData) {
     updateVerseStudyHeaderButtons();
   }
 
+  // 1. Populate Header Text
   const refEl = document.getElementById("verse-study-ref");
   const versionEl = document.getElementById("verse-study-version");
   const previewEl = document.getElementById("verse-study-preview");
@@ -2735,8 +3115,6 @@ function openVerseStudyModal(verseData) {
 
   if (previewEl) {
     const rawText = (verseData.text || "").trim();
-
-    // Try to split "2 In the beginning..." into ["2", "In the beginning..."]
     let verseNumber = "";
     let verseBody = rawText;
 
@@ -2763,51 +3141,29 @@ function openVerseStudyModal(verseData) {
           verseBody
         )}</span>`;
     } else {
-      // Fallback: no leading number, just show the text
       previewEl.textContent = verseBody;
     }
   }
 
-  // 🔄 Reset sections + tabs
-  if (typeof resetVerseStudySections === "function") {
-    resetVerseStudySections();
+  // 2. Set Initial Tab State (Default to Cross References)
+  if (typeof window.activateVerseStudyTab === "function") {
+    window.activateVerseStudyTab("verse-study-open-crossref", "crossref-section");
   }
 
-  // Default: show Interlinear, hide Crossref
-  const interSec = document.getElementById("interlinear-section");
-  const crossSec = document.getElementById("crossref-section");
-  const interBtn = document.getElementById("verse-study-open-interlinear");
-  const crossBtn = document.getElementById("verse-study-open-crossref");
-
-  if (interSec) interSec.style.display = "block";
-  if (crossSec) crossSec.style.display = "none";
-  if (interBtn) interBtn.classList.add("verse-study-tab-active");
-  if (crossBtn) crossBtn.classList.remove("verse-study-tab-active");
-
-  // 🔥 Auto-load BOTH interlinear and crossrefs for this verse
+  // 3. Load Initial Data (Cross References)
   try {
-    // ⬅️ use the *modal-specific* interlinear loader so rows are clickable
-    if (
-      typeof openVerseStudyInterlinear === "function" &&
-      verseData.reference
-    ) {
-      openVerseStudyInterlinear(verseData.reference);
-    }
-
     if (typeof openCrossRefForReference === "function" && verseData.reference) {
       openCrossRefForReference(verseData.reference);
     }
   } catch (err) {
-    console.warn("Failed to pre-load verse-study data:", err);
+    console.warn("Failed to preload cross references:", err);
   }
 
-  // Show modal
+  // 4. Show Modal
   backdrop.style.display = "flex";
   backdrop.setAttribute("data-open", "true");
-
-  // Make sure the Interlinear tab is visually active
-  if (crossBtn) crossBtn.click();
 }
+
 
 function closeVerseStudyModal() {
   const backdrop = document.getElementById("verse-study-modal-backdrop");
@@ -2839,10 +3195,12 @@ function initVerseStudyModal() {
   const closeBtn = backdrop.querySelector(".verse-study-close");
   const interBtn = document.getElementById("verse-study-open-interlinear");
   const crossBtn = document.getElementById("verse-study-open-crossref");
+  const bookBtn = document.getElementById("verse-study-open-bookinfo");
+  
   const headerAddBtn = document.getElementById("verse-study-add-btn");
   const headerClearBtn = document.getElementById("verse-study-clear-btn");
 
-  // Close button
+  // --- Close Button ---
   if (closeBtn) {
     closeBtn.addEventListener("click", (e) => {
       e.preventDefault();
@@ -2850,81 +3208,91 @@ function initVerseStudyModal() {
     });
   }
 
-  // Header "Add" button:
-  // ✅ DO NOT add directly to the board.
-  // It just closes the modal; the real add happens via the floating "Add N items" button.
+  // --- Header Action Buttons (Add/Clear) ---
   if (headerAddBtn) {
     headerAddBtn.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
-
-      // Confirm any interlinear words currently selected
       if (
         window.pendingInterlinearAdds &&
         typeof window.pendingInterlinearAdds.confirmAll === "function"
       ) {
         window.pendingInterlinearAdds.confirmAll();
       }
-
-      // Update floating button count
       if (typeof updateFloatingAddButton === "function") {
         updateFloatingAddButton();
       }
-
       closeVerseStudyModal();
     });
   }
 
-
-  // Header "Clear" button: clear ALL queued add-to-board items.
   if (headerClearBtn) {
     headerClearBtn.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
-
       // Clear queues
-      if (window.pendingVerseAdds && window.pendingVerseAdds.clear) {
-        window.pendingVerseAdds.clear();
-      }
-      if (window.pendingSongAdds && window.pendingSongAdds.clear) {
-        window.pendingSongAdds.clear();
-      }
-      if (
-        window.pendingInterlinearAdds &&
-        window.pendingInterlinearAdds.clear
-      ) {
-        window.pendingInterlinearAdds.clear();
-      }
+      if (window.pendingVerseAdds?.clear) window.pendingVerseAdds.clear();
+      if (window.pendingSongAdds?.clear) window.pendingSongAdds.clear();
+      if (window.pendingInterlinearAdds?.clear) window.pendingInterlinearAdds.clear();
 
-      // Reset visual selections everywhere
+      // Reset visuals
       document
-        .querySelectorAll(
-          ".selected-for-add, .search-query-verse-add-button.selected"
-        )
+        .querySelectorAll(".selected-for-add, .search-query-verse-add-button.selected")
         .forEach((el) => {
-          el.classList.remove("selected-for-add");
-          el.classList.remove("selected");
+          el.classList.remove("selected-for-add", "selected");
         });
 
       window.verseStudySelectionCount = 0;
+      if (typeof updateFloatingAddButton === "function") updateFloatingAddButton();
+      if (typeof updateVerseStudyHeaderButtons === "function") updateVerseStudyHeaderButtons();
+    });
+  }
 
-      if (typeof updateFloatingAddButton === "function") {
-        updateFloatingAddButton();
-      }
-      if (typeof updateVerseStudyHeaderButtons === "function") {
-        updateVerseStudyHeaderButtons();
+  // --- Tab Navigation ---
+  // These now simply call the functions in script.js, which handle 
+  // both the data fetching AND the UI switching (via activateVerseStudyTab).
+
+  // 1. Interlinear Tab
+  if (interBtn) {
+    interBtn.addEventListener("click", () => {
+      const data = window.currentVerseStudyData;
+      if (data && typeof openVerseStudyInterlinear === "function") {
+        openVerseStudyInterlinear(data.reference);
       }
     });
   }
 
-  // Click outside modal to close
+  // 2. Cross References Tab
+  if (crossBtn) {
+    crossBtn.addEventListener("click", () => {
+      const data = window.currentVerseStudyData;
+      if (data && typeof openCrossRefForReference === "function") {
+        openCrossRefForReference(data.reference);
+      }
+    });
+  }
+
+  // 3. Book Info Tab
+  if (bookBtn) {
+    bookBtn.addEventListener("click", () => {
+      // Use the reference from the current data object
+      const data = window.currentVerseStudyData;
+      if (data && typeof openVerseStudyBookInfo === "function") {
+        openVerseStudyBookInfo(data.reference);
+      }
+    });
+  }
+
+  // --- Modal Dismissal ---
+  
+  // Click outside
   backdrop.addEventListener("click", (event) => {
     if (event.target === backdrop) {
       closeVerseStudyModal();
     }
   });
 
-  // ESC to close
+  // Escape key
   document.addEventListener("keydown", (event) => {
     if (
       event.key === "Escape" &&
@@ -2933,42 +3301,6 @@ function initVerseStudyModal() {
       closeVerseStudyModal();
     }
   });
-
-  // ✅ Interlinear tab button
-  if (interBtn) {
-    interBtn.addEventListener("click", () => {
-      const interSec = document.getElementById("interlinear-section");
-      const crossSec = document.getElementById("crossref-section");
-
-      if (interSec) interSec.style.display = "block";
-      if (crossSec) crossSec.style.display = "none";
-
-      interBtn.classList.add("verse-study-tab-active");
-      if (crossBtn) crossBtn.classList.remove("verse-study-tab-active");
-
-      if (interSec) {
-        interSec.scrollIntoView({ behavior: "smooth", block: "start" });
-      }
-    });
-  }
-
-  // ✅ Crossref tab button (NO fetch – data was loaded on modal open)
-  if (crossBtn) {
-    crossBtn.addEventListener("click", () => {
-      const interSec = document.getElementById("interlinear-section");
-      const crossSec = document.getElementById("crossref-section");
-
-      if (interSec) interSec.style.display = "none";
-      if (crossSec) crossSec.style.display = "block";
-
-      crossBtn.classList.add("verse-study-tab-active");
-      if (interBtn) interBtn.classList.remove("verse-study-tab-active");
-
-      if (crossSec) {
-        crossSec.scrollIntoView({ behavior: "smooth", block: "start" });
-      }
-    });
-  }
 }
 
 // ======================

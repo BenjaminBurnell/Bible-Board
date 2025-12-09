@@ -1,0 +1,166 @@
+{
+  "version": 1,
+  "updatedAt": "2025-12-07T03:38:47.048Z",
+  "title": "No Condemnation",
+  "viewport": {
+    "scrollLeft": 3428.800048828125,
+    "scrollTop": 3462.39990234375,
+    "scale": 0.406105787450516,
+    "centerX": 9989.515476487628,
+    "centerY": 9424.637669834043
+  },
+  "elements": [
+    {
+      "vkey": "v_im7e2uc4cy",
+      "left": "9792.06px",
+      "top": "9303.01px",
+      "zIndex": "1628",
+      "type": "verse",
+      "text": "1             So now there is no condemnation for those who belong to Christ Jesus.",
+      "reference": "- Romans 8:1 NLT"
+    },
+    {
+      "vkey": "v_3gqoi3s7y7e",
+      "left": "9073.58px",
+      "top": "8911.13px",
+      "zIndex": "1619",
+      "type": "note",
+      "html": "Romans 8:1 declares a present-tense not-guilty verdict for everyone who is in Christ Jesus."
+    },
+    {
+      "vkey": "v_e9aohtzrdhp",
+      "left": "9907.35px",
+      "top": "8895.55px",
+      "zIndex": "1621",
+      "type": "note",
+      "html": "The phrase \"in Christ Jesus\" shows that freedom from condemnation depends on our union with Christ, not our performance."
+    },
+    {
+      "vkey": "v_vi7r1d93kn",
+      "left": "10409.2px",
+      "top": "9040.24px",
+      "zIndex": "1647",
+      "type": "verse",
+      "text": "Therefore, since we have been made right in God’s sight by faith, we have peace with God because of what Jesus Christ our Lord has done for us.",
+      "reference": "- Romans 5:1 NLT"
+    },
+    {
+      "vkey": "v_ntirapb1c4d",
+      "left": "8970.3px",
+      "top": "9362.87px",
+      "zIndex": "1669",
+      "type": "verse",
+      "text": "18             “There is no judgment against anyone who believes in him. But anyone who does not believe in him has already been judged for not believing in God’s one and only Son.",
+      "reference": "- John 3:18 NLT"
+    },
+    {
+      "vkey": "2e288fbb-0d39-464e-a664-eb9d6ca1f479",
+      "left": "9938.52px",
+      "top": "9733.44px",
+      "zIndex": "1693",
+      "type": "interlinear",
+      "surface": "κατάκριμα",
+      "english": "condemnation",
+      "translit": "kat-ak'-ree-mah",
+      "morph": "----NSN-",
+      "strong": "",
+      "reference": "Romans 8:1 · word 4"
+    },
+    {
+      "vkey": "890d37dc-0fbb-4d2e-8969-1f805272e908",
+      "left": "9313.18px",
+      "top": "9629.33px",
+      "zIndex": "1689",
+      "type": "interlinear",
+      "surface": "ἐν",
+      "english": "about, after, against, + almost, X altogether, among, X as, at, before, between, (here-)by (+ all means), for (… sake of), + give self wholly to, (here-)in(-to, -wardly), X mightily, (because) of, (up-)on, (open-)ly, X outwardly, one, X quickly, X shortly, (speedi-)ly, X that, X there(-in, -on), through(-out), (un-)to(-ward), under, when, where(-with), while, with(-in)",
+      "translit": "en",
+      "morph": "--------",
+      "strong": "",
+      "reference": "Romans 8:1 · word 6"
+    },
+    {
+      "vkey": "85d883e9-4152-4a2a-8941-8f584bf12008",
+      "left": "10398.7px",
+      "top": "9646.36px",
+      "zIndex": "1659",
+      "type": "interlinear",
+      "surface": "Χριστῷ",
+      "english": "Christ",
+      "translit": "khris-tos'",
+      "morph": "----DSM-",
+      "strong": "",
+      "reference": "Romans 8:1 · word 7"
+    },
+    {
+      "vkey": "fd01e199-bac2-454a-94fb-a08d0129069d",
+      "left": "10705.5px",
+      "top": "9373.57px",
+      "zIndex": "1661",
+      "type": "interlinear",
+      "surface": "⸀Ἰησοῦ·",
+      "english": "Jesus",
+      "translit": "ee-ay-sooce'",
+      "morph": "----DSM-",
+      "strong": "",
+      "reference": "Romans 8:1 · word 8"
+    }
+  ],
+  "connections": [
+    {
+      "a": "v_3gqoi3s7y7e",
+      "b": "v_im7e2uc4cy",
+      "color": "#67E8F9"
+    },
+    {
+      "a": "v_e9aohtzrdhp",
+      "b": "v_im7e2uc4cy",
+      "color": "#67E8F9"
+    },
+    {
+      "a": "v_vi7r1d93kn",
+      "b": "v_im7e2uc4cy",
+      "color": "#BEF264"
+    },
+    {
+      "a": "v_ntirapb1c4d",
+      "b": "v_im7e2uc4cy",
+      "color": "#BEF264"
+    },
+    {
+      "a": "85d883e9-4152-4a2a-8941-8f584bf12008",
+      "b": "v_im7e2uc4cy",
+      "color": "#FDBA74"
+    },
+    {
+      "a": "fd01e199-bac2-454a-94fb-a08d0129069d",
+      "b": "v_im7e2uc4cy",
+      "color": "#FDBA74"
+    },
+    {
+      "a": "85d883e9-4152-4a2a-8941-8f584bf12008",
+      "b": "fd01e199-bac2-454a-94fb-a08d0129069d",
+      "color": "#FDBA74"
+    },
+    {
+      "a": "2e288fbb-0d39-464e-a664-eb9d6ca1f479",
+      "b": "v_im7e2uc4cy",
+      "color": "#FDBA74"
+    },
+    {
+      "a": "890d37dc-0fbb-4d2e-8969-1f805272e908",
+      "b": "v_im7e2uc4cy",
+      "color": "#FDBA74"
+    },
+    {
+      "a": "890d37dc-0fbb-4d2e-8969-1f805272e908",
+      "b": "2e288fbb-0d39-464e-a664-eb9d6ca1f479",
+      "color": "#FDBA74"
+    },
+    {
+      "a": "2e288fbb-0d39-464e-a664-eb9d6ca1f479",
+      "b": "85d883e9-4152-4a2a-8941-8f584bf12008",
+      "color": "#FDBA74"
+    }
+  ]
+}
