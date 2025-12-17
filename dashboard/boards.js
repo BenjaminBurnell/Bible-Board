@@ -3310,12 +3310,14 @@ function initVerseStudyModal() {
 document.addEventListener("DOMContentLoaded", () => {
   try {
     initBibleQueryVersionDropdown();
+    installBibleQueryGlobalDropdownCloser();
   } catch (err) {
     console.warn("Failed to init Bible Query version dropdown:", err);
   }
 
   try {
     initBibleQueryBookChapterDropdowns();
+    installBibleQueryGlobalDropdownCloser();
   } catch (err) {
     console.warn("Failed to init Bible Query book/chapter dropdowns:", err);
   }
@@ -3495,6 +3497,66 @@ function closeBibleReaderAndExitScriptureMode() {
     scriptureContainer.style.display = "";
   }
 }
+
+
+
+
+
+
+
+
+function installBibleQueryGlobalDropdownCloser() {
+  if (window.__bbBibleQueryDropdownCloserInstalled) return;
+  window.__bbBibleQueryDropdownCloserInstalled = true;
+
+  function closeAllBibleQueryDropdowns() {
+    const bookDropdown = document.getElementById("bible-query-book-dropdown");
+    const chapterDropdown = document.getElementById("bible-query-chapter-dropdown");
+    const versionDropdown = document.getElementById("bible-query-version-dropdown");
+
+    if (bookDropdown) {
+      bookDropdown.setAttribute("data-open", "false");
+      bookDropdown.dataset.dropdownType = "";
+    }
+    if (chapterDropdown) {
+      chapterDropdown.setAttribute("data-open", "false");
+      chapterDropdown.dataset.dropdownType = "";
+    }
+    if (versionDropdown) {
+      versionDropdown.setAttribute("data-open", "false");
+    }
+
+    document.getElementById("bible-query-reference")?.classList.remove("open");
+    document.getElementById("bible-query-version")?.classList.remove("open");
+  }
+
+  // Capture phase => runs even if inner handlers call stopPropagation()
+  document.addEventListener(
+    "pointerdown",
+    (e) => {
+      const t = e.target;
+      const clickedInsideDropdown = t.closest?.(
+        "#bible-query-book-dropdown, #bible-query-chapter-dropdown, #bible-query-version-dropdown"
+      );
+      if (clickedInsideDropdown) return;
+
+      closeAllBibleQueryDropdowns();
+    },
+    true
+  );
+}
+
+
+
+
+
+
+
+
+
+
+
+
 
 /**
  * Custom dropdowns for:

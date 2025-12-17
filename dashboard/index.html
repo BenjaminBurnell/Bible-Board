@@ -1,1081 +1,2001 @@
 <!DOCTYPE html>
 <html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>BibleBoard - Boards</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-<head>
-  <meta charset="utf-8" />
-  <title>BibleBoard - Boards</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- Main site style (this file provided below) -->
+    <link rel="stylesheet" href="../style.css" />
+    <link rel="stylesheet" href="../board/style.css" />
 
-  <!-- Main site style (this file provided below) -->
-  <link rel="stylesheet" href="../style.css" />
-  <link rel="stylesheet" href="../board/style.css" />
+    <!-- Dashboard styles (your uploaded file) -->
+    <link rel="stylesheet" href="boards.css" />
+    <link rel="stylesheet" href="crossrefs.css" />
 
-  <!-- Dashboard styles (your uploaded file) -->
-  <link rel="stylesheet" href="boards.css" />
-  <link rel="stylesheet" href="crossrefs.css" />
+    <link
+      rel="shortcut icon"
+      href="../assets/logo_with_bg.png"
+      type="image/x-icon"
+    />
 
-  <link rel="shortcut icon" href="../assets/logo_with_bg.png" type="image/x-icon" />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,400..700,0,0"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.min.js"></script>
+    <style>
+      #access-denied-blocker {
+        position: fixed;
+        top: 0;
+        left: var(--sidebar-width);
+        right: 0;
+        bottom: 0;
+        background: var(--bg);
+        color: var(--fg);
+        z-index: 20000;
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 20px;
+      }
 
-  <link rel="stylesheet"
-    href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,400..700,0,0" />
-  <script src="https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.min.js"></script>
-  <style>
-    #access-denied-blocker {
-      position: fixed;
-      top: 0;
-      left: var(--sidebar-width);
-      right: 0;
-      bottom: 0;
-      background: var(--bg);
-      color: var(--fg);
-      z-index: 20000;
-      display: none;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-      padding: 20px;
-    }
+      #access-denied-blocker h2 {
+        font-size: 1.5rem;
+        color: #e55353;
+      }
 
-    #access-denied-blocker h2 {
-      font-size: 1.5rem;
-      color: #e55353;
-    }
+      #access-denied-blocker p {
+        font-size: 1.1rem;
+        color: var(--muted);
+        max-width: 400px;
+      }
 
-    #access-denied-blocker p {
-      font-size: 1.1rem;
-      color: var(--muted);
-      max-width: 400px;
-    }
+      .back-btn {
+        font-family: inherit;
+        font-size: 1rem;
+        font-weight: 700;
+        padding: 10px 16px;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        background: var(--bg-alt);
+        color: var(--fg);
+        cursor: pointer;
+        text-decoration: none;
+        margin-top: 20px;
+      }
 
-    .back-btn {
-      font-family: inherit;
-      font-size: 1rem;
-      font-weight: 700;
-      padding: 10px 16px;
-      border-radius: 10px;
-      border: 1px solid var(--border);
-      background: var(--bg-alt);
-      color: var(--fg);
-      cursor: pointer;
-      text-decoration: none;
-      margin-top: 20px;
-    }
+      #back-to-boards-btn {
+        background: none;
+        border: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 13px;
+        border-radius: 15px;
+        width: 45px;
+        height: 45px;
+        transition: 0.3s ease, transform 0.3s ease;
+        backdrop-filter: blur(1rem);
+        background: var(--bg-seethroug);
+        border: 1px solid var(--fg-seethrough);
+        color: var(--fg);
+        cursor: pointer;
+        position: absolute;
+        top: 15px;
+        left: 15px;
+      }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@revenuecat/purchases-js@latest/dist/Purchases.umd.min.js"></script>
+  </head>
 
-    #back-to-boards-btn {
-      background: none;
-      border: none;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 13px;
-      border-radius: 15px;
-      width: 45px;
-      height: 45px;
-      transition: 0.3s ease, transform 0.3s ease;
-      backdrop-filter: blur(1rem);
-      background: var(--bg-seethroug);
-      border: 1px solid var(--fg-seethrough);
-      color: var(--fg);
-      cursor: pointer;
-      position: absolute;
-      top: 15px;
-      left: 15px;
-    }
-  </style>
-  <script src="https://cdn.jsdelivr.net/npm/@revenuecat/purchases-js@latest/dist/Purchases.umd.min.js"></script>
-</head>
+  <body class="light">
+    <!-- overlay used when sidebar is opened on small screens -->
+    <div
+      id="overlay"
+      class="overlay hidden"
+      tabindex="-1"
+      aria-hidden="true"
+    ></div>
 
-<body class="light">
-  <!-- overlay used when sidebar is opened on small screens -->
-  <div id="overlay" class="overlay hidden" tabindex="-1" aria-hidden="true"></div>
-
-  <!-- ========== MODAL (Rename / Delete) ========== -->
-  <button id="hamburger-btn" class="action-button" aria-label="Open menu" aria-expanded="false">
-    <!-- <svg width="20" height="14" viewBox="0 0 20 14">
+    <!-- ========== MODAL (Rename / Delete) ========== -->
+    <button
+      id="hamburger-btn"
+      class="action-button"
+      aria-label="Open menu"
+      aria-expanded="false"
+    >
+      <!-- <svg width="20" height="14" viewBox="0 0 20 14">
       <rect y="0" width="20" height="2" rx="1" />
       <rect y="6" width="20" height="2" rx="1" />
       <rect y="12" width="20" height="2" rx="1" />
     </svg> -->
 
-    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--fg)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-menu-2">
-      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-      <path d="M4 6l16 0"/>
-      <path d="M4 12l16 0"/>
-      <path d="M4 18l16 0"/>
-    </svg>
-  </button>
-
-  <div id="bible-board-container">
-
-    <!-- NEW: Scripture Mode toggle button -->
-    <button id="scripture-mode-toggle" class="scripture-mode-toggle">
-      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-book">
-        <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
-        <path d="M3 19a9 9 0 0 1 9 0a9 9 0 0 1 9 0"></path>
-        <path d="M3 6a9 9 0 0 1 9 0a9 9 0 0 1 9 0"></path>
-        <path d="M3 6l0 13"></path>
-        <path d="M12 6l0 13"></path>
-        <path d="M21 6l0 13"></path>
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="20"
+        height="20"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="var(--fg)"
+        stroke-width="3"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        class="icon icon-tabler icons-tabler-outline icon-tabler-menu-2"
+      >
+        <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+        <path d="M4 6l16 0" />
+        <path d="M4 12l16 0" />
+        <path d="M4 18l16 0" />
       </svg>
-      Open Scripture
     </button>
-    <div id="access-denied-blocker">
-      <h2>Access Denied</h2>
-      <p>You do not have permission to view or edit this board.</p>
-      <a href="../dashboard" class="back-btn">Back to My Boards</a>
-    </div>
 
-    <div id="main-content-container">
-      <div class="viewport">
-        <div id="workspace" class="workspace">
-          <svg id="connections" class="connections"></svg>
+    <div id="bible-board-container">
+      <!-- NEW: Scripture Mode toggle button -->
+      <button id="scripture-mode-toggle" class="scripture-mode-toggle">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="3"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          class="icon icon-tabler icons-tabler-outline icon-tabler-book"
+        >
+          <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+          <path d="M3 19a9 9 0 0 1 9 0a9 9 0 0 1 9 0"></path>
+          <path d="M3 6a9 9 0 0 1 9 0a9 9 0 0 1 9 0"></path>
+          <path d="M3 6l0 13"></path>
+          <path d="M12 6l0 13"></path>
+          <path d="M21 6l0 13"></path>
+        </svg>
+        Open Scripture
+      </button>
+      <div id="access-denied-blocker">
+        <h2>Access Denied</h2>
+        <p>You do not have permission to view or edit this board.</p>
+        <a href="../dashboard" class="back-btn">Back to My Boards</a>
+      </div>
+
+      <div id="main-content-container">
+        <div class="viewport">
+          <div id="workspace" class="workspace">
+            <svg id="connections" class="connections"></svg>
+          </div>
+        </div>
+
+        <button id="theme-toggle" class="toggle-btn" aria-label="Toggle Theme">
+          <svg
+            id="moon-icon"
+            xmlns="http://www.w3.org/2000/svg"
+            width="22"
+            height="22"
+            viewBox="0 0 24 24"
+            fill="var(--fg)"
+          >
+            <path d="M21 12.79A9 9 0 0 1 11.21 3 7 7 0 1 0 21 12.79Z" />
+          </svg>
+          <svg
+            id="sun-icon"
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 -960 960 960"
+            fill="var(--fg)"
+          >
+            <path
+              d="M440-760v-160h80v160h-80Zm266 110-55-55 112-115 56 57-113 113Zm54 210v-80h160v80H760ZM440-40v-160h80v160h-80ZM254-652 140-763l57-56 113 113-56 54Zm508 512L651-255l54-54 114 110-57 59ZM40-440v-80h160v80H40Zm157 300-56-57 112-112 29 27 29 28-114 114Zm283-100q-100 0-170-70t-70-170q0-100 70-170t170-70q100 0 170 70t70 170q0 100-70 170t-170 70Zm0-80q66 0 113-47t47-113q0-66-47-113t-113-47q-66 0-113 47t-47 113q0 66 47 113t113 47Zm0-160Z"
+            />
+          </svg>
+        </button>
+        <button
+          id="share-btn"
+          class="btn share-btn"
+          aria-haspopup="true"
+          aria-expanded="false"
+          title="Share"
+          style="
+            height: 50px;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 15px;
+            background: var(--bg-seethroug);
+            border-radius: 10px;
+            -webkit-backdrop-filter: blur(1rem);
+            backdrop-filter: blur(1rem);
+            border: 1px solid var(--fg-seethrough);
+            padding: 5px 15px;
+            color: var(--muted);
+            position: absolute;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            top: 0px;
+            right: 100px;
+            display: none;
+          "
+        >
+          Share
+        </button>
+      </div>
+      <div
+        id="persistence-status"
+        style="
+          display: none;
+          font-size: 12px;
+          font-weight: 700;
+          color: var(--muted);
+          padding: 5px 10px;
+          border-radius: 100px;
+          -webkit-backdrop-filter: blur(1rem);
+          backdrop-filter: blur(1rem);
+          border: 1px solid var(--fg-seethrough);
+          transition: all 0.3s ease;
+          white-space: nowrap;
+          opacity: 0;
+          position: absolute;
+          top: 15px;
+          background: var(--bg-dots) !important;
+        "
+      >
+        Saving...
+      </div>
+      <button
+        id="bb-tour-help-btn"
+        style="
+          display: none;
+          font-size: 12.5px;
+          font-weight: 700;
+          color: var(--fg);
+          padding: 5px;
+          background: var(--bg-seethroug);
+          border-radius: 15px;
+          border: 1px solid var(--fg-seethrough);
+          -webkit-backdrop-filter: blur(1rem);
+          backdrop-filter: blur(1rem);
+          cursor: pointer;
+          height: 40px;
+          margin-right: 8px;
+          position: absolute;
+          top: 25px;
+          right: 75px;
+        "
+      >
+        Show Tour
+      </button>
+
+      <div id="bible-whiteboard-title">
+        <div id="bible-whiteboard-text">
+          <img id="bible-board-logo" src="../assets/logo_no_bg.png" />
+          <input
+            id="title-textbox"
+            type="text"
+            placeholder="Untitled Bible Board"
+          />
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            height="24px"
+            viewBox="0 -960 960 960"
+            width="24px"
+            id="edit-Icon"
+            fill="var(--fg)"
+          >
+            <path
+              d="M200-200h57l391-391-57-57-391 391v57Zm-80 80v-170l528-527q12-11 26.5-17t30.5-6q16 0 31 6t26 18l55 56q12 11 17.5 26t5.5 30q0 16-5.5 30.5T817-647L290-120H120Zm640-584-56-56 56 56Zm-141 85-28-29 57 57-29-28Z"
+            />
+          </svg>
         </div>
       </div>
 
-      <button id="theme-toggle" class="toggle-btn" aria-label="Toggle Theme">
-        <svg id="moon-icon" xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24"
-          fill="var(--fg)">
-          <path d="M21 12.79A9 9 0 0 1 11.21 3 7 7 0 1 0 21 12.79Z" />
-        </svg>
-        <svg id="sun-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" fill="var(--fg)">
-          <path
-            d="M440-760v-160h80v160h-80Zm266 110-55-55 112-115 56 57-113 113Zm54 210v-80h160v80H760ZM440-40v-160h80v160h-80ZM254-652 140-763l57-56 113 113-56 54Zm508 512L651-255l54-54 114 110-57 59ZM40-440v-80h160v80H40Zm157 300-56-57 112-112 29 27 29 28-114 114Zm283-100q-100 0-170-70t-70-170q0-100 70-170t170-70q100 0 170 70t70 170q0 100-70 170t-170 70Zm0-80q66 0 113-47t47-113q0-66-47-113t-113-47q-66 0-113 47t-47 113q0 66 47 113t113 47Zm0-160Z" />
-        </svg>
-      </button>
-      <button id="share-btn" class="btn share-btn" aria-haspopup="true" aria-expanded="false" title="Share" style="
-              height: 50px;
-              border-radius: 10px;
-              font-weight: 700;
-              font-size: 15px;
-              background: var(--bg-seethroug);
-              border-radius: 10px;
-              -webkit-backdrop-filter: blur(1rem);
-              backdrop-filter: blur(1rem);
-              border: 1px solid var(--fg-seethrough);
-              padding: 5px 15px;
-              color: var(--muted);
-              position: absolute;
-              font-size: 12px;
-              font-weight: 700;
-              cursor: pointer;
-              top: 0px;
-              right: 100px;
-              display:none;
-            ">
-        Share
-      </button>
-    </div>
-    <div id="persistence-status" style="
-        display: none;
-        font-size: 12px;
-        font-weight: 700;
-        color: var(--muted);
-        padding: 5px 10px;
-        border-radius: 100px;
-        -webkit-backdrop-filter: blur(1rem);
-        backdrop-filter: blur(1rem);
-        border: 1px solid var(--fg-seethrough);
-        transition: all 0.3s ease;
-        white-space: nowrap;
-        opacity: 0;
-        position: absolute;
-        top: 15px;
-        background: var(--bg-dots) !important;
-      ">
-      Saving...
-    </div>
-    <button id="bb-tour-help-btn" style="
-              display: none;
-              font-size: 12.5px;
-              font-weight: 700;
-              color: var(--fg);
-              padding: 5px;
-              background: var(--bg-seethroug);
-              border-radius: 15px;
-              border: 1px solid var(--fg-seethrough);
-              -webkit-backdrop-filter: blur(1rem);
-              backdrop-filter: blur(1rem);
-              cursor: pointer;
-              height: 40px;
-              margin-right: 8px;
-              position: absolute;
-              top: 25px;
-              right: 75px;
-            ">
-      Show Tour
-    </button>
-
-    <div id="bible-whiteboard-title">
-      <div id="bible-whiteboard-text">
-        <img id="bible-board-logo" src="../assets/logo_no_bg.png">
-        <input id="title-textbox" type="text" placeholder="Untitled Bible Board" />
-        <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" id="edit-Icon"
-          fill="var(--fg)">
-          <path
-            d="M200-200h57l391-391-57-57-391 391v57Zm-80 80v-170l528-527q12-11 26.5-17t30.5-6q16 0 31 6t26 18l55 56q12 11 17.5 26t5.5 30q0 16-5.5 30.5T817-647L290-120H120Zm640-584-56-56 56 56Zm-141 85-28-29 57 57-29-28Z" />
-        </svg>
-      </div>
-    </div>
-
-    <div id="action-buttons-container" title="Actions">
-      <button id="undo-btn" class="action-button" title="Undo (Ctrl+Z)" disabled>
-
-
-        <!-- <svg class="action-icon" xmlns="http://www.w3.org/2000/svg" width="25" height="25" viewBox="0 0 25 25" fill="none" stroke="currentColor"  class="icon icon-tabler icons-tabler-outline icon-tabler-arrow-back-up">
+      <div id="action-buttons-container" title="Actions">
+        <button
+          id="undo-btn"
+          class="action-button"
+          title="Undo (Ctrl+Z)"
+          disabled
+        >
+          <!-- <svg class="action-icon" xmlns="http://www.w3.org/2000/svg" width="25" height="25" viewBox="0 0 25 25" fill="none" stroke="currentColor"  class="icon icon-tabler icons-tabler-outline icon-tabler-arrow-back-up">
           <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
           <path d="M9 14l-4 -4l4 -4"/>
           <path d="M5 10h11a4 4 0 1 1 0 8h-1"/>
         </svg> -->
 
-        <svg class="action-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-          <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-          <path d="M9 14l-4 -4l4 -4" fill="none"/>
-          <path d="M5 10h11a4 4 0 1 1 0 8h-1" fill="none"/>
-        </svg>
-        <!-- <svg  xmlns="http://www.w3.org/2000/svg" height="25px" viewBox="0 -960 960 960" width="25px">
+          <svg
+            class="action-icon"
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="3"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+            <path d="M9 14l-4 -4l4 -4" fill="none" />
+            <path d="M5 10h11a4 4 0 1 1 0 8h-1" fill="none" />
+          </svg>
+          <!-- <svg  xmlns="http://www.w3.org/2000/svg" height="25px" viewBox="0 -960 960 960" width="25px">
           <path
             d="M292-166v-126h293q51 0 87-35.5t36-86.5q0-51-36-87t-87-36H366l83 83-88 88-235-234 235-234 88 88-83 83h219q103 0 176 72.5T834-415q0 103-73 176t-176 73H292Z" />
         </svg> -->
-      </button>
-      <button id="redo-btn" class="action-button" title="Redo (Ctrl+Shift+Z)" disabled>
-
-
-        <svg class="action-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-arrow-forward-up">
-          <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-          <path d="M15 14l4 -4l-4 -4" fill="none"/>
-          <path d="M19 10h-11a4 4 0 1 0 0 8h1" fill="none"/>
-        </svg>
-<!--         
+        </button>
+        <button
+          id="redo-btn"
+          class="action-button"
+          title="Redo (Ctrl+Shift+Z)"
+          disabled
+        >
+          <svg
+            class="action-icon"
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="3"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            class="icon icon-tabler icons-tabler-outline icon-tabler-arrow-forward-up"
+          >
+            <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+            <path d="M15 14l4 -4l-4 -4" fill="none" />
+            <path d="M19 10h-11a4 4 0 1 0 0 8h1" fill="none" />
+          </svg>
+          <!--         
         <svg  class="action-icon" xmlns="http://www.w3.org/2000/svg" height="25px" viewBox="0 -960 960 960" width="25px">
           <path
             d="M375-166q-103 0-176-72.5T126-414q0-103 73-176t176-73h219l-83-83 88-88 235 234-235 234-88-88 83-83H375q-51 0-87 35.5T252-415q0 51 36 87t87 36h293v126H375Z" />
         </svg> -->
-      </button>
-      <button id="grouping-mode-btn" class="action-button" aria-label="Grouping Mode" title="Toggle Group Selection">
-
-        <!-- <svg class="action-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-box-multiple">
+        </button>
+        <button
+          id="grouping-mode-btn"
+          class="action-button"
+          aria-label="Grouping Mode"
+          title="Toggle Group Selection"
+        >
+          <!-- <svg class="action-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-box-multiple">
           <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
           <path class="action-icon-sub" d="M17 17v2a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2v-10a2 2 0 0 1 2 -2h2" fill="none"/>
           <path class="action-icon-sub-1" d="M7 3m0 2a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v10a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2z" fill="none"/>
         </svg> -->
 
-        <svg class="action-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-category-plus">
-          <path class="action-icon-sub" stroke="none" d="M0 0h24v24H0z" fill="none"/>
-          <path class="action-icon-sub-1" d="M4 4h6v6h-6zm10 0h6v6h-6zm-10 10h6v6h-6zm10 3h6m-3 -3v6"fill="none"/>
-        </svg>
-        
-      </button>
-      <button id="mobile-action-button" class="action-button" aria-label="Connect" disabled style="display: none!important;">
-        <svg class="action-icon" xmlns="http://www.w3.org/2000/svg" height="25px" viewBox="0 -960 960 960" width="25px">
-          <path
-            d="M425-246H280q-97.11 0-165.56-68.42Q46-382.84 46-479.92t68.44-165.58Q182.89-714 280-714h145v126H280.43q-45.18 0-76.8 31.5Q172-525 172-480t31.63 76.5q31.62 31.5 76.8 31.5H425v126ZM297-432v-96h366v96H297Zm238 186v-126h144.57q45.18 0 76.81-31.5Q788-435 788-480t-31.62-76.5Q724.75-588 679.57-588H535v-126h145q97.11 0 165.55 68.42Q914-577.16 914-480.08T845.55-314.5Q777.11-246 680-246H535Z" />
-        </svg>
-      </button>
-
-      <button id="disconnect-mode-btn" class="action-button" aria-label="Toggle disconnect mode"
-        title="Disconnect mode: click lines to remove" style="display: none;"
+          <svg
+            class="action-icon"
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            class="icon icon-tabler icons-tabler-outline icon-tabler-category-plus"
+          >
+            <path
+              class="action-icon-sub"
+              stroke="none"
+              d="M0 0h24v24H0z"
+              fill="none"
+            />
+            <path
+              class="action-icon-sub-1"
+              d="M4 4h6v6h-6zm10 0h6v6h-6zm-10 10h6v6h-6zm10 3h6m-3 -3v6"
+              fill="none"
+            />
+          </svg>
+        </button>
+        <button
+          id="mobile-action-button"
+          class="action-button"
+          aria-label="Connect"
+          disabled
+          style="display: none !important"
         >
-        
-        <svg class="action-icon" xmlns="http://www.w3.org/2000/svg" height="25px" viewBox="0 -960 960 960" width="25px">
-          <path
-            d="m791-283-93-93q35-10 63-38.5t28-65.93q0-44.57-31.21-76.07Q726.58-588 682-588H526v-126h155q97.11 0 165.55 68.45Q915-577.11 915-480q0 62-35 115t-89 82ZM641-432l-94-96h107v96h-13ZM770-56 45-781l67-67 725 725-67 67ZM424-246H279q-97.11 0-165.56-68.45Q45-382.89 45-480q0-71 38.5-129.5T188-696l108 108h-17q-45 0-76.5 31.5T171-480q0 45 31.63 76.5 31.62 31.5 76.8 31.5H424v126ZM306-432v-96h61l95 96H306Z" />
-        </svg>
-      </button>
+          <svg
+            class="action-icon"
+            xmlns="http://www.w3.org/2000/svg"
+            height="25px"
+            viewBox="0 -960 960 960"
+            width="25px"
+          >
+            <path
+              d="M425-246H280q-97.11 0-165.56-68.42Q46-382.84 46-479.92t68.44-165.58Q182.89-714 280-714h145v126H280.43q-45.18 0-76.8 31.5Q172-525 172-480t31.63 76.5q31.62 31.5 76.8 31.5H425v126ZM297-432v-96h366v96H297Zm238 186v-126h144.57q45.18 0 76.81-31.5Q788-435 788-480t-31.62-76.5Q724.75-588 679.57-588H535v-126h145q97.11 0 165.55 68.42Q914-577.16 914-480.08T845.55-314.5Q777.11-246 680-246H535Z"
+            />
+          </svg>
+        </button>
 
-      <button id="text-action-button" class="action-button" aria-label="Add text">
-        <!-- <svg class="action-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-square-rounded-letter-t">
+        <button
+          id="disconnect-mode-btn"
+          class="action-button"
+          aria-label="Toggle disconnect mode"
+          title="Disconnect mode: click lines to remove"
+          style="display: none"
+        >
+          <svg
+            class="action-icon"
+            xmlns="http://www.w3.org/2000/svg"
+            height="25px"
+            viewBox="0 -960 960 960"
+            width="25px"
+          >
+            <path
+              d="m791-283-93-93q35-10 63-38.5t28-65.93q0-44.57-31.21-76.07Q726.58-588 682-588H526v-126h155q97.11 0 165.55 68.45Q915-577.11 915-480q0 62-35 115t-89 82ZM641-432l-94-96h107v96h-13ZM770-56 45-781l67-67 725 725-67 67ZM424-246H279q-97.11 0-165.56-68.45Q45-382.89 45-480q0-71 38.5-129.5T188-696l108 108h-17q-45 0-76.5 31.5T171-480q0 45 31.63 76.5 31.62 31.5 76.8 31.5H424v126ZM306-432v-96h61l95 96H306Z"
+            />
+          </svg>
+        </button>
+
+        <button
+          id="text-action-button"
+          class="action-button"
+          aria-label="Add text"
+        >
+          <!-- <svg class="action-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-square-rounded-letter-t">
           <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
           <path d="M10 8h4" fill="none"/>
           <path d="M12 8v8" fill="none"/>
           <path d="M12 3c7.2 0 9 1.8 9 9s-1.8 9 -9 9s-9 -1.8 -9 -9s1.8 -9 9 -9z" fill="none"/>
         </svg> -->
-        <!-- <svg  class="action-icon" xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-letter-t">
+          <!-- <svg  class="action-icon" xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-letter-t">
           <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
           <path d="M6 4l12 0"/>
           <path d="M12 4l0 16"/>
         </svg> -->
 
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--fg)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-type">
-          <polyline points="4 7 4 4 20 4 20 7"></polyline>
-          <line x1="9" x2="15" y1="20" y2="20"></line>
-          <line x1="12" x2="12" y1="4" y2="20"></line>
-        </svg>
-        <!-- <svg  class="action-icon" xmlns="http://www.w3.org/2000/svg" height="25px" viewBox="0 -960 960 960" width="25px">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="var(--fg)"
+            stroke-width="3"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            class="lucide lucide-type"
+          >
+            <polyline points="4 7 4 4 20 4 20 7"></polyline>
+            <line x1="9" x2="15" y1="20" y2="20"></line>
+            <line x1="12" x2="12" y1="4" y2="20"></line>
+          </svg>
+          <!-- <svg  class="action-icon" xmlns="http://www.w3.org/2000/svg" height="25px" viewBox="0 -960 960 960" width="25px">
           <path d="M280-160v-520H80v-120h520v120H400v520H280Zm360 0v-320H520v-120h360v120H760v320H640Z" />
         </svg> -->
-      </button>
+        </button>
 
-      <button id="interlinear-action-button" class="action-button" aria-label="Interlinear (original → English)"
-        style="display: none;" disabled>
-        <svg  class="action-icon" xmlns="http://www.w3.org/2000/svg" height="25px" viewBox="0 -960 960 960" width="25px">
-          <path
-            d="M160-160q-33 0-56.5-23.5T80-240v-480q0-33 23.5-56.5T160-800h560q33 0 56.5 23.5T800-720v480q0 33-23.5 56.5T720-160H160Zm0-80h560v-480H160v480Zm120-120h200v-80H280v80Zm0-160h360v-80H280v80Z" />
-        </svg>
-      </button>
+        <button
+          id="interlinear-action-button"
+          class="action-button"
+          aria-label="Interlinear (original → English)"
+          style="display: none"
+          disabled
+        >
+          <svg
+            class="action-icon"
+            xmlns="http://www.w3.org/2000/svg"
+            height="25px"
+            viewBox="0 -960 960 960"
+            width="25px"
+          >
+            <path
+              d="M160-160q-33 0-56.5-23.5T80-240v-480q0-33 23.5-56.5T160-800h560q33 0 56.5 23.5T800-720v480q0 33-23.5 56.5T720-160H160Zm0-80h560v-480H160v480Zm120-120h200v-80H280v80Zm0-160h360v-80H280v80Z"
+            />
+          </svg>
+        </button>
 
-      <button id="delete-action-button" class="action-button" aria-label="Delete selected" disabled>
-        <svg class="action-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#e6e6e6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-trash">
-          <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-          <path d="M4 7l16 0" fill="none"/>
-          <path d="M10 11l0 6" fill="none"/>
-          <path d="M14 11l0 6" fill="none"/>
-          <path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12" fill="none"/>
-          <path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3" fill="none"/>
-        </svg>
-        <!-- <svg class="action-icon" xmlns="http://www.w3.org/2000/svg" height="25px" viewBox="0 -960 960 960" width="25px">
+        <button
+          id="delete-action-button"
+          class="action-button"
+          aria-label="Delete selected"
+          disabled
+        >
+          <svg
+            class="action-icon"
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="#e6e6e6"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            class="icon icon-tabler icons-tabler-outline icon-tabler-trash"
+          >
+            <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+            <path d="M4 7l16 0" fill="none" />
+            <path d="M10 11l0 6" fill="none" />
+            <path d="M14 11l0 6" fill="none" />
+            <path
+              d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12"
+              fill="none"
+            />
+            <path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3" fill="none" />
+          </svg>
+          <!-- <svg class="action-icon" xmlns="http://www.w3.org/2000/svg" height="25px" viewBox="0 -960 960 960" width="25px">
           <path
             d="M269-86q-53 0-89.5-36.5T143-212v-497H80v-126h257v-63h284v63h259v126h-63v497q0 53-36.5 89.5T691-86H269Zm422-623H269v497h422v-497ZM342-281h103v-360H342v360Zm173 0h103v-360H515v360ZM269-709v497-497Z" />
         </svg> -->
-      </button>
+        </button>
+      </div>
     </div>
-  </div>
-  
 
-  <div id="search-query-container">
+    <div id="search-query-container">
+      <div id="search-query-content">
+        <div id="search-panel-header">
+          <div id="search-query">Search for ""</div>
 
-    <div id="search-query-content">
+          <div id="did-you-mean-text">Did you mean ""?</div>
 
-      <div id="search-panel-header">
-
-        <div id="search-query">Search for ""</div>
-
-        <div id="did-you-mean-text">Did you mean ""?</div>
-
-        <div class="search-mode-toggle">
-          <button id="search-mode-bible" class="search-mode-pill active">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-book">
-              <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-              <path d="M3 19a9 9 0 0 1 9 0a9 9 0 0 1 9 0"/>
-              <path d="M3 6a9 9 0 0 1 9 0a9 9 0 0 1 9 0"/>
-              <path d="M3 6l0 13"/>
-              <path d="M12 6l0 13"/>
-              <path d="M21 6l0 13"/>
-            </svg>
-            <span>Bible</span>
-          </button>
-          <button
-            id="search-mode-cross-reference"
-            class="search-mode-pill"
-            type="button"
-            onclick="setSearchMode('crossref', { openDrawer: true })"
-          >
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-affiliate">
-            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-            <path d="M5.931 6.936l1.275 4.249m5.607 5.609l4.251 1.275"/>
-            <path d="M11.683 12.317l5.759 -5.759"/>
-            <path d="M5.5 5.5m-1.5 0a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0 -3 0"/>
-            <path d="M18.5 5.5m-1.5 0a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0 -3 0"/>
-            <path d="M18.5 18.5m-1.5 0a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0 -3 0"/>
-            <path d="M8.5 15.5m-4.5 0a4.5 4.5 0 1 0 9 0a4.5 4.5 0 1 0 -9 0"/>
-          </svg>
-            <span>Cross Reference</span>
-          </button>
-          <button id="search-mode-interlinear" class="search-mode-pill">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-language-katakana">
-              <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-              <path d="M5 5h6.586a1 1 0 0 1 .707 1.707l-1.293 1.293"/>
-              <path d="M8 8c0 1.5 .5 3 -2 5"/>
-              <path d="M12 20l4 -9l4 9"/>
-              <path d="M19.1 18h-6.2"/>
-            </svg>
-            <span>Interlinear</span>
-          </button>
-          <button id="search-mode-songs" class="search-mode-pill">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-music">
-              <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-              <path d="M3 17a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/>
-              <path d="M13 17a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/>
-              <path d="M9 17v-13h10v13"/>
-              <path d="M9 8h10"/>
-            </svg>
-            <span>Music</span>
-          </button>
-        </div>
+          <div class="search-mode-toggle">
+            <button id="search-mode-bible" class="search-mode-pill active">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="3"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                class="icon icon-tabler icons-tabler-outline icon-tabler-book"
+              >
+                <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                <path d="M3 19a9 9 0 0 1 9 0a9 9 0 0 1 9 0" />
+                <path d="M3 6a9 9 0 0 1 9 0a9 9 0 0 1 9 0" />
+                <path d="M3 6l0 13" />
+                <path d="M12 6l0 13" />
+                <path d="M21 6l0 13" />
+              </svg>
+              <span>Bible</span>
+            </button>
+            <button
+              id="search-mode-cross-reference"
+              class="search-mode-pill"
+              type="button"
+              onclick="setSearchMode('crossref', { openDrawer: true })"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="3"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                class="icon icon-tabler icons-tabler-outline icon-tabler-affiliate"
+              >
+                <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                <path d="M5.931 6.936l1.275 4.249m5.607 5.609l4.251 1.275" />
+                <path d="M11.683 12.317l5.759 -5.759" />
+                <path
+                  d="M5.5 5.5m-1.5 0a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0 -3 0"
+                />
+                <path
+                  d="M18.5 5.5m-1.5 0a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0 -3 0"
+                />
+                <path
+                  d="M18.5 18.5m-1.5 0a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0 -3 0"
+                />
+                <path
+                  d="M8.5 15.5m-4.5 0a4.5 4.5 0 1 0 9 0a4.5 4.5 0 1 0 -9 0"
+                />
+              </svg>
+              <span>Cross Reference</span>
+            </button>
+            <button id="search-mode-interlinear" class="search-mode-pill">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="3"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                class="icon icon-tabler icons-tabler-outline icon-tabler-language-katakana"
+              >
+                <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                <path d="M5 5h6.586a1 1 0 0 1 .707 1.707l-1.293 1.293" />
+                <path d="M8 8c0 1.5 .5 3 -2 5" />
+                <path d="M12 20l4 -9l4 9" />
+                <path d="M19.1 18h-6.2" />
+              </svg>
+              <span>Interlinear</span>
+            </button>
+            <button id="search-mode-songs" class="search-mode-pill">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="3"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                class="icon icon-tabler icons-tabler-outline icon-tabler-music"
+              >
+                <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                <path d="M3 17a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" />
+                <path d="M13 17a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" />
+                <path d="M9 17v-13h10v13" />
+                <path d="M9 8h10" />
+              </svg>
+              <span>Music</span>
+            </button>
+          </div>
           <div id="search-mode-panel-fade-left"></div>
           <div id="search-mode-panel-fade-right"></div>
-      </div>
-
-      <div id="esc-btn" onclick="closeSearchQuery()">
-        <svg id="esc-icon" style="margin-left: -5px;" xmlns="http://www.w3.org/2000/svg" height="24px"
-          viewBox="0 -960 960 960" width="24px" fill="var(--fg)">
-          <path
-            d="M479.92-46Q390-46 311-80.5 232-115 173-174T80-312.38Q46-391.75 46-482q0-89.64 34.17-168.48 34.18-78.84 92.76-137.16 58.59-58.32 137.78-92.34Q389.91-914 479.95-914q90.05 0 169.27 34.02 79.22 34.02 137.81 92.34 58.6 58.32 92.79 137.16Q914-571.64 914-482q0 90.25-34 169.62Q846-233 787-174T648.92-80.5Q569.83-46 479.92-46Zm.08-126q46 0 90-12.5t80-40.5L223-651q-26 38-38.5 81T172-482q0 129 90 219.5T480-172Zm258-141q25-38 37.5-81t12.5-88q0-128.14-90-217.07T480-788q-45 0-87.5 11.5T312-740l426 427ZM480-482Z" />
-        </svg>
-        <span id="esc-btn-text">ESC</span>
-      </div>
-
-      <button id="floating-add-to-board-btn" class="floating-add-btn" style="display: none;">
-
-      </button>
-
-      <div id="search-query-full-container">
-        <!-- <div id="search-query-verses-text">Verses</div> -->
-        <div id="search-query-verse-container"></div>
-        <div id="search-query-songs-text">Songs</div>
-        <div id="search-query-song-container" aria-live="polite"></div>
-        <div id="search-query-crossref" class="search-query-section" style="display:none;">
-          <div id="crossref-loader" class="loader" style="display:none;"></div>
-          <div id="search-query-crossref-text" style="display: none;">Cross References</div>
-          <div id="search-query-crossref-container" class="search-query-crossref-container"></div>
-          <button id="crossref-load-more" class="crossref-load-more" style="display:none;">
-            Load more
-          </button>
         </div>
 
+        <div id="esc-btn" onclick="closeSearchQuery()">
+          <svg
+            id="esc-icon"
+            style="margin-left: -5px"
+            xmlns="http://www.w3.org/2000/svg"
+            height="24px"
+            viewBox="0 -960 960 960"
+            width="24px"
+            fill="var(--fg)"
+          >
+            <path
+              d="M479.92-46Q390-46 311-80.5 232-115 173-174T80-312.38Q46-391.75 46-482q0-89.64 34.17-168.48 34.18-78.84 92.76-137.16 58.59-58.32 137.78-92.34Q389.91-914 479.95-914q90.05 0 169.27 34.02 79.22 34.02 137.81 92.34 58.6 58.32 92.79 137.16Q914-571.64 914-482q0 90.25-34 169.62Q846-233 787-174T648.92-80.5Q569.83-46 479.92-46Zm.08-126q46 0 90-12.5t80-40.5L223-651q-26 38-38.5 81T172-482q0 129 90 219.5T480-172Zm258-141q25-38 37.5-81t12.5-88q0-128.14-90-217.07T480-788q-45 0-87.5 11.5T312-740l426 427ZM480-482Z"
+            />
+          </svg>
+          <span id="esc-btn-text">ESC</span>
+        </div>
+
+        <button
+          id="floating-add-to-board-btn"
+          class="floating-add-btn"
+          style="display: none"
+        ></button>
+
+        <div id="search-query-full-container">
+          <!-- <div id="search-query-verses-text">Verses</div> -->
+          <div id="search-query-verse-container"></div>
+          <div id="search-query-songs-text">Songs</div>
+          <div id="search-query-song-container" aria-live="polite"></div>
+          <div
+            id="search-query-crossref"
+            class="search-query-section"
+            style="display: none"
+          >
+            <div
+              id="crossref-loader"
+              class="loader"
+              style="display: none"
+            ></div>
+            <div id="search-query-crossref-text" style="display: none">
+              Cross References
+            </div>
+            <div
+              id="search-query-crossref-container"
+              class="search-query-crossref-container"
+            ></div>
+            <button
+              id="crossref-load-more"
+              class="crossref-load-more"
+              style="display: none"
+            >
+              Load more
+            </button>
+          </div>
+        </div>
+
+        <div id="bottom-Fade-element"></div>
+
+        <div id="loader">
+          <div class="loader-spinner"></div>
+        </div>
       </div>
-
-      <div id="bottom-Fade-element"></div>
-
-      <div id="loader">
-        <div class="loader-spinner"></div>
-      </div>
-
     </div>
-  </div>
 
-  <div id="bible-query-container">
-    <div id="bible-query-reference">
-      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-book">
-        <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-        <path d="M3 19a9 9 0 0 1 9 0a9 9 0 0 1 9 0"/>
-        <path d="M3 6a9 9 0 0 1 9 0a9 9 0 0 1 9 0"/>
-        <path d="M3 6l0 13"/>
-        <path d="M12 6l0 13"/>
-        <path d="M21 6l0 13"/>
-      </svg>
+    <div id="bible-query-container">
+      <div id="bible-query-reference">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="3"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          class="icon icon-tabler icons-tabler-outline icon-tabler-book"
+        >
+          <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+          <path d="M3 19a9 9 0 0 1 9 0a9 9 0 0 1 9 0" />
+          <path d="M3 6a9 9 0 0 1 9 0a9 9 0 0 1 9 0" />
+          <path d="M3 6l0 13" />
+          <path d="M12 6l0 13" />
+          <path d="M21 6l0 13" />
+        </svg>
 
-      <!-- <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-bible">
+        <!-- <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-bible">
         <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
         <path d="M19 4v16h-12a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h12z"/>
         <path d="M19 16h-12a2 2 0 0 0 -2 2"/>
         <path d="M12 7v6"/>
         <path d="M10 9h4"/>
       </svg> -->
-      <div id="bible-query-container-book">Genesis</div>
-      <div id="bible-query-container-chapter">1</div>
-    </div>
-
-    <div id="bible-query-version">
-      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-language-katakana">
-        <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-        <path d="M5 5h6.586a1 1 0 0 1 .707 1.707l-1.293 1.293"/>
-        <path d="M8 8c0 1.5 .5 3 -2 5"/>
-        <path d="M12 20l4 -9l4 9"/>
-        <path d="M19.1 18h-6.2"/>
-      </svg>
-      <div id="bible-query-version-text"></div>
-    </div>
-
-  </div>
-
-  <div id="bible-query-reader" aria-live="polite">
-    <div id="bible-query-reader-content-container">
-      <div id="bible-query-reader-header"></div>
-      <div id="bible-query-reader-fade-top"></div>
-      <div id="bible-query-reader-fade-bottom"></div>
-      <div id="bible-query-reader-content"></div>
-
-      <div id="click-me-container">
-        <img id="click-me-img" src="../assets/Curved Arrow Img.png">
-        <div id="click-me-text">Click me</div>
+        <div id="bible-query-container-book">Genesis</div>
+        <div id="bible-query-container-chapter">1</div>
       </div>
 
-      <div id="hold-for-more-container">
-        <img id="hold-for-more-img" src="../assets/Curved Arrow Img 2.png">
-        <div id="hold-for-more-text">Hold for more</div>
-      </div>
-
-      <div id="bible-query-background-images-container" style="display: none;">
-        <div class="bible-query-reader-img-container" style="margin-top:600px;margin-left: -900px;">
-          <img class="bible-query-reader-img" src="../assets/bible_stories_art/Moses Parting the Waters.png">
-        </div>
-
-        <div class="bible-query-reader-img-container" style="margin-top:300px;margin-left: 800px;">
-          <img class="bible-query-reader-img" src="../assets/bible_stories_art/Nativity Scene in Simple Lines.png">
-        </div>
-
-        <div class="bible-query-reader-img-container" style="margin-top:400px;margin-left: -950px;">
-          <img class="bible-query-reader-img" src="../assets/bible_stories_art/Noah's Ark with Giraffe and Elephant.png">
-        </div>
-
-        <div class="bible-query-reader-img-container" style="margin-top:500px;margin-left: 1000px;">
-          <img class="bible-query-reader-img" src="../assets/bible_stories_art/Shepherd Under Radiant Star.png">
-        </div>
-
-        <div class="bible-query-reader-img-container" style="margin-top:400px;margin-left: -950px;">
-          <img class="bible-query-reader-img" src="../assets/bible_stories_art/Jesus on Water Helping Hand.png">
-        </div>
-
-        <div class="bible-query-reader-img-container" style="margin-top:400px;margin-left: 950px;">
-          <img class="bible-query-reader-img" src="../assets/bible_stories_art/Carrying the Cross in Silence.png">
-        </div>
-
-        <div class="bible-query-reader-img-container" style="margin-top:400px;margin-left: -1050px;">
-          <img class="bible-query-reader-img" src="../assets/bible_stories_art/Minimalist Crucifixion Drawing in Stipples.png">
-        </div>
-
-        <div class="bible-query-reader-img-container" style="margin-top:400px;margin-left: 975px;">
-          <img class="bible-query-reader-img" src="../assets/bible_stories_art/Noah's Ark in Stippled Line Art.png">
-        </div>
-        <div class="bible-query-reader-img-container" style="margin-top:400px;margin-left: -875px;">
-          <img class="bible-query-reader-img" src="../assets/bible_stories_art/Textured Stone Archway Illustration.png">
-        </div>
+      <div id="bible-query-version">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="3"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          class="icon icon-tabler icons-tabler-outline icon-tabler-language-katakana"
+        >
+          <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+          <path d="M5 5h6.586a1 1 0 0 1 .707 1.707l-1.293 1.293" />
+          <path d="M8 8c0 1.5 .5 3 -2 5" />
+          <path d="M12 20l4 -9l4 9" />
+          <path d="M19.1 18h-6.2" />
+        </svg>
+        <div id="bible-query-version-text"></div>
       </div>
     </div>
 
-    <!-- NEW: Add to Board button inside reader -->
-    <button 
-      id="bible-reader-add-to-board-btn"
-      type="button"
-      class="bible-reader-add-btn"
-      style="display: none;"
+    <div id="bible-query-reader" aria-live="polite">
+      <div id="bible-query-reader-content-container">
+        <div id="bible-query-reader-header"></div>
+        <div id="bible-query-reader-fade-top"></div>
+        <div id="bible-query-reader-fade-bottom"></div>
+        <div id="bible-query-reader-content"></div>
+
+        <div id="click-me-container">
+          <img id="click-me-img" src="../assets/Curved Arrow Img.png" />
+          <div id="click-me-text">Click me</div>
+        </div>
+
+        <div id="hold-for-more-container">
+          <img id="hold-for-more-img" src="../assets/Curved Arrow Img 2.png" />
+          <div id="hold-for-more-text">Hold for more</div>
+        </div>
+
+        <div id="bible-query-background-images-container" style="display: none">
+          <div
+            class="bible-query-reader-img-container"
+            style="margin-top: 600px; margin-left: -900px"
+          >
+            <img
+              class="bible-query-reader-img"
+              src="../assets/bible_stories_art/Moses Parting the Waters.png"
+            />
+          </div>
+
+          <div
+            class="bible-query-reader-img-container"
+            style="margin-top: 300px; margin-left: 800px"
+          >
+            <img
+              class="bible-query-reader-img"
+              src="../assets/bible_stories_art/Nativity Scene in Simple Lines.png"
+            />
+          </div>
+
+          <div
+            class="bible-query-reader-img-container"
+            style="margin-top: 400px; margin-left: -950px"
+          >
+            <img
+              class="bible-query-reader-img"
+              src="../assets/bible_stories_art/Noah's Ark with Giraffe and Elephant.png"
+            />
+          </div>
+
+          <div
+            class="bible-query-reader-img-container"
+            style="margin-top: 500px; margin-left: 1000px"
+          >
+            <img
+              class="bible-query-reader-img"
+              src="../assets/bible_stories_art/Shepherd Under Radiant Star.png"
+            />
+          </div>
+
+          <div
+            class="bible-query-reader-img-container"
+            style="margin-top: 400px; margin-left: -950px"
+          >
+            <img
+              class="bible-query-reader-img"
+              src="../assets/bible_stories_art/Jesus on Water Helping Hand.png"
+            />
+          </div>
+
+          <div
+            class="bible-query-reader-img-container"
+            style="margin-top: 400px; margin-left: 950px"
+          >
+            <img
+              class="bible-query-reader-img"
+              src="../assets/bible_stories_art/Carrying the Cross in Silence.png"
+            />
+          </div>
+
+          <div
+            class="bible-query-reader-img-container"
+            style="margin-top: 400px; margin-left: -1050px"
+          >
+            <img
+              class="bible-query-reader-img"
+              src="../assets/bible_stories_art/Minimalist Crucifixion Drawing in Stipples.png"
+            />
+          </div>
+
+          <div
+            class="bible-query-reader-img-container"
+            style="margin-top: 400px; margin-left: 975px"
+          >
+            <img
+              class="bible-query-reader-img"
+              src="../assets/bible_stories_art/Noah's Ark in Stippled Line Art.png"
+            />
+          </div>
+          <div
+            class="bible-query-reader-img-container"
+            style="margin-top: 400px; margin-left: -875px"
+          >
+            <img
+              class="bible-query-reader-img"
+              src="../assets/bible_stories_art/Textured Stone Archway Illustration.png"
+            />
+          </div>
+        </div>
+      </div>
+
+      <!-- NEW: Add to Board button inside reader -->
+      <button
+        id="bible-reader-add-to-board-btn"
+        type="button"
+        class="bible-reader-add-btn"
+        style="display: none"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="currentColor"
+          class="icon icon-tabler icons-tabler-filled icon-tabler-square-rounded-plus"
+        >
+          <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+          <path
+            d="M12 2l.324 .001l.318 .004l.616 .017l.299 .013l.579 .034l.553 .046c4.785 .464 6.732 2.411 7.196 7.196l.046 .553l.034 .579c.005 .098 .01 .198 .013 .299l.017 .616l.005 .642l-.005 .642l-.017 .616l-.013 .299l-.034 .579l-.046 .553c-.464 4.785 -2.411 6.732 -7.196 7.196l-.553 .046l-.579 .034c-.098 .005 -.198 .01 -.299 .013l-.616 .017l-.642 .005l-.642 -.005l-.616 -.017l-.299 -.013l-.579 -.034l-.553 -.046c-4.785 -.464 -6.732 -2.411 -7.196 -7.196l-.046 -.553l-.034 -.579a28.058 28.058 0 0 1 -.013 -.299l-.017 -.616c-.003 -.21 -.005 -.424 -.005 -.642l.001 -.324l.004 -.318l.017 -.616l.013 -.299l.034 -.579l.046 -.553c.464 -4.785 2.411 -6.732 7.196 -7.196l.553 -.046l.579 -.034c.098 -.005 .198 -.01 .299 -.013l.616 -.017c.21 -.003 .424 -.005 .642 -.005zm0 6a1 1 0 0 0 -1 1v2h-2l-.117 .007a1 1 0 0 0 .117 1.993h2v2l.007 .117a1 1 0 0 0 1.993 -.117v-2h2l.117 -.007a1 1 0 0 0 -.117 -1.993h-2v-2l-.007 -.117a1 1 0 0 0 -.993 -.883z"
+            fill="currentColor"
+            stroke-width="0"
+          ></path>
+        </svg>
+      </button>
+
+      <button
+        id="bible-query-reader-close"
+        type="button"
+        onclick="closeSearchQuery()"
+        aria-label="Close reader"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="currentColor"
+          class="icon icon-tabler icons-tabler-filled icon-tabler-square-rounded-x"
+        >
+          <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+          <path
+            d="M12 2l.324 .001l.318 .004l.616 .017l.299 .013l.579 .034l.553 .046c4.785 .464 6.732 2.411 7.196 7.196l.046 .553l.034 .579c.005 .098 .01 .198 .013 .299l.017 .616l.005 .642l-.005 .642l-.017 .616l-.013 .299l-.034 .579l-.046 .553c-.464 4.785 -2.411 6.732 -7.196 7.196l-.553 .046l-.579 .034c-.098 .005 -.198 .01 -.299 .013l-.616 .017l-.642 .005l-.642 -.005l-.616 -.017l-.299 -.013l-.579 -.034l-.553 -.046c-4.785 -.464 -6.732 -2.411 -7.196 -7.196l-.046 -.553l-.034 -.579a28.058 28.058 0 0 1 -.013 -.299l-.017 -.616c-.003 -.21 -.005 -.424 -.005 -.642l.001 -.324l.004 -.318l.017 -.616l.013 -.299l.034 -.579l.046 -.553c.464 -4.785 2.411 -6.732 7.196 -7.196l.553 -.046l.579 -.034c.098 -.005 .198 -.01 .299 -.013l.616 -.017c.21 -.003 .424 -.005 .642 -.005zm-1.489 7.14a1 1 0 0 0 -1.218 1.567l1.292 1.293l-1.292 1.293l-.083 .094a1 1 0 0 0 1.497 1.32l1.293 -1.292l1.293 1.292l.094 .083a1 1 0 0 0 1.32 -1.497l-1.292 -1.293l1.292 -1.293l.083 -.094a1 1 0 0 0 -1.497 -1.32l-1.293 1.292l-1.293 -1.292l-.094 -.083z"
+            fill="var(--fg)"
+            stroke-width="0"
+          />
+        </svg>
+        <span>ESC</span>
+      </button>
+    </div>
+
+    <!-- Verse study modal (opened by long-press / hold on a verse) -->
+    <div
+      id="verse-study-modal-backdrop"
+      class="verse-study-backdrop"
+      style="display: none"
     >
-      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" class="icon icon-tabler icons-tabler-filled icon-tabler-square-rounded-plus">
-        <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
-        <path d="M12 2l.324 .001l.318 .004l.616 .017l.299 .013l.579 .034l.553 .046c4.785 .464 6.732 2.411 7.196 7.196l.046 .553l.034 .579c.005 .098 .01 .198 .013 .299l.017 .616l.005 .642l-.005 .642l-.017 .616l-.013 .299l-.034 .579l-.046 .553c-.464 4.785 -2.411 6.732 -7.196 7.196l-.553 .046l-.579 .034c-.098 .005 -.198 .01 -.299 .013l-.616 .017l-.642 .005l-.642 -.005l-.616 -.017l-.299 -.013l-.579 -.034l-.553 -.046c-4.785 -.464 -6.732 -2.411 -7.196 -7.196l-.046 -.553l-.034 -.579a28.058 28.058 0 0 1 -.013 -.299l-.017 -.616c-.003 -.21 -.005 -.424 -.005 -.642l.001 -.324l.004 -.318l.017 -.616l.013 -.299l.034 -.579l.046 -.553c.464 -4.785 2.411 -6.732 7.196 -7.196l.553 -.046l.579 -.034c.098 -.005 .198 -.01 .299 -.013l.616 -.017c.21 -.003 .424 -.005 .642 -.005zm0 6a1 1 0 0 0 -1 1v2h-2l-.117 .007a1 1 0 0 0 .117 1.993h2v2l.007 .117a1 1 0 0 0 1.993 -.117v-2h2l.117 -.007a1 1 0 0 0 -.117 -1.993h-2v-2l-.007 -.117a1 1 0 0 0 -.993 -.883z" fill="currentColor" stroke-width="0"></path>
-      </svg>
-    </button>
+      <div
+        class="verse-study-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="verse-study-ref"
+      >
+        <div class="verse-study-header" id="verse-study-header">
+          <div class="verse-study-header-main">
+            <h2 class="verse-study-ref" id="verse-study-ref">Genesis 1:2</h2>
+            <div class="verse-study-version" id="verse-study-version">NLT</div>
+            <p class="verse-study-preview" id="verse-study-preview"></p>
+          </div>
 
-    <button id="bible-query-reader-close" type="button" onclick="closeSearchQuery()" aria-label="Close reader">
-      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" class="icon icon-tabler icons-tabler-filled icon-tabler-square-rounded-x">
-        <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-        <path d="M12 2l.324 .001l.318 .004l.616 .017l.299 .013l.579 .034l.553 .046c4.785 .464 6.732 2.411 7.196 7.196l.046 .553l.034 .579c.005 .098 .01 .198 .013 .299l.017 .616l.005 .642l-.005 .642l-.017 .616l-.013 .299l-.034 .579l-.046 .553c-.464 4.785 -2.411 6.732 -7.196 7.196l-.553 .046l-.579 .034c-.098 .005 -.198 .01 -.299 .013l-.616 .017l-.642 .005l-.642 -.005l-.616 -.017l-.299 -.013l-.579 -.034l-.553 -.046c-4.785 -.464 -6.732 -2.411 -7.196 -7.196l-.046 -.553l-.034 -.579a28.058 28.058 0 0 1 -.013 -.299l-.017 -.616c-.003 -.21 -.005 -.424 -.005 -.642l.001 -.324l.004 -.318l.017 -.616l.013 -.299l.034 -.579l.046 -.553c.464 -4.785 2.411 -6.732 7.196 -7.196l.553 -.046l.579 -.034c.098 -.005 .198 -.01 .299 -.013l.616 -.017c.21 -.003 .424 -.005 .642 -.005zm-1.489 7.14a1 1 0 0 0 -1.218 1.567l1.292 1.293l-1.292 1.293l-.083 .094a1 1 0 0 0 1.497 1.32l1.293 -1.292l1.293 1.292l.094 .083a1 1 0 0 0 1.32 -1.497l-1.292 -1.293l1.292 -1.293l.083 -.094a1 1 0 0 0 -1.497 -1.32l-1.293 1.292l-1.293 -1.292l-.094 -.083z" fill="var(--fg)" stroke-width="0"/>
-      </svg>
-      <span>ESC</span>
-    </button>
-  </div>
-  
+          <div class="verse-study-header-buttons">
+            <!-- 🟢 NEW: Add-to-list button, hidden by default -->
+            <button
+              type="button"
+              class="verse-study-header-add-btn"
+              id="verse-study-header-add-btn"
+              style="display: none"
+              aria-label="Add selected items to list"
+            >
+              <span class="material-symbols-outlined">add</span>
+            </button>
 
-  <!-- Verse study modal (opened by long-press / hold on a verse) -->
-  <div id="verse-study-modal-backdrop" class="verse-study-backdrop" style="display:none;">
-    <div class="verse-study-modal" role="dialog" aria-modal="true" aria-labelledby="verse-study-ref">
-      <div class="verse-study-header" id="verse-study-header">
-        <div class="verse-study-header-main">
-          <h2 class="verse-study-ref" id="verse-study-ref">Genesis 1:2</h2>
-          <div class="verse-study-version" id="verse-study-version">NLT</div>
-          <p class="verse-study-preview" id="verse-study-preview"></p>
+            <!-- Existing close button -->
+            <button
+              type="button"
+              class="verse-study-close-btn verse-study-close"
+              aria-label="Close"
+            >
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          </div>
         </div>
 
-        <div class="verse-study-header-buttons">
-          <!-- 🟢 NEW: Add-to-list button, hidden by default -->
-          <button
-            type="button"
-            class="verse-study-header-add-btn"
-            id="verse-study-header-add-btn"
-            style="display: none;"
-            aria-label="Add selected items to list"
-          >
-            <span class="material-symbols-outlined">add</span>
-          </button>
+        <!-- <p id="verse-study-preview" class="verse-study-preview"></p> -->
 
-          <!-- Existing close button -->
-          <button
-            type="button"
-            class="verse-study-close-btn verse-study-close"
-            aria-label="Close"
-          >
-            <span class="material-symbols-outlined">close</span>
-          </button>
-        </div>
-      </div>
-
-
-
-
-
-
-      <!-- <p id="verse-study-preview" class="verse-study-preview"></p> -->
-
-      <div class="verse-study-actions">
-        <div id="verse-study-action-buttons-container">
-          <button
-            id="verse-study-open-bookinfo"
-            class="verse-study-action-btn"
-            onclick="
+        <div class="verse-study-actions">
+          <div id="verse-study-action-buttons-container">
+            <button
+              id="verse-study-open-bookinfo"
+              class="verse-study-action-btn"
+              onclick="
               // Use the same reference you use for the other two tabs
               // If you don't already pass it, this version just uses the header text:
               openVerseStudyBookInfo(
                 document.querySelector('.verse-study-ref')?.textContent || ''
               );
             "
-          >
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                class="icon icon-tabler icons-tabler-outline icon-tabler-grid-scan"
+              >
+                <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                <path d="M10 8v8" />
+                <path d="M14 8v8" />
+                <path d="M8 10h8" />
+                <path d="M8 14h8" />
+                <path d="M4 8v-2a2 2 0 0 1 2 -2h2" />
+                <path d="M4 16v2a2 2 0 0 0 2 2h2" />
+                <path d="M16 4h2a2 2 0 0 1 2 2v2" />
+                <path d="M16 20h2a2 2 0 0 0 2 -2v-2" />
+              </svg>
 
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-grid-scan"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 8v8" /><path d="M14 8v8" /><path d="M8 10h8" /><path d="M8 14h8" /><path d="M4 8v-2a2 2 0 0 1 2 -2h2" /><path d="M4 16v2a2 2 0 0 0 2 2h2" /><path d="M16 4h2a2 2 0 0 1 2 2v2" /><path d="M16 20h2a2 2 0 0 0 2 -2v-2" /></svg>
+              Book info
+            </button>
 
-            Book info
-          </button>
-
-          <button
-            type="button"
-            id="verse-study-open-interlinear"
-            class="verse-study-action-btn"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-language-katakana">
-              <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-              <path d="M5 5h6.586a1 1 0 0 1 .707 1.707l-1.293 1.293"/>
-              <path d="M8 8c0 1.5 .5 3 -2 5"/>
-              <path d="M12 20l4 -9l4 9"/>
-              <path d="M19.1 18h-6.2"/>
-            </svg>
-            Interlinear
-          </button>
-          <button
-            type="button"
-            id="verse-study-open-crossref"
-            class="verse-study-action-btn"
-          >
-            <!-- style="display: none;" -->
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-affiliate">
-              <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-              <path d="M5.931 6.936l1.275 4.249m5.607 5.609l4.251 1.275"/>
-              <path d="M11.683 12.317l5.759 -5.759"/>
-              <path d="M5.5 5.5m-1.5 0a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0 -3 0"/>
-              <path d="M18.5 5.5m-1.5 0a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0 -3 0"/>
-              <path d="M18.5 18.5m-1.5 0a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0 -3 0"/>
-              <path d="M8.5 15.5m-4.5 0a4.5 4.5 0 1 0 9 0a4.5 4.5 0 1 0 -9 0"/>
-            </svg>
-            Cross references
-          </button>
+            <button
+              type="button"
+              id="verse-study-open-interlinear"
+              class="verse-study-action-btn"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="3"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                class="icon icon-tabler icons-tabler-outline icon-tabler-language-katakana"
+              >
+                <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                <path d="M5 5h6.586a1 1 0 0 1 .707 1.707l-1.293 1.293" />
+                <path d="M8 8c0 1.5 .5 3 -2 5" />
+                <path d="M12 20l4 -9l4 9" />
+                <path d="M19.1 18h-6.2" />
+              </svg>
+              Interlinear
+            </button>
+            <button
+              type="button"
+              id="verse-study-open-crossref"
+              class="verse-study-action-btn"
+            >
+              <!-- style="display: none;" -->
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="3"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                class="icon icon-tabler icons-tabler-outline icon-tabler-affiliate"
+              >
+                <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                <path d="M5.931 6.936l1.275 4.249m5.607 5.609l4.251 1.275" />
+                <path d="M11.683 12.317l5.759 -5.759" />
+                <path
+                  d="M5.5 5.5m-1.5 0a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0 -3 0"
+                />
+                <path
+                  d="M18.5 5.5m-1.5 0a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0 -3 0"
+                />
+                <path
+                  d="M18.5 18.5m-1.5 0a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0 -3 0"
+                />
+                <path
+                  d="M8.5 15.5m-4.5 0a4.5 4.5 0 1 0 9 0a4.5 4.5 0 1 0 -9 0"
+                />
+              </svg>
+              Cross references
+            </button>
+          </div>
         </div>
-      </div>
-      <!-- Verse Study Sections -->
-      <div id="verse-study-sections">
-        <div id="interlinear-section" class="verse-study-section" style="display:none;">
-          <div id="interlinear-section-loader" class="loader-spinner" style="display:none;"></div>
-          <div id="interlinear-section-content"></div>
-        </div>
-
-        <div id="crossref-section" class="verse-study-section" style="display:none;">
-          <div id="crossref-section-loader" class="loader-spinner" style="display:none;"></div>
-          <div id="crossref-section-content"></div>
-        </div>
-        <div
-          id="bookinfo-section"
-          class="verse-study-section"
-          style="display: none;"
-        >
+        <!-- Verse Study Sections -->
+        <div id="verse-study-sections">
           <div
-            id="bookinfo-section-loader"
-            class="verse-study-section-loader"
-            style="display: none;"
+            id="interlinear-section"
+            class="verse-study-section"
+            style="display: none"
           >
-            Loading book info...
+            <div
+              id="interlinear-section-loader"
+              class="loader-spinner"
+              style="display: none"
+            ></div>
+            <div id="interlinear-section-content"></div>
           </div>
 
-          <div id="bookinfo-section-content" class="verse-study-section-content">
-            <!-- book info gets rendered here -->
+          <div
+            id="crossref-section"
+            class="verse-study-section"
+            style="display: none"
+          >
+            <div
+              id="crossref-section-loader"
+              class="loader-spinner"
+              style="display: none"
+            ></div>
+            <div id="crossref-section-content"></div>
+          </div>
+          <div
+            id="bookinfo-section"
+            class="verse-study-section"
+            style="display: none"
+          >
+            <div
+              id="bookinfo-section-loader"
+              class="verse-study-section-loader"
+              style="display: none"
+            >
+              Loading book info...
+            </div>
+
+            <div
+              id="bookinfo-section-content"
+              class="verse-study-section-content"
+            >
+              <!-- book info gets rendered here -->
+            </div>
+          </div>
+        </div>
+        <div id="verse-study-sections-fade-top"></div>
+        <div id="verse-study-sections-fade-bottom"></div>
+      </div>
+    </div>
+
+    <form
+      style="display: none !important"
+      id="search-container"
+      onsubmit="return searchForQuery(event)"
+    >
+      <input
+        id="search-bar"
+        type="text"
+        placeholder="Search "
+        autocomplete="off"
+      />
+      <select id="version-select" title="Version" aria-label="Bible version">
+        <option>KJV</option>
+        <option>NLT</option>
+        <option value="NASB2020">NASB</option>
+        <!-- <option>ESV</option> -->
+        <option>ASV</option>
+        <!-- <option>SBLG</option> -->
+      </select>
+      <button id="search-button" type="submit">
+        <svg
+          style="margin-top: 2px; margin-right: 2px"
+          xmlns="http://www.w3.org/2000/svg"
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="var(--fg)"
+          stroke="var(--bg)"
+          stroke-width="4"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          class="icon icon-tabler icons-tabler-outline icon-tabler-search"
+        >
+          <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+          <path d="M10 10m-7 0a7 7 0 1 0 14 0a7 7 0 1 0 -14 0" />
+          <path d="M21 21l-6 -6" fill="none" />
+        </svg>
+      </button>
+    </form>
+
+    <!-- Interlinear panel (now inline within search drawer) -->
+    <aside id="interlinear-panel" aria-live="polite" aria-busy="false">
+      <div id="interlinear-title-row" style="display: none">
+        Interlinear for "<span id="interlinear-subtitle"></span>"
+      </div>
+
+      <!-- (Local label – not the global "search-query" id) -->
+      <div id="interlinear-list"></div>
+
+      <div id="interlinear-loader" class="panel-loader">
+        <div class="loader-spinner"></div>
+      </div>
+
+      <div id="interlinear-empty" class="panel-empty">
+        Select a verse and press the Interlinear button.
+      </div>
+
+      <div id="interlinear-error" class="panel-error">
+        Couldn't load interlinear data.
+      </div>
+    </aside>
+
+    <div id="share-popover" class="share-popover" hidden>
+      <input id="share-link" class="share-link" type="text" readonly />
+      <div class="share-actions">
+        <button id="copy-link-btn" class="btn">Copy link</button>
+        <button id="native-share-btn" class="btn" hidden>Share…</button>
+      </div>
+    </div>
+
+    <div id="search-modal-backdrop" class="hidden" style="display: none">
+      <div class="modal-content search-modal-content">
+        <span
+          class="material-symbols-outlined modal-close-btn"
+          onclick="closeSearchModal()"
+          >close</span
+        >
+
+        <div class="search-input-wrapper">
+          <input
+            type="text"
+            id="board-search-input"
+            placeholder="Search chats..."
+            autocomplete="off"
+          />
+        </div>
+
+        <div id="board-search-results"></div>
+      </div>
+    </div>
+
+    <!-- Full-screen Note Editor -->
+    <div id="note-modal-backdrop" class="note-editor-backdrop hidden">
+      <div id="note-editor-wrapper">
+        <!-- Editor card -->
+        <div id="note-editor-card">
+          <div
+            id="note-modal-editor"
+            class="note-editor-body"
+            contenteditable="true"
+            spellcheck="true"
+            data-placeholder="Type your note here..."
+            placeholder="Type your text"
+          ></div>
+
+          <!-- keep your existing color picker hook -->
+          <div id="note-modal-colors" class="note-color-picker"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toolbar -->
+    <div id="note-modal-toolbar" class="note-editor-toolbar">
+      <div class="note-toolbar-left">
+        <button
+          type="button"
+          class="note-tool-btn"
+          data-cmd="bold"
+          aria-label="Bold"
+        >
+          <span style="font-weight: 700">B</span>
+        </button>
+        <button
+          type="button"
+          class="note-tool-btn"
+          data-cmd="italic"
+          aria-label="Italic"
+        >
+          <span style="font-style: italic">I</span>
+        </button>
+        <button
+          type="button"
+          class="note-tool-btn"
+          data-cmd="underline"
+          aria-label="Underline"
+        >
+          <span style="text-decoration: underline">U</span>
+        </button>
+
+        <span class="note-toolbar-divider"></span>
+
+        <button
+          type="button"
+          class="note-tool-btn"
+          data-cmd="insertUnorderedList"
+          aria-label="Bulleted list"
+        >
+          •
+        </button>
+        <button
+          type="button"
+          class="note-tool-btn"
+          data-cmd="insertOrderedList"
+          aria-label="Numbered list"
+        >
+          1.
+        </button>
+
+        <span class="note-toolbar-divider"></span>
+
+        <button
+          type="button"
+          class="note-tool-btn"
+          data-cmd="justifyLeft"
+          aria-label="Align left"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="alight-text-icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="var(--fg)"
+            stroke-width="3"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            class="icon icon-tabler icons-tabler-outline icon-tabler-align-left"
+          >
+            <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+            <path d="M4 6l16 0" />
+            <path d="M4 12l10 0" />
+            <path d="M4 18l14 0" />
+          </svg>
+        </button>
+        <button
+          type="button"
+          class="note-tool-btn"
+          data-cmd="justifyCenter"
+          aria-label="Align center"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="alight-text-icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            class="icon icon-tabler icons-tabler-outline icon-tabler-align-center"
+          >
+            <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+            <path d="M4 6l16 0" />
+            <path d="M8 12l8 0" />
+            <path d="M6 18l12 0" />
+          </svg>
+        </button>
+        <button
+          type="button"
+          class="note-tool-btn"
+          data-cmd="justifyRight"
+          aria-label="Align right"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="alight-text-icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            class="icon icon-tabler icons-tabler-outline icon-tabler-align-right"
+          >
+            <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+            <path d="M4 6l16 0" />
+            <path d="M10 12l10 0" />
+            <path d="M6 18l14 0" />
+          </svg>
+        </button>
+
+        <span class="note-toolbar-divider"></span>
+
+        <label class="note-toolbar-select-label">
+          <span>Size</span>
+          <select id="note-font-size-select">
+            <option value="">–</option>
+            <option value="12">12</option>
+            <option value="14">14</option>
+            <option value="16" selected>16</option>
+            <option value="18">18</option>
+            <option value="20">20</option>
+            <option value="24">24</option>
+            <option value="28">28</option>
+            <option value="30">30</option>
+          </select>
+        </label>
+
+        <label class="note-toolbar-select-label" style="display: none">
+          <span>Line</span>
+          <select id="note-line-height-select">
+            <option value="1">1</option>
+            <option value="1.2">1.2</option>
+            <option value="1.4" selected>1.4</option>
+            <option value="1.6">1.6</option>
+            <option value="1.8">1.8</option>
+            <option value="2">2.0</option>
+          </select>
+        </label>
+
+        <span class="note-toolbar-divider"></span>
+
+        <!-- Color / highlight group -->
+        <div class="note-color-group">
+          <!-- Text color toggle -->
+          <button
+            type="button"
+            id="note-text-color-toggle"
+            class="note-tool-btn note-color-toggle"
+            aria-label="Text color"
+          >
+            <span class="note-color-icon">A</span>
+          </button>
+
+          <!-- Highlight color toggle -->
+          <button
+            type="button"
+            id="note-highlight-color-toggle"
+            class="note-tool-btn note-color-toggle"
+            aria-label="Highlight color"
+          >
+            <span class="note-highlight-icon">🖍</span>
+          </button>
+
+          <!-- Text color menu -->
+          <div
+            id="note-text-color-menu"
+            class="note-color-menu hidden"
+            data-type="text"
+          >
+            <span>Text Color:</span>
+            <div class="note-color-grid" data-role="palette"></div>
+
+            <div class="note-color-custom-row">
+              <span class="note-color-custom-label">CUSTOM</span>
+              <button
+                type="button"
+                class="note-color-custom-btn"
+                data-role="custom-text-plus"
+                aria-label="Choose custom text color"
+              >
+                +
+              </button>
+              <button
+                type="button"
+                class="note-color-custom-btn"
+                data-role="custom-text-picker"
+                aria-label="Pick text color"
+              >
+                🎯
+              </button>
+              <input
+                type="color"
+                id="note-text-color-custom-input"
+                class="note-color-input-hidden"
+              />
+            </div>
+          </div>
+
+          <!-- Highlight color menu -->
+          <div
+            id="note-highlight-color-menu"
+            class="note-color-menu hidden"
+            data-type="highlight"
+          >
+            <span>Highlight Color:</span>
+            <div class="note-color-grid" data-role="palette"></div>
+
+            <div class="note-color-custom-row">
+              <span class="note-color-custom-label">CUSTOM</span>
+              <button
+                type="button"
+                class="note-color-custom-btn"
+                data-role="custom-highlight-plus"
+                aria-label="Choose custom highlight color"
+              >
+                +
+              </button>
+              <button
+                type="button"
+                class="note-color-custom-btn"
+                data-role="custom-highlight-picker"
+                aria-label="Pick highlight color"
+              >
+                🎯
+              </button>
+              <input
+                type="color"
+                id="note-highlight-color-custom-input"
+                class="note-color-input-hidden"
+              />
+            </div>
           </div>
         </div>
       </div>
-      <div id="verse-study-sections-fade-top"></div>
-      <div id="verse-study-sections-fade-bottom"></div>
-    </div>
-  </div>
 
-
-  <form style="display: none!important;" id="search-container" onsubmit="return searchForQuery(event)">
-    <input id="search-bar" type="text" placeholder="Search " autocomplete="off" />
-    <select id="version-select" title="Version" aria-label="Bible version">
-      <option>NLT</option>
-      <!-- <option>NIV</option> -->
-      <option>KJV</option>
-      <!-- <option>ESV</option> -->
-      <option>ASV</option>
-        <!-- <option>SBLG</option> -->
-    </select>
-    <button id="search-button" type="submit">
-
-      <svg style="margin-top:2px;margin-right:2px;" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="var(--fg)" stroke="var(--bg)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-search">
-        <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-        <path d="M10 10m-7 0a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"/>
-        <path d="M21 21l-6 -6" fill="none"/>
-      </svg>
-    </button>
-  </form>
-
-  <!-- Interlinear panel (now inline within search drawer) -->
-  <aside id="interlinear-panel" aria-live="polite" aria-busy="false">
-    <div id="interlinear-title-row" style="display:none;">
-      Interlinear for "<span id="interlinear-subtitle"></span>"
-    </div>
-
-    <!-- (Local label – not the global "search-query" id) -->
-    <div id="interlinear-list"></div>
-
-    <div id="interlinear-loader" class="panel-loader">
-      <div class="loader-spinner"></div>
-    </div>
-
-    <div id="interlinear-empty" class="panel-empty">
-      Select a verse and press the Interlinear button.
-    </div>
-
-    <div id="interlinear-error" class="panel-error">
-      Couldn't load interlinear data.
-    </div>
-  </aside>
-
-  <div id="share-popover" class="share-popover" hidden>
-    <input id="share-link" class="share-link" type="text" readonly />
-    <div class="share-actions">
-      <button id="copy-link-btn" class="btn">Copy link</button>
-      <button id="native-share-btn" class="btn" hidden>Share…</button>
-    </div>
-  </div>
-
-  <div id="search-modal-backdrop" class="hidden" style="display: none;">
-    <div class="modal-content search-modal-content">
-
-      <span class="material-symbols-outlined modal-close-btn" onclick="closeSearchModal()">close</span>
-
-      <div class="search-input-wrapper">
-        <input type="text" id="board-search-input" placeholder="Search chats..." autocomplete="off" />
-      </div>
-
-      <div id="board-search-results">
-      </div>
-
-    </div>
-  </div>
-
-  <div id="note-modal-backdrop" class="hidden">
-    <div class="modal-content">
-      <h3>Edit Note</h3>
-      <textarea id="note-modal-input" placeholder="Type your note here..."></textarea>
-
-      <div id="note-modal-colors" class="note-color-picker">
-      </div>
-
-      <div class="modal-actions">
-        <button id="note-modal-cancel-btn" class="modal-btn cancel">Cancel</button>
-        <button id="note-modal-save-btn" class="modal-btn primary">Save</button>
+      <div class="note-toolbar-right">
+        <button
+          id="note-modal-cancel-btn"
+          type="button"
+          class="note-tool-secondary"
+        >
+          Cancel
+        </button>
+        <button
+          id="note-modal-save-btn"
+          type="button"
+          class="note-tool-primary"
+        >
+          Save
+        </button>
       </div>
     </div>
-  </div>
 
-  <div id="modal-backdrop" class="hidden">
-    <div class="modal-content">
-      <h3>Edit Board</h3>
-      <label>Board Title</label>
-      <input type="text" id="modal-title-input" placeholder="Enter board title" />
+    <div id="modal-backdrop" class="hidden">
+      <div class="modal-content">
+        <h3>Edit Board</h3>
+        <label>Board Title</label>
+        <input
+          type="text"
+          id="modal-title-input"
+          placeholder="Enter board title"
+        />
 
-      <div class="modal-actions">
-        <div style="flex: 1;"></div> <button onclick="closeModal()" class="modal-btn cancel">Cancel</button>
-        <button id="modal-save-btn" class="modal-btn primary">Save</button>
+        <div class="modal-actions">
+          <div style="flex: 1"></div>
+          <button onclick="closeModal()" class="modal-btn cancel">
+            Cancel
+          </button>
+          <button id="modal-save-btn" class="modal-btn primary">Save</button>
+        </div>
       </div>
     </div>
-  </div>
 
-  <!-- ==================== DELETE MODAL ==================== -->
-  <div id="delete-modal-backdrop" class="hidden">
-    <div class="modal-content delete-modal-content">
-      <h3>Delete board?</h3>
+    <!-- ==================== DELETE MODAL ==================== -->
+    <div id="delete-modal-backdrop" class="hidden">
+      <div class="modal-content delete-modal-content">
+        <h3>Delete board?</h3>
 
-      <p class="delete-modal-text">
-        This will delete <strong id="delete-board-name">Board Name</strong>. This action cannot be undone.
-      </p>
-      <div class="modal-actions">
-        <!-- Spacer to push buttons to the right -->
-        <div style="flex:1"></div>
+        <p class="delete-modal-text">
+          This will delete <strong id="delete-board-name">Board Name</strong>.
+          This action cannot be undone.
+        </p>
+        <div class="modal-actions">
+          <!-- Spacer to push buttons to the right -->
+          <div style="flex: 1"></div>
 
-        <button onclick="closeDeleteModal()" class="modal-btn cancel">Cancel</button>
-        <button type="button" id="confirm-delete-btn" class="modal-btn delete-solid">Delete</button>
+          <button onclick="closeDeleteModal()" class="modal-btn cancel">
+            Cancel
+          </button>
+          <button
+            type="button"
+            id="confirm-delete-btn"
+            class="modal-btn delete-solid"
+          >
+            Delete
+          </button>
+        </div>
       </div>
     </div>
-  </div>
 
-  <div id="upgrade-modal-backdrop" class="hidden">
-    <div class="upgrade-modal">
-      <button class="upgrade-close" onclick="closeUpgradeModal()" aria-label="Close upgrade modal">
-        <span class="material-symbols-outlined">close</span>
-      </button>
+    <div id="upgrade-modal-backdrop" class="hidden">
+      <div class="upgrade-modal">
+        <button
+          class="upgrade-close"
+          onclick="closeUpgradeModal()"
+          aria-label="Close upgrade modal"
+        >
+          <span class="material-symbols-outlined">close</span>
+        </button>
 
-      <div class="upgrade-header">
-        <p class="upgrade-eyebrow">BibleBoard plans</p>
-        <h2 style="margin: 0px;">Upgrade your plan</h2>
-        <p style="margin: 0px;margin-bottom:15px;color:var(--muted)">Turn scattered study into living boards.</p>
-        <!-- <div class="upgrade-toggle" role="group" aria-label="Plan type">
+        <div class="upgrade-header">
+          <p class="upgrade-eyebrow">BibleBoard plans</p>
+          <h2 style="margin: 0px">Upgrade your plan</h2>
+          <p style="margin: 0px; margin-bottom: 15px; color: var(--muted)">
+            Turn scattered study into living boards.
+          </p>
+          <!-- <div class="upgrade-toggle" role="group" aria-label="Plan type">
           <button class="toggle-chip active" type="button">Personal</button>
           <button class="toggle-chip" type="button" disabled>Business</button>
         </div> -->
-      </div>
+        </div>
 
-      <div class="plan-grid">
-        <article class="plan-card free-plan">
-          <div class="plan-top">
-            <span class="plan-name">Free</span>
-            <span class="plan-pill muted">Current</span>
-          </div>
-          <div class="plan-price">
-            <span class="currency">$</span>
-            <span class="amount">0</span>
-            <span class="per">/mo</span>
-          </div>
-          <p class="plan-subtitle">See what BibleBoard can do</p>
-          <button class="plan-cta ghost" type="button" disabled>Your current plan</button>
-          <ul class="plan-feature-list">
-            <li>
-              <!-- Tabler: book-2 -->
-              <svg class="plan-feature-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                <path d="M19 4v16h-12a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h12z" />
-                <path d="M19 16h-12a2 2 0 0 0 -2 2" />
-                <path d="M9 8h6" />
-              </svg>
-              <span>Up to 3 Bible study boards</span>
-            </li>
-            <li>
-              <!-- Tabler: infinity (but used as “core tools”) -->
-              <!-- <svg class="plan-feature-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <div class="plan-grid">
+          <article class="plan-card free-plan">
+            <div class="plan-top">
+              <span class="plan-name">Free</span>
+              <span class="plan-pill muted">Current</span>
+            </div>
+            <div class="plan-price">
+              <span class="currency">$</span>
+              <span class="amount">0</span>
+              <span class="per">/mo</span>
+            </div>
+            <p class="plan-subtitle">See what BibleBoard can do</p>
+            <button class="plan-cta ghost" type="button" disabled>
+              Your current plan
+            </button>
+            <ul class="plan-feature-list">
+              <li>
+                <!-- Tabler: book-2 -->
+                <svg
+                  class="plan-feature-icon"
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                  <path
+                    d="M19 4v16h-12a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h12z"
+                  />
+                  <path d="M19 16h-12a2 2 0 0 0 -2 2" />
+                  <path d="M9 8h6" />
+                </svg>
+                <span>Up to 3 Bible study boards</span>
+              </li>
+              <li>
+                <!-- Tabler: infinity (but used as “core tools”) -->
+                <!-- <svg class="plan-feature-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
                 <path d="M9.828 9.172a4 4 0 1 0 0 5.656a10 10 0 0 0 2.172 -2.828a10 10 0 0 1 2.172 -2.828a4 4 0 1 1 0 5.656a10 10 0 0 1 -2.172 -2.828a10 10 0 0 0 -2.172 -2.828" />
               </svg> -->
 
-              <svg class="plan-feature-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-number-100-small">
-                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                <path d="M4 8h1v8"/>
-                <path d="M9 10v4a2 2 0 1 0 4 0v-4a2 2 0 1 0 -4 0"/>
-                <path d="M16 10v4a2 2 0 1 0 4 0v-4a2 2 0 1 0 -4 0"/>
-              </svg>
-              <span>100 items per board</span>
-            </li>
-          </ul>
-          <!-- <p class="plan-footnote">Have an existing plan? <a class="plan-link" href="../paywall.html">See billing help</a></p> -->
-        </article>
+                <svg
+                  class="plan-feature-icon"
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  class="icon icon-tabler icons-tabler-outline icon-tabler-number-100-small"
+                >
+                  <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                  <path d="M4 8h1v8" />
+                  <path d="M9 10v4a2 2 0 1 0 4 0v-4a2 2 0 1 0 -4 0" />
+                  <path d="M16 10v4a2 2 0 1 0 4 0v-4a2 2 0 1 0 -4 0" />
+                </svg>
+                <span>100 items per board</span>
+              </li>
+            </ul>
+            <!-- <p class="plan-footnote">Have an existing plan? <a class="plan-link" href="../paywall.html">See billing help</a></p> -->
+          </article>
 
-        <article class="plan-card">
-          <div class="plan-top">
-            <span class="plan-name">Plus</span>
-            <span class="plan-pill dark">Popular</span>
-          </div>
-          <div class="plan-price">
-            <span class="currency">$</span>
-            <span class="amount">2.49</span>
-            <span class="per">/mo</span>
-          </div>
-          <p class="plan-subtitle">Unlock the full experience</p>
-          <button class="plan-cta dark upgrade-cta" id="upgrade-now-btn" data-plan="monthly" type="button">Try 3 days for free</button>
-          <ul class="plan-feature-list">
-            <li>
-              <!-- Tabler: infinity – “unlimited boards” -->
-              <svg class="plan-feature-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                <path d="M9.828 9.172a4 4 0 1 0 0 5.656a10 10 0 0 0 2.172 -2.828a10 10 0 0 1 2.172 -2.828a4 4 0 1 1 0 5.656a10 10 0 0 1 -2.172 -2.828a10 10 0 0 0 -2.172 -2.828" />
-              </svg>
-              <span>Unlimited BibleBoard study boards</span>
-            </li>
-            <li>
-              <svg class="plan-feature-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                <path d="M9.828 9.172a4 4 0 1 0 0 5.656a10 10 0 0 0 2.172 -2.828a10 10 0 0 1 2.172 -2.828a4 4 0 1 1 0 5.656a10 10 0 0 1 -2.172 -2.828a10 10 0 0 0 -2.172 -2.828" />
-              </svg>
-              <span>Unlimited board items</span>
-            </li>
-            <li>
-              <!-- Tabler: sparkles – “priority / new features” -->
-              <!-- <svg class="plan-feature-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <article class="plan-card">
+            <div class="plan-top">
+              <span class="plan-name">Plus</span>
+              <span class="plan-pill dark">Popular</span>
+            </div>
+            <div class="plan-price">
+              <span class="currency">$</span>
+              <span class="amount">2.49</span>
+              <span class="per">/mo</span>
+            </div>
+            <p class="plan-subtitle">Unlock the full experience</p>
+            <button
+              class="plan-cta dark upgrade-cta"
+              id="upgrade-now-btn"
+              data-plan="monthly"
+              type="button"
+            >
+              Try 3 days for free
+            </button>
+            <ul class="plan-feature-list">
+              <li>
+                <!-- Tabler: infinity – “unlimited boards” -->
+                <svg
+                  class="plan-feature-icon"
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                  <path
+                    d="M9.828 9.172a4 4 0 1 0 0 5.656a10 10 0 0 0 2.172 -2.828a10 10 0 0 1 2.172 -2.828a4 4 0 1 1 0 5.656a10 10 0 0 1 -2.172 -2.828a10 10 0 0 0 -2.172 -2.828"
+                  />
+                </svg>
+                <span>Unlimited BibleBoard study boards</span>
+              </li>
+              <li>
+                <svg
+                  class="plan-feature-icon"
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                  <path
+                    d="M9.828 9.172a4 4 0 1 0 0 5.656a10 10 0 0 0 2.172 -2.828a10 10 0 0 1 2.172 -2.828a4 4 0 1 1 0 5.656a10 10 0 0 1 -2.172 -2.828a10 10 0 0 0 -2.172 -2.828"
+                  />
+                </svg>
+                <span>Unlimited board items</span>
+              </li>
+              <li>
+                <!-- Tabler: sparkles – “priority / new features” -->
+                <!-- <svg class="plan-feature-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
                 <path d="M16 18a2 2 0 0 1 2 2a2 2 0 0 1 2 -2a2 2 0 0 1 -2 -2a2 2 0 0 1 -2 2zm0 -12a2 2 0 0 1 2 2a2 2 0 0 1 2 -2a2 2 0 0 1 -2 -2a2 2 0 0 1 -2 2zm-7 12a6 6 0 0 1 6 -6a6 6 0 0 1 -6 -6a6 6 0 0 1 -6 6a6 6 0 0 1 6 6z" />
               </svg> -->
 
-              <svg class="plan-feature-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-palette">
-                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                <path d="M12 21a9 9 0 0 1 0 -18c4.97 0 9 3.582 9 8c0 1.06 -.474 2.078 -1.318 2.828c-.844 .75 -1.989 1.172 -3.182 1.172h-2.5a2 2 0 0 0 -1 3.75a1.3 1.3 0 0 1 -1 2.25"/>
-                <path d="M8.5 10.5m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/>
-                <path d="M12.5 7.5m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/>
-                <path d="M16.5 10.5m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/>
-              </svg>
-              <span>Unlock connection color pallet</span>
-            </li>
-          </ul>
-          <!-- <p class="plan-footnote"><a class="plan-link" href="../paywall.html">Limits apply</a></p> -->
-        </article>
-      </div>
-      <div class="promo-code-container">
-        <div class="plan-top">
-          <span class="plan-name">Promo Code</span>
-          <span class="plan-pill dark">Student access</span>
+                <svg
+                  class="plan-feature-icon"
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  class="icon icon-tabler icons-tabler-outline icon-tabler-palette"
+                >
+                  <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                  <path
+                    d="M12 21a9 9 0 0 1 0 -18c4.97 0 9 3.582 9 8c0 1.06 -.474 2.078 -1.318 2.828c-.844 .75 -1.989 1.172 -3.182 1.172h-2.5a2 2 0 0 0 -1 3.75a1.3 1.3 0 0 1 -1 2.25"
+                  />
+                  <path d="M8.5 10.5m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
+                  <path d="M12.5 7.5m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
+                  <path d="M16.5 10.5m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
+                </svg>
+                <span>Unlock connection color pallet</span>
+              </li>
+            </ul>
+            <!-- <p class="plan-footnote"><a class="plan-link" href="../paywall.html">Limits apply</a></p> -->
+          </article>
         </div>
+        <div class="promo-code-container">
+          <div class="plan-top">
+            <span class="plan-name">Promo Code</span>
+            <span class="plan-pill dark">Student access</span>
+          </div>
 
-        <div class="promo-plan-input-container">
-          <input type="text" class="promo-plan-input" placeholder="Enter Promo Code:">
-          <button class="redeem-code-button"><span>Redeem code</span></button>
+          <div class="promo-plan-input-container">
+            <input
+              type="text"
+              class="promo-plan-input"
+              placeholder="Enter Promo Code:"
+            />
+            <button class="redeem-code-button"><span>Redeem code</span></button>
+          </div>
+
+          <!-- Inline feedback message (no alerts needed) -->
+          <p class="promo-plan-message" aria-live="polite">Enter Promo Code.</p>
         </div>
-
-        <!-- Inline feedback message (no alerts needed) -->
-        <p class="promo-plan-message" aria-live="polite">Enter Promo Code.</p>
       </div>
-
     </div>
-  </div>
 
-  <!-- APP LAYOUT: Left sidebar + top nav + main content -->
-  <aside id="sidebar" class="sidebar expanded" aria-hidden="false">
-    <div class="sidebar-inner">
+    <!-- APP LAYOUT: Left sidebar + top nav + main content -->
+    <aside id="sidebar" class="sidebar expanded" aria-hidden="false">
+      <div class="sidebar-inner">
+        <div class="sidebar-header">
+          <button
+            id="sidebar-logo-btn"
+            class="sidebar-logo"
+            aria-label="Go to Home"
+          >
+            <img
+              id="sidebar-logo-img"
+              src="../assets/logo_no_bg.png"
+              alt="BibleBoard logo"
+            />
+          </button>
 
-      <div class="sidebar-header">
+          <button
+            id="sidebar-toggle-btn"
+            class="icon-btn toggle-icon"
+            title="Close Sidebar"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              class="icon icon-tabler icons-tabler-outline icon-tabler-layout-sidebar-left-collapse"
+            >
+              <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+              <path
+                d="M4 4m0 2a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2z"
+              />
+              <path d="M9 4v16" />
+              <path d="M15 10l-2 2l2 2" />
+            </svg>
+          </button>
+        </div>
 
-        <button id="sidebar-logo-btn" class="sidebar-logo" aria-label="Go to Home">
-          <img id="sidebar-logo-img" src="../assets/logo_no_bg.png" alt="BibleBoard logo" />
-        </button>
+        <div id="top-sidebar-fade"></div>
 
-        <button id="sidebar-toggle-btn" class="icon-btn toggle-icon" title="Close Sidebar">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-layout-sidebar-left-collapse">
-            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-            <path d="M4 4m0 2a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2z"/>
-            <path d="M9 4v16"/>
-            <path d="M15 10l-2 2l2 2"/>
-          </svg>
-        </button>
-
-      </div>
-
-      <div id="top-sidebar-fade"></div>
-
-      <nav class="sidebar-nav" role="navigation" aria-label="Main navigation">
-        <ul>
-          <li>
-            <button id="new-board-btn-sidebar" class="nav-item dash-btn primary" type="button">
-              <!-- Changed fill to var(--fg) -->
-               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" class="icon icon-tabler icons-tabler-filled icon-tabler-square-rounded-plus">
-                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                <path d="M12 2l.324 .001l.318 .004l.616 .017l.299 .013l.579 .034l.553 .046c4.785 .464 6.732 2.411 7.196 7.196l.046 .553l.034 .579c.005 .098 .01 .198 .013 .299l.017 .616l.005 .642l-.005 .642l-.017 .616l-.013 .299l-.034 .579l-.046 .553c-.464 4.785 -2.411 6.732 -7.196 7.196l-.553 .046l-.579 .034c-.098 .005 -.198 .01 -.299 .013l-.616 .017l-.642 .005l-.642 -.005l-.616 -.017l-.299 -.013l-.579 -.034l-.553 -.046c-4.785 -.464 -6.732 -2.411 -7.196 -7.196l-.046 -.553l-.034 -.579a28.058 28.058 0 0 1 -.013 -.299l-.017 -.616c-.003 -.21 -.005 -.424 -.005 -.642l.001 -.324l.004 -.318l.017 -.616l.013 -.299l.034 -.579l.046 -.553c.464 -4.785 2.411 -6.732 7.196 -7.196l.553 -.046l.579 -.034c.098 -.005 .198 -.01 .299 -.013l.616 -.017c.21 -.003 .424 -.005 .642 -.005zm0 6a1 1 0 0 0 -1 1v2h-2l-.117 .007a1 1 0 0 0 .117 1.993h2v2l.007 .117a1 1 0 0 0 1.993 -.117v-2h2l.117 -.007a1 1 0 0 0 -.117 -1.993h-2v-2l-.007 -.117a1 1 0 0 0 -.993 -.883z" fill="currentColor" stroke-width="0"/>
-              </svg>
-              <span id="new-board-btn-sidebar-text">New Board</span>
-            </button>
-          </li>
-          <li>
-            <!-- Fixed ID to be unique -->
-            <button id="search-board-btn-sidebar" class="nav-item dash-btn primary" type="button">
-              <!-- Changed fill to var(--fg) -->
-              <!-- <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px"
+        <nav class="sidebar-nav" role="navigation" aria-label="Main navigation">
+          <ul>
+            <li>
+              <button
+                id="new-board-btn-sidebar"
+                class="nav-item dash-btn primary"
+                type="button"
+              >
+                <!-- Changed fill to var(--fg) -->
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                  class="icon icon-tabler icons-tabler-filled icon-tabler-square-rounded-plus"
+                >
+                  <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                  <path
+                    d="M12 2l.324 .001l.318 .004l.616 .017l.299 .013l.579 .034l.553 .046c4.785 .464 6.732 2.411 7.196 7.196l.046 .553l.034 .579c.005 .098 .01 .198 .013 .299l.017 .616l.005 .642l-.005 .642l-.017 .616l-.013 .299l-.034 .579l-.046 .553c-.464 4.785 -2.411 6.732 -7.196 7.196l-.553 .046l-.579 .034c-.098 .005 -.198 .01 -.299 .013l-.616 .017l-.642 .005l-.642 -.005l-.616 -.017l-.299 -.013l-.579 -.034l-.553 -.046c-4.785 -.464 -6.732 -2.411 -7.196 -7.196l-.046 -.553l-.034 -.579a28.058 28.058 0 0 1 -.013 -.299l-.017 -.616c-.003 -.21 -.005 -.424 -.005 -.642l.001 -.324l.004 -.318l.017 -.616l.013 -.299l.034 -.579l.046 -.553c.464 -4.785 2.411 -6.732 7.196 -7.196l.553 -.046l.579 -.034c.098 -.005 .198 -.01 .299 -.013l.616 -.017c.21 -.003 .424 -.005 .642 -.005zm0 6a1 1 0 0 0 -1 1v2h-2l-.117 .007a1 1 0 0 0 .117 1.993h2v2l.007 .117a1 1 0 0 0 1.993 -.117v-2h2l.117 -.007a1 1 0 0 0 -.117 -1.993h-2v-2l-.007 -.117a1 1 0 0 0 -.993 -.883z"
+                    fill="currentColor"
+                    stroke-width="0"
+                  />
+                </svg>
+                <span id="new-board-btn-sidebar-text">New Board</span>
+              </button>
+            </li>
+            <li>
+              <!-- Fixed ID to be unique -->
+              <button
+                id="search-board-btn-sidebar"
+                class="nav-item dash-btn primary"
+                type="button"
+              >
+                <!-- Changed fill to var(--fg) -->
+                <!-- <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px"
                 fill="var(--fg)" class="icon" aria-hidden="true">
                 <path
                   d="M784-120 532-372q-30 24-69 38t-83 14q-109 0-184.5-75.5T120-580q0-109 75.5-184.5T380-840q109 0 184.5 75.5T640-580q0 44-14 83t-38 69l252 252-56 56ZM380-400q75 0 127.5-52.5T560-580q0-75-52.5-127.5T380-760q-75 0-127.5 52.5T200-580q0 75 52.5 127.5T380-400Z" />
               </svg> -->
 
-              <svg style="margin-left: 2px;" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-search">
-                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                <path d="M10 10m-7 0a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"/>
-                <path d="M21 21l-6 -6"/>
-              </svg>
-              <span>Search Boards</span>
-            </button>
-          </li>
+                <svg
+                  style="margin-left: 2px"
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="4"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  class="icon icon-tabler icons-tabler-outline icon-tabler-search"
+                >
+                  <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                  <path d="M10 10m-7 0a7 7 0 1 0 14 0a7 7 0 1 0 -14 0" />
+                  <path d="M21 21l-6 -6" />
+                </svg>
+                <span>Search Boards</span>
+              </button>
+            </li>
 
-          <!-- <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="var(--bg-alt)">
+            <!-- <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="var(--bg-alt)">
                 <path d="M784-120 532-372q-30 24-69 38t-83 14q-109 0-184.5-75.5T120-580q0-109 75.5-184.5T380-840q109 0 184.5 75.5T640-580q0 44-14 83t-38 69l252 252-56 56ZM380-400q75 0 127.5-52.5T560-580q0-75-52.5-127.5T380-760q-75 0-127.5 52.5T200-580q0 75 52.5 127.5T380-400Z"></path>
               </svg> -->
-          <!-- <hr class="sidebar-divider" /> -->
-        </ul>
+            <!-- <hr class="sidebar-divider" /> -->
+          </ul>
 
-        <div id="sidebar-status"></div>
+          <div id="sidebar-status"></div>
 
-        <div id="sidebar-boards-container">
-        </div>
+          <div id="sidebar-boards-container"></div>
 
+          <div id="bottom-sidebar-fade"></div>
+        </nav>
 
-        <div id="bottom-sidebar-fade"></div>
-
-
-
-      </nav>
-
-      <div class="sidebar-footer">
-        <div id="user-profile-menu" class="profile-menu hidden">
-          <button id="manage-sub-btn" class="menu-item">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--fg)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-credit-card">
-              <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-              <path d="M3 5m0 3a3 3 0 0 1 3 -3h12a3 3 0 0 1 3 3v8a3 3 0 0 1 -3 3h-12a3 3 0 0 1 -3 -3z"/>
-              <path d="M3 10l18 0"/>
-              <path d="M7 15l.01 0"/>
-              <path d="M11 15l2 0"/>
-            </svg>
-            Manage Subscription
-          </button>
-          <div class="menu-divider"></div>
-          <button id="signout-btn-sidebar" class="menu-item delete">
-            <svg style="margin-right: 2px;" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--fg)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-logout-2">
-              <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-              <path d="M10 8v-2a2 2 0 0 1 2 -2h7a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-7a2 2 0 0 1 -2 -2v-2"/>
-              <path d="M15 12h-12l3 -3"/>
-              <path d="M6 15l-3 -3"/>
-            </svg>
-            Sign out
-          </button>
-        </div>
-
-        <button id="user-profile-btn" class="user-profile-btn" type="button" aria-label="User Menu">
-          <img id="user-avatar-img" class="user-avatar" src="../assets/logo_with_bg.png" alt="User" />
-          <div class="user-info">
-            <span id="user-profile-name" class="user-name">loading...</span>
-            <span id="user-profile-email" class="user-email">loading@example.com</span>
+        <div class="sidebar-footer">
+          <div id="user-profile-menu" class="profile-menu hidden">
+            <button id="manage-sub-btn" class="menu-item">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="var(--fg)"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                class="icon icon-tabler icons-tabler-outline icon-tabler-credit-card"
+              >
+                <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                <path
+                  d="M3 5m0 3a3 3 0 0 1 3 -3h12a3 3 0 0 1 3 3v8a3 3 0 0 1 -3 3h-12a3 3 0 0 1 -3 -3z"
+                />
+                <path d="M3 10l18 0" />
+                <path d="M7 15l.01 0" />
+                <path d="M11 15l2 0" />
+              </svg>
+              Manage Subscription
+            </button>
+            <div class="menu-divider"></div>
+            <button id="signout-btn-sidebar" class="menu-item delete">
+              <svg
+                style="margin-right: 2px"
+                xmlns="http://www.w3.org/2000/svg"
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="var(--fg)"
+                stroke-width="3"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                class="icon icon-tabler icons-tabler-outline icon-tabler-logout-2"
+              >
+                <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                <path
+                  d="M10 8v-2a2 2 0 0 1 2 -2h7a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-7a2 2 0 0 1 -2 -2v-2"
+                />
+                <path d="M15 12h-12l3 -3" />
+                <path d="M6 15l-3 -3" />
+              </svg>
+              Sign out
+            </button>
           </div>
-          <span class="material-symbols-outlined menu-indicator" style="font-size: 20px !important;">more_horiz</span>
-        </button>
+
+          <button
+            id="user-profile-btn"
+            class="user-profile-btn"
+            type="button"
+            aria-label="User Menu"
+          >
+            <img
+              id="user-avatar-img"
+              class="user-avatar"
+              src="../assets/logo_with_bg.png"
+              alt="User"
+            />
+            <div class="user-info">
+              <span id="user-profile-name" class="user-name">loading...</span>
+              <span id="user-profile-email" class="user-email"
+                >loading@example.com</span
+              >
+            </div>
+            <span
+              class="material-symbols-outlined menu-indicator"
+              style="font-size: 20px !important"
+              >more_horiz</span
+            >
+          </button>
+        </div>
       </div>
-    </div>
-  </aside>
+    </aside>
 
-
-
-
-  <script>
-    function closeModal() {
-      document.getElementById("modal-backdrop").classList.add("hidden");
-      // Clear current modal board state if stored in boards.js
-      // (Handled in boards.js logic)
-    }
-  </script>
-
-  <!-- ========== SCRIPTS ========== -->
-  <!-- Main page script for sidebar behavior -->
-  <script src="script.js"></script>
-
-  <!-- CRITICAL: Load undo-redo.js BEFORE script.js -->
-  <script src="../board/search.js"></script>
-  <script src="../board/script.js"></script>
-  <script src="../board/search-mode-behavior.js"></script>
-  <script src="../board/undo-redo.js"></script>
-  <script src="../board/persist-helper.js"></script>
-
-  <script src="../board/connection-colors.js"></script>
-
-  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-  <script type="module" src="../supabaseClient.js"></script>
-  <link rel="stylesheet" href="../board/tour.css" />
-  <script src="../board/tour.js"></script>
-  <script type="module" src="../supabase-sync.js"></script>
-
-  <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      const topBtn = document.getElementById("signout-btn");
-      const sideBtn = document.getElementById("signout-btn-sidebar");
-
-      if (sideBtn && topBtn) {
-        sideBtn.addEventListener("click", (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-
-          // Close mobile overlay if needed
-          const overlay = document.getElementById("overlay");
-          if (overlay) overlay.classList.add("hidden");
-
-          // Trigger the REAL button's click (boards.js listener)
-          topBtn.click();
-        });
+    <script>
+      function closeModal() {
+        document.getElementById("modal-backdrop").classList.add("hidden");
+        // Clear current modal board state if stored in boards.js
+        // (Handled in boards.js logic)
       }
-    });
-  </script>
+    </script>
 
-  <!-- Existing scripts -->
-  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-  <script type="module" src="../supabaseClient.js"></script>
+    <!-- ========== SCRIPTS ========== -->
+    <!-- Main page script for sidebar behavior -->
+    <script src="script.js"></script>
 
-  <!-- Missing script (this is the fix!) -->
-  <!-- <script src="./crossrefs.js"></script> -->
-  <script type="module" src="boards.js"></script>
-</body>
+    <!-- CRITICAL: Load undo-redo.js BEFORE script.js -->
+    <script src="../board/search.js"></script>
+    <script src="../board/script.js"></script>
+    <script src="../board/search-mode-behavior.js"></script>
+    <script src="../board/undo-redo.js"></script>
+    <script src="../board/persist-helper.js"></script>
 
+    <script src="../board/connection-colors.js"></script>
+
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script type="module" src="../supabaseClient.js"></script>
+    <link rel="stylesheet" href="../board/tour.css" />
+    <script src="../board/tour.js"></script>
+    <script type="module" src="../supabase-sync.js"></script>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        const topBtn = document.getElementById("signout-btn");
+        const sideBtn = document.getElementById("signout-btn-sidebar");
+
+        if (sideBtn && topBtn) {
+          sideBtn.addEventListener("click", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+
+            // Close mobile overlay if needed
+            const overlay = document.getElementById("overlay");
+            if (overlay) overlay.classList.add("hidden");
+
+            // Trigger the REAL button's click (boards.js listener)
+            topBtn.click();
+          });
+        }
+      });
+    </script>
+
+    <!-- Existing scripts -->
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script type="module" src="../supabaseClient.js"></script>
+
+    <!-- Missing script (this is the fix!) -->
+    <!-- <script src="./crossrefs.js"></script> -->
+    <script type="module" src="boards.js"></script>
+  </body>
 </html>

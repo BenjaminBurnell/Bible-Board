@@ -193,17 +193,86 @@ body.light {
 
 /* Text note */
 .text-note .text-content {
-  font-size: 22.5px;
+  font-size: 18px;
   color: var(--fg);
   font-weight: 900;
-  line-height: 1.35;
-  white-space: pre-wrap;
+  line-height: var(--note-line-height, 1.2); /* driven from JS */
+  white-space: normal;                       /* rely on <br> / <p> */
   background: transparent;
   border: none;
   outline: none;
   box-shadow: none;
   padding: 0;
   margin: 0;
+}
+
+/* Remove built-in paragraph margins inside notes – fixes ghost gaps */
+.text-note .text-content p,
+.text-note .text-content div,
+.text-note .text-content h1,
+.text-note .text-content h2, 
+.text-note .text-content h3 {
+  margin: 0px !important;
+  padding: 0px !important;
+}
+
+#note-modal-editor p,
+#note-modal-editor div,
+#note-modal-editor h1,
+#note-modal-editor h2, 
+#note-modal-editor h3 {
+  margin: 0px !important;
+  padding: 0px !important;
+}
+
+
+.text-note .text-content ul {
+  margin-bottom: 0px;
+  margin-top: 0px;
+}
+
+
+/* Per-note fonts */
+.text-note[data-font="default"] .text-content {
+  font-family: "Stack Sans Notch", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.text-note[data-font="serif"] .text-content {
+  font-family: Georgia, "Times New Roman", serif;
+}
+
+.text-note[data-font="mono"] .text-content {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", "Courier New", monospace;
+}
+
+.text-note[data-font="handwriting"] .text-content {
+  font-family: "Comic Sans MS", "Comic Neue", system-ui, cursive;
+  font-weight: 600;
+}
+
+/* Font picker row in the note modal */
+.note-font-row {
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+}
+
+.note-font-row label {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+#note-modal-font {
+  flex: 1;
+  padding: 4px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-alt);
+  color: var(--fg);
+  font-size: 0.85rem;
 }
 
 .text-note .text-content:focus {
@@ -1197,6 +1266,10 @@ body:not(.light) #sun-icon {
   justify-content: flex-start;
 }
 
+.board-item.text-note {
+  max-width: 600px !important;
+}
+
 .interlinear-card-header {
   display: flex;
   align-items: center;
@@ -1521,6 +1594,103 @@ body {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
   opacity: 0;
   animation: bb-toast-fade 1.6s ease-out;
+}
+
+/* --- Share Modal (centered, Google Docs–style) --- */
+#share-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 10030;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+
+#share-modal-backdrop:not(.hidden) {
+  display: flex;
+}
+
+.share-modal-content {
+  max-width: 420px;
+  width: min(420px, 92vw);
+  background: var(--bg);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.35);
+  padding: 16px 18px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.share-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.share-modal-header h3 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.share-modal-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.share-field-label {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.share-link-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+#share-modal-link-input {
+  flex: 1;
+  font-family: monospace;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-alt);
+  color: var(--muted);
+  box-sizing: border-box;
+}
+
+#share-modal-copy-btn {
+  white-space: nowrap;
+  font-size: 0.9rem;
+  font-weight: 700;
+  padding: 8px 12px;
+}
+
+#share-visibility-select {
+  margin-top: 4px;
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-alt);
+  color: var(--fg);
+  padding: 6px 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.share-helper-text {
+  margin: 2px 0 0;
+  font-size: 0.75rem;
+  color: var(--muted);
 }
 
 @keyframes bb-toast-fade {
@@ -2137,7 +2307,22 @@ body.read-only .connection-handle {
 }
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 /* --- Note Modal Styles --- */
+
 #note-modal-backdrop {
   position: fixed;
   inset: 0;
@@ -2145,14 +2330,15 @@ body.read-only .connection-handle {
   backdrop-filter: blur(4px);
   z-index: 6000000;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  justify-content:center;
+  align-items:center;
 }
 
 #note-modal-backdrop.hidden {
   display: none;
 }
 
+/* Modal shell (shared with other modals) */
 .modal-content {
   background: var(--bg-dots);
   border: 1px solid var(--border);
@@ -2172,21 +2358,115 @@ body.read-only .connection-handle {
   font-size: 1.2rem;
 }
 
-#note-modal-input {
-  width: 100%;
-  height: 150px;
-  padding: 12px;
+/* NEW: WYSIWYG editor area */
+#note-modal-editor {
+  width: 100% !important;
+  /* max-width: 800px; */
+  min-height: 180px;
+  padding: 0px !important;
   border-radius: 12px;
-  border: 1px solid var(--border);
-  background: var(--bg-alt);
+  border: none;
+  background: transparent;
   color: var(--fg);
   font-size: 1rem;
   font-family: inherit;
-  resize: none;
   box-sizing: border-box;
   outline: none;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  cursor: text;
+  position:fixed;
+  left:50%;
+  transform:translate(-50%);
+  top:0px;
 }
 
+/* Allow text selection inside the editor despite global user-select: none */
+#note-modal-editor,
+#note-modal-editor * {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+#note-modal-editor span[style*="background-color"] {
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+/* Toolbar */
+.note-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 8px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--bg-alt);
+}
+
+.note-toolbar-group {
+  display: flex;
+  align-items: center !important;
+  justify-content:center;
+  gap: 6px;
+}
+
+.note-toolbar-font-group {
+  border-left: 1px solid var(--border);
+  padding-left: 10px;
+  margin-left: 4px;
+}
+
+.note-toolbar-label {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.note-tool-btn {
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-dots);
+  color: var(--fg);
+  padding: 4px 8px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.note-tool-btn:hover {
+  background: var(--bg-seethroug);
+}
+
+.note-tool-label {
+  line-height: 1;
+}
+
+.note-toolbar select {
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-dots);
+  color: var(--fg);
+  padding: 3px 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.note-toolbar input[type="color"] {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+/* Modal footer buttons (unchanged) */
 .modal-actions {
   display: flex;
   justify-content: flex-end;
@@ -2221,6 +2501,7 @@ body.read-only .connection-handle {
 .modal-btn.primary:hover {
   opacity: 0.9;
 }
+
 
 /* --- Edit Button on Board Item --- */
 .board-item .edit-btn {
@@ -2259,6 +2540,378 @@ body.read-only .connection-handle {
   .board-item .edit-btn:hover {
     transform: scale(1.05);
   }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* ========= Full-screen Note Editor ========= */
+#note-modal-backdrop.note-editor-backdrop {
+  position: fixed;
+  top: 0;
+  left: var(--sidebar-width); /* keep sidebar visible like "open scripture" */
+  right: 0;
+  bottom: 0;
+  background:var(--bg);
+  backdrop-filter: blur(4px);
+  z-index: 600000;
+  display: flex;
+  justify-content:center;
+  align-items:center;
+  padding: 32px 24px;
+}
+
+#note-modal-backdrop.note-editor-backdrop.hidden {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  #note-modal-backdrop.note-editor-backdrop {
+    left: 0;
+    padding: 16px;
+  }
+}
+
+#note-editor-wrapper {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Toolbar pill */
+.note-editor-toolbar {
+  width:fit-content;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg-dots);
+  /* box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45); */
+  gap: 10px;
+  height: 50px;
+  /* overflow-x: scroll;
+  overflow-y:visible; */
+  padding:0px 20px; 
+  position: fixed;
+  bottom:15px;
+  left:50%;
+  transform:translate(-50%);
+}
+
+.note-toolbar-left {
+  width:450px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+.note-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.note-tool-btn {
+  width:25px;
+  height:25px;
+  border: none;
+  background: transparent;
+  /* padding: 4px 8px; */
+  border-radius: 8px;
+  cursor: pointer;
+  color: var(--fg);
+  font-size: 13px;
+  font-weight: 600;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+}
+
+.note-tool-btn:hover {
+  background: var(--bg-alt);
+}
+
+.note-tool-btn.is-active {
+  background: var(--fg-seethrough);
+}
+
+.alight-text-icon {
+  width:30px;
+  height:30px;
+  
+}
+
+.note-toolbar-divider {
+  width: 1px;
+  height: 18px;
+  background: var(--border);
+  margin: 0 4px;
+}
+
+.note-toolbar-select-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.note-toolbar-select-label select {
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--fg);
+  padding: 3px 6px;
+  font-size: 12px;
+}
+
+/* Save / Cancel */
+.note-tool-secondary,
+.note-tool-primary {
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.note-tool-secondary {
+  background: transparent;
+  color: var(--fg);
+}
+
+.note-tool-secondary:hover {
+  background: var(--bg-seethroug);
+}
+
+.note-tool-primary {
+  background: var(--fg);
+  color: var(--bg);
+  border-color: var(--fg);
+}
+
+.note-tool-primary:hover {
+  opacity: 0.9;
+}
+
+/* Editor card */
+#note-editor-card {
+  background: red;
+  border: none;
+  /* padding: 24px 26px; */
+  /* box-shadow: 0 20px 45px rgba(0, 0, 0, 0.55); */
+  width:100%;
+  height:auto;
+  position: fixed;
+  bottom:0px;
+  top:0px;
+  left:0px;
+  right:0px;
+  overflow-y: scroll;
+  display: flex;
+  flex-direction: column;
+  z-index: -1;
+}
+
+/* The editable area */
+.note-editor-body {
+  flex: 1;
+  overflow-y: scroll;
+  font-size: 16px;
+  line-height: var(--note-editor-line-height, 1.5);
+  color: var(--fg);
+  font-family: inherit;
+  outline: none;
+  border: none;
+  background: transparent;
+  white-space: pre-wrap;
+}
+
+/* Allow selecting text inside editor (board uses a lot of user-select: none) */
+.note-editor-body,
+.note-editor-body * {
+  user-select: text;
+  -webkit-user-select: text;
+  line-height: inherit !important;
+}
+
+/* Placeholder for empty editor */
+.note-editor-body:empty::before {
+  content: attr(data-placeholder);
+  color: var(--muted);
+}
+
+/* Keep note color picker under the editor */
+#note-modal-colors.note-color-picker {
+  margin-top: 12px;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* ====== Color menus in note toolbar ====== */
+.note-color-group {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.note-color-icon {
+  font-weight: 700;
+  font-size: 15px;
+  text-decoration: underline;
+  text-decoration-color: currentColor;
+}
+
+.note-highlight-icon {
+  font-size: 14px;
+}
+
+/* Popup card */
+.note-color-menu {
+  position: absolute;
+  bottom: 170%;
+  left: 0;
+  z-index: 600001;
+  background: var(--bg-dots);
+  color: var(--fg);
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.2);
+  padding: 10px 10px 8px;
+  min-width: 210px;
+}
+
+.note-color-menu > span {
+  padding-bottom: 100px;
+  font-size: 15px;
+  color:var(--muted);
+  font-weight: 800;
+}
+
+#note-highlight-color-menu {
+  left:25px;
+}
+
+.note-color-menu.hidden {
+  display: none;
+}
+
+.note-color-grid {
+  margin-top: 5px;
+  width:100%;
+  display: grid;
+  grid-template-columns: repeat(10, 24px);
+  gap: 4px;
+  margin-bottom: 0px;
+}
+
+/* Color circles */
+.note-color-swatch {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  border: none !important;
+  padding: 0;
+  cursor: pointer;
+  background: transparent;
+}
+
+.note-color-swatch.selected {
+  box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--accent, #4a90e2);
+}
+
+/* Custom row */
+.note-color-custom-row {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.note-color-custom-label {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+
+.note-color-custom-btn {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--fg);
+  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.note-color-custom-btn:hover {
+  background: var(--bg-seethroug);
+}
+
+.note-color-input-hidden {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
 }
 
 
@@ -2376,11 +3029,11 @@ body.read-only .connection-handle {
 }
 
 .note-color-swatch {
-  width: 28px;
-  height: 28px;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
   cursor: pointer;
-  border: 2px solid var(--border);
+  border: none !important;
   transition: transform 0.15s, border-color 0.15s;
   position: relative;
 }
@@ -2436,7 +3089,8 @@ body.read-only .connection-handle {
   line-height: 1.4;
   opacity: 0.8;
   /* border-top: 1px solid var(--fg-seethrough); */
-  margin-top: 20px;
+  margin-top: 5px;
+  margin-bottom: 15px;
 }
 
 .chapter-copyright a {
@@ -3220,9 +3874,9 @@ body.scripture-mode-on #bible-query-reader {
   width: fit-content;
   max-width: 600px;
   height: 50px;
+  padding:0px 20px; 
   background: var(--bg-dots);
   backdrop-filter: blur(rem);
-  padding:0px 20px;
   cursor: pointer;
   border-radius: 50px;
   border: 1px solid var(--fg-seethrough);
@@ -3650,4 +4304,233 @@ body.scripture-mode-on #scripture-mode-toggle {
 .crossref-text {
   font-size: 16px;
   opacity: 0.9;
+}
+
+
+/* Note modal toolbar layout */
+.note-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.note-modal-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.note-toolbar-label {
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+#note-line-height {
+  background: var(--bg-elevated);
+  color: var(--fg);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  padding: 4px 6px;
+  font-size: 12px;
+}
+
+/* Make the editor preview respect chosen line-height */
+#note-modal-input {
+  width: 100%;
+  min-height: 140px;
+  resize: vertical;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-elevated);
+  color: var(--fg);
+  line-height: 1.2; /* default, will be overridden by JS */
+}
+
+
+
+
+
+
+
+
+
+
+
+
+/* ==========================================
+   NOTE EDITOR: backdrop scroll + fixed toolbar
+   ========================================== */
+
+#note-modal-backdrop.note-editor-backdrop{
+  /* keep your full-screen overlay */
+  position: fixed;
+  top: 0;
+  left: var(--sidebar-width);
+  right: 0;
+  bottom: 0;
+
+  /* ✅ backdrop is the scroll container now */
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+
+  /* centered layout (horizontal), but allow vertical scrolling */
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+
+  /* top padding + extra bottom padding so content never hides behind toolbar */
+  padding: 48px 24px 130px;
+
+  background: var(--bg);
+  backdrop-filter: blur(4px);
+  z-index: 600000;
+}
+
+@media (max-width: 900px) {
+  #note-modal-backdrop.note-editor-backdrop{
+    left: 0;
+    padding: 20px 16px 130px;
+  }
+}
+
+/* center the whole editor “column” */
+#note-editor-wrapper{
+  width: min(980px, 100%);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ✅ fixed toolbar, always in front */
+#note-modal-toolbar.note-editor-toolbar{
+  position: fixed;
+  bottom: 15px;
+
+  /* center within the area to the right of the sidebar */
+  left: calc(var(--sidebar-width) + (100% - var(--sidebar-width)) / 2);
+  transform: translateX(-50%);
+
+  z-index: 600005;
+}
+
+@media (max-width: 900px) {
+  #note-modal-toolbar.note-editor-toolbar{
+    left: 50%;
+  }
+}
+
+/* ✅ editor card should NOT be fixed or scroll itself */
+#note-modal-backdrop.note-editor-backdrop #note-editor-card{
+  position: relative;
+  z-index: 0;
+
+  width: 100%;
+  border: none;
+  border-radius: 25px;
+  background: transparent;
+
+  padding: 24px 0px;
+  min-height: 70vh;
+
+  overflow: visible; /* scroll is on the backdrop */
+}
+
+/* ✅ editable area should grow; no internal scrolling */
+#note-modal-backdrop.note-editor-backdrop #note-modal-editor,
+#note-modal-backdrop.note-editor-backdrop .note-editor-body{
+  overflow: visible;
+  min-height: 60vh;
+}
+
+
+
+/* ===== FINAL: Full-screen Note Editor layout ===== */
+
+/* 1) Backdrop is the scroll container */
+#note-modal-backdrop.note-editor-backdrop {
+  overflow-y: auto;
+  align-items: flex-start;              /* stop vertical centering */
+  padding: 32px 24px 70px;             /* bottom room for fixed toolbar */
+}
+
+/* 2) Centered content column, max 900px */
+#note-editor-wrapper {
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+/* 3) Undo the "fixed full-screen / z-index:-1 / inner scroll" editor-card */
+#note-modal-backdrop.note-editor-backdrop #note-editor-card {
+  position: relative !important;
+  top: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  left: auto !important;
+  z-index: 0 !important;
+  overflow: visible !important;
+  background: transparent !important;
+}
+
+/* 4) Force the editable area to behave like a normal doc (NOT fixed) */
+#note-modal-backdrop.note-editor-backdrop #note-modal-editor {
+  position: relative !important;
+  top: auto !important;
+  left: auto !important;
+  transform: none !important;
+
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+
+  min-height: calc(100vh - 240px);
+  padding: 24px 26px;
+  box-sizing: border-box;
+
+  overflow: visible !important;         /* let the backdrop scroll */
+}
+
+/* If your .note-editor-body sets overflow-y: scroll, kill it for this modal */
+#note-modal-backdrop.note-editor-backdrop .note-editor-body {
+  overflow: visible !important;
+}
+
+/* 5) Toolbar: fixed and always on top */
+#note-modal-toolbar.note-editor-toolbar {
+  position: fixed !important;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 600001;
+}
+
+@media (max-width: 900px) {
+  #note-modal-backdrop.note-editor-backdrop {
+    left: 0; /* matches your existing mobile behavior */
+  }
+}
+
+
+@media (max-width:600px) {
+  .note-editor-toolbar {
+    width:calc(100vw - 42px);
+    padding-bottom:15px;
+    bottom:0px !important;
+    border-radius: 25px;
+    border-bottom-right-radius: 0px;
+    border-bottom-left-radius: 0px;
+  }
+  
+  .note-toolbar-left {
+    width:calc(100% - 100px) !important;
+    overflow-x: scroll;
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 4px;
+  }
 }

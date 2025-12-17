@@ -3501,9 +3501,16 @@ function isTouchInsideUI(el) {
     el.closest?.("#search-query-container") ||
     el.closest?.("#action-buttons-container") ||
     el.closest?.("#bible-whiteboard-title") ||
-    el.closest?.("#search-container")
+    el.closest?.("#search-container") ||
+
+    // ✅ Add note editor UI
+    el.closest?.("#note-modal-backdrop") ||
+    el.closest?.("#note-editor-card") ||
+    el.closest?.("#note-modal-toolbar") ||
+    el.closest?.("#note-modal-editor")
   );
 }
+
 // ... (All existing pan, zoom, drag, touch, and connection logic remains unchanged) ...
 // ... (Skipping ~500 lines of unchanged code for brevity) ...
 function onGlobalMouseUp() {
@@ -3684,12 +3691,17 @@ window.addEventListener("mousemove", (e) => {
 viewport.addEventListener(
   "wheel",
   (e) => {
+    // ✅ If the note editor is open and the wheel started inside it,
+    // let the browser scroll the editor instead of zooming the canvas.
+    if (e.target.closest?.("#note-modal-backdrop")) return;
+
     const pixels =
       e.deltaMode === 1
         ? e.deltaY * 16
         : e.deltaMode === 2
         ? e.deltaY * viewport.clientHeight
         : e.deltaY;
+
     const changed = applyZoom(
       e,
       -pixels * (e.ctrlKey ? PINCH_SENS : WHEEL_SENS)
@@ -3698,6 +3710,7 @@ viewport.addEventListener(
   },
   { passive: false }
 );
+
 
 // Keep connection lines in sync when the viewport scrolls (wheel/trackpad/scrollbar)
 viewport.addEventListener(
@@ -4805,99 +4818,861 @@ function attachSelectionFrame(el) {
   el.appendChild(frame);
 }
 
-// ==================== Note Modal Logic ====================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// ==================== Note Editor Overlay (full-screen) ====================
 const noteModal = document.getElementById("note-modal-backdrop");
-const noteInput = document.getElementById("note-modal-input");
+const noteEditor = document.getElementById("note-modal-editor");
 const noteSaveBtn = document.getElementById("note-modal-save-btn");
 const noteCancelBtn = document.getElementById("note-modal-cancel-btn");
+const noteToolbar = document.getElementById("note-modal-toolbar");
+const noteFontSizeSelect = document.getElementById("note-font-size-select");
+const noteLineHeightSelect = document.getElementById("note-line-height-select");
+
+// Color UI
+const noteTextColorToggle = document.getElementById("note-text-color-toggle");
+const noteHighlightColorToggle = document.getElementById("note-highlight-color-toggle");
+const noteTextColorMenu = document.getElementById("note-text-color-menu");
+const noteHighlightColorMenu = document.getElementById("note-highlight-color-menu");
+const noteTextCustomInput = document.getElementById("note-text-color-custom-input");
+const noteHighlightCustomInput = document.getElementById("note-highlight-color-custom-input");
 
 let currentEditingNote = null;
+let currentNoteLineHeight = 1.4;
+const DEFAULT_NOTE_LINE_HEIGHT = 1.4;
+
+function clampLineHeight(val) {
+  const n = parseFloat(val);
+  if (!Number.isFinite(n)) return DEFAULT_NOTE_LINE_HEIGHT;
+  return Math.max(1.0, Math.min(2.5, n));
+}
+
+
+// Color palette approximating Google Docs (dark -> light, spectrum rows)
+const NOTE_COLOR_SWATCHES = [
+  // Row 1 – greys
+  "rgb(0, 0, 0)", "rgb(67, 67, 67)", "rgb(102, 102, 102)", "rgb(153, 153, 153)",
+  "rgb(183, 183, 183)", "rgb(204, 204, 204)", "rgb(217, 217, 217)", "rgb(239, 239, 239)",
+  "rgb(243, 243, 243)", "rgb(255, 255, 255)",
+
+  // Row 2 – pure spectrum
+  "rgb(152, 0, 0)", "rgb(255, 0, 0)", "rgb(255, 153, 0)", "rgb(255, 255, 0)",
+  "rgb(0, 255, 0)", "rgb(0, 255, 255)", "rgb(74, 134, 232)", "rgb(0, 0, 255)",
+  "rgb(153, 0, 255)", "rgb(255, 0, 255)",
+
+  // Row 3 – light tints
+  "rgb(230, 184, 175)", "rgb(244, 204, 204)", "rgb(252, 229, 205)", "rgb(255, 242, 204)",
+  "rgb(217, 234, 211)", "rgb(208, 224, 227)", "rgb(201, 218, 248)", "rgb(207, 226, 243)",
+  "rgb(217, 210, 233)", "rgb(234, 209, 220)",
+
+  // Row 4 – soft mids
+  "rgb(221, 126, 107)", "rgb(234, 153, 153)", "rgb(249, 203, 156)", "rgb(255, 229, 153)",
+  "rgb(182, 215, 168)", "rgb(162, 196, 201)", "rgb(164, 194, 244)", "rgb(159, 197, 232)",
+  "rgb(180, 167, 214)", "rgb(213, 166, 189)",
+
+  // Row 5 – stronger mids
+  "rgb(204, 65, 37)", "rgb(224, 102, 102)", "rgb(246, 178, 107)", "rgb(255, 217, 102)",
+  "rgb(147, 196, 125)", "rgb(118, 165, 175)", "rgb(109, 158, 235)", "rgb(111, 168, 220)",
+  "rgb(142, 124, 195)", "rgb(194, 123, 160)",
+
+  // Row 6 – deep colors
+  "rgb(166, 28, 0)", "rgb(204, 0, 0)", "rgb(230, 145, 56)", "rgb(241, 194, 50)",
+  "rgb(106, 168, 79)", "rgb(69, 129, 142)", "rgb(60, 120, 216)", "rgb(61, 133, 198)",
+  "rgb(103, 78, 167)", "rgb(166, 77, 121)",
+
+  // Row 7 – darker
+  "rgb(133, 32, 12)", "rgb(153, 0, 0)", "rgb(180, 95, 6)", "rgb(191, 144, 0)",
+  "rgb(56, 118, 29)", "rgb(19, 79, 92)", "rgb(17, 85, 204)", "rgb(11, 83, 148)",
+  "rgb(53, 28, 117)", "rgb(116, 27, 71)",
+
+  // Row 8 – deepest
+  "rgb(91, 15, 0)", "rgb(102, 0, 0)", "rgb(120, 63, 4)", "rgb(127, 96, 0)",
+  "rgb(39, 78, 19)", "rgb(12, 52, 61)", "rgb(28, 69, 135)", "rgb(7, 55, 99)",
+  "rgb(32, 18, 77)", "rgb(76, 17, 48)",
+];
+
+
+function buildNoteColorPalette(menuEl) {
+  if (!menuEl) return;
+  const grid = menuEl.querySelector('.note-color-grid[data-role="palette"]');
+  if (!grid) return;
+  grid.innerHTML = "";
+
+  NOTE_COLOR_SWATCHES.forEach((hex) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "note-color-swatch";
+    btn.dataset.color = hex;
+    btn.style.backgroundColor = hex;
+    grid.appendChild(btn);
+  });
+}
+
+// Turn <font> tags from execCommand into spans
+function normalizeNoteFonts(container) {
+  const fonts = container.querySelectorAll("font");
+  fonts.forEach((fontEl) => {
+    const span = document.createElement("span");
+    const color = fontEl.getAttribute("color");
+    if (color) span.style.color = color;
+    span.innerHTML = fontEl.innerHTML;
+    fontEl.replaceWith(span);
+  });
+}
+
+// Keep only safe tags/styles so notes don't get crazy HTML
+function sanitizeNoteHtml(dirtyHtml) {
+  const temp = document.createElement("div");
+  temp.innerHTML = dirtyHtml;
+
+  normalizeNoteFonts(temp);
+
+  const allowedTags = new Set([
+    "b", "strong", "i", "em", "u", "s", "strike",
+    "span", "p", "br", "ul", "ol", "li",
+    "h1", "h2", "h3",
+    "blockquote", "div"
+  ]);
+
+  const allowedStyleProps = [
+    "font-size",
+    "font-weight",
+    "font-style",
+    "text-decoration",
+    "text-align",
+    "color",
+    "background-color",
+    "line-height"
+  ];
+
+  function walk(node) {
+    if (node.nodeType === Node.ELEMENT_NODE) {
+      const tag = node.tagName.toLowerCase();
+
+      if (!allowedTags.has(tag)) {
+        const parent = node.parentNode;
+        if (parent) {
+          while (node.firstChild) parent.insertBefore(node.firstChild, node);
+          parent.removeChild(node);
+          return;
+        }
+      } else {
+        [...node.attributes].forEach((attr) => {
+          if (attr.name !== "style") node.removeAttribute(attr.name);
+        });
+
+        if (node.hasAttribute("style")) {
+          const style = node.style;
+          const safeParts = [];
+          allowedStyleProps.forEach((prop) => {
+            const value = style.getPropertyValue(prop);
+            if (value) safeParts.push(`${prop}: ${value}`);
+          });
+          if (safeParts.length) {
+            node.setAttribute("style", safeParts.join("; "));
+          } else {
+            node.removeAttribute("style");
+          }
+        }
+      }
+    }
+
+    let child = node.firstChild;
+    while (child) {
+      const next = child.nextSibling;
+      walk(child);
+      child = next;
+    }
+  }
+
+  walk(temp);
+  return temp.innerHTML;
+}
+
+function focusNoteEditorAtEnd() {
+  if (!noteEditor) return;
+  const range = document.createRange();
+  range.selectNodeContents(noteEditor);
+  range.collapse(false);
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(range);
+}
 
 function openNoteModal(noteEl = null) {
   if (window.__readOnly) return;
+  if (!noteModal || !noteEditor) return;
 
   currentEditingNote = noteEl;
 
   if (noteEl) {
-    // Edit Mode
     const contentEl = noteEl.querySelector(".text-content");
-    // Use innerHTML to preserve line breaks if any, or textContent if simple
-    // Replacing <br> with newlines for textarea
-    let text = contentEl.innerHTML.replace(/<br\s*\/?>/gi, "\n");
-    // Decode HTML entities if needed, but value usually handles it
-    const temp = document.createElement("div");
-    temp.innerHTML = text;
-    noteInput.value = temp.textContent || temp.innerText || "";
+    const html = contentEl ? contentEl.innerHTML : "";
+    noteEditor.innerHTML = html || "";
+
+    const lhAttr =
+      (contentEl && (contentEl.dataset.lineHeight || contentEl.style.lineHeight)) ||
+      "";
+    currentNoteLineHeight = lhAttr ? clampLineHeight(lhAttr) : DEFAULT_NOTE_LINE_HEIGHT;
   } else {
-    // Add Mode
-    noteInput.value = "";
+    noteEditor.innerHTML = "";
+    currentNoteLineHeight = DEFAULT_NOTE_LINE_HEIGHT;
+  }
+
+  noteEditor.style.setProperty(
+    "--note-editor-line-height",
+    currentNoteLineHeight
+  );
+  noteEditor.style.lineHeight = currentNoteLineHeight;
+
+  if (noteLineHeightSelect) {
+    const target = String(currentNoteLineHeight);
+    const has = Array.from(noteLineHeightSelect.options).some(
+      (o) => o.value === target
+    );
+    noteLineHeightSelect.value = has ? target : String(DEFAULT_NOTE_LINE_HEIGHT);
+  }
+
+  if (noteFontSizeSelect) {
+    noteFontSizeSelect.value = "";
   }
 
   noteModal.classList.remove("hidden");
-  setTimeout(() => noteInput.focus(), 50); // Focus after render
+
+  setTimeout(() => {
+    noteEditor.focus();
+    focusNoteEditorAtEnd();
+    scheduleNoteToolbarSync();
+  }, 20);
 }
 
 function closeNoteModal() {
+  if (!noteModal) return;
   noteModal.classList.add("hidden");
   currentEditingNote = null;
 }
 
-function saveNoteFromModal() {
-  const text = noteInput.value.trim(); // Allow empty?
+function applyNoteCommand(cmd, value = null) {
+  if (!noteEditor) return;
+  noteEditor.focus();
+  document.execCommand(cmd, false, value);
+}
 
-  // Convert newlines to <br> for HTML display
-  const htmlContent = text.replace(/\n/g, "<br>");
+function promoteHighlightToFontSizeSpans(container) {
+  if (!container) return;
 
-  if (currentEditingNote) {
-    // Update Existing
-    const contentEl = currentEditingNote.querySelector(".text-content");
-    contentEl.innerHTML = htmlContent || "Empty note";
-    onBoardMutated("edit_note_text");
-  } else {
-    // Create New
-    if (text) {
-      addTextNote(htmlContent);
+  const bgSpans = Array.from(container.querySelectorAll("span")).filter(
+    (sp) => sp.style && sp.style.backgroundColor
+  );
+
+  bgSpans.forEach((bg) => {
+    // Only handle "highlight-only" spans (avoid breaking spans that also carry other styles)
+    const hasOtherStyles =
+      bg.style.color ||
+      bg.style.fontSize ||
+      bg.style.fontWeight ||
+      bg.style.fontStyle ||
+      bg.style.textDecoration ||
+      bg.style.textAlign ||
+      bg.style.lineHeight;
+
+    if (hasOtherStyles) return;
+
+    // Find exactly one font-size span inside (this is the common execCommand nesting)
+    const candidates = bg.querySelectorAll('span[style*="font-size"]');
+    if (candidates.length !== 1) return;
+
+    const target = candidates[0];
+
+    // Make sure the target actually represents the same content (avoid stealing bg from a larger wrapper)
+    if (bg.textContent.trim() !== target.textContent.trim()) return;
+
+    // Move the highlight onto the font-size span (so background grows with the new size)
+    if (!target.style.backgroundColor) {
+      target.style.backgroundColor = bg.style.backgroundColor;
+    }
+
+    // Keep line-height consistent with your editor setting
+    if (!target.style.lineHeight && typeof clampLineHeight === "function") {
+      target.style.lineHeight = String(clampLineHeight(currentNoteLineHeight));
+    }
+
+    // Unwrap the old highlight span
+    bg.replaceWith(...bg.childNodes);
+  });
+}
+
+function _spanSig(el) {
+  if (!el || el.nodeType !== 1 || el.tagName !== "SPAN") return "";
+  const s = el.style;
+  return [
+    s.backgroundColor || "",
+    s.color || "",
+    s.fontSize || "",
+    s.fontWeight || "",
+    s.fontStyle || "",
+    s.textDecoration || "",
+    s.lineHeight || "",
+    s.textAlign || "",
+  ].map(v => (v || "").trim()).join("|");
+}
+
+function mergeAdjacentNoteSpans(root) {
+  if (!root) return;
+
+  function mergeIn(parent) {
+    let node = parent.firstChild;
+
+    while (node) {
+      // Recurse first
+      if (node.nodeType === 1) mergeIn(node);
+
+      // Merge adjacent text nodes
+      if (node.nodeType === 3) {
+        while (node.nextSibling && node.nextSibling.nodeType === 3) {
+          node.nodeValue += node.nextSibling.nodeValue;
+          node.nextSibling.remove();
+        }
+      }
+
+      // Merge adjacent <span> siblings with identical inline styles
+      if (node.nodeType === 1 && node.tagName === "SPAN") {
+        let next = node.nextSibling;
+
+        // skip empty text nodes only (don’t delete spaces!)
+        while (next && next.nodeType === 3 && next.nodeValue === "") {
+          const tmp = next.nextSibling;
+          next.remove();
+          next = tmp;
+        }
+
+        while (
+          next &&
+          next.nodeType === 1 &&
+          next.tagName === "SPAN" &&
+          _spanSig(next) === _spanSig(node)
+        ) {
+          while (next.firstChild) node.appendChild(next.firstChild);
+          const tmp = next.nextSibling;
+          next.remove();
+          next = tmp;
+        }
+      }
+
+      node = node.nextSibling;
     }
   }
+
+  mergeIn(root);
+}
+
+function findNearestHighlightColor(startEl) {
+  let el = startEl;
+  while (el && el !== noteEditor) {
+    if (el.tagName === "SPAN" && el.style && el.style.backgroundColor) {
+      return el.style.backgroundColor;
+    }
+    el = el.parentElement;
+  }
+  return "";
+}
+
+// Font size 10–30px on the current selection
+function applyNoteFontSize(px) {
+  if (!noteEditor) return;
+
+  const size = Math.max(10, Math.min(30, Number(px) || 16));
+  noteEditor.focus();
+
+  document.execCommand("fontSize", false, "7");
+
+  const fonts = noteEditor.querySelectorAll('font[size="7"]');
+  fonts.forEach((fontEl) => {
+    const highlightColor = findNearestHighlightColor(fontEl.parentElement);
+
+    const span = document.createElement("span");
+    span.style.fontSize = size + "px";
+
+    // ✅ key fix: if this text lives inside a highlighted span, give THIS span the same background
+    // so the highlight height grows with the new font size.
+    if (highlightColor && !span.style.backgroundColor) {
+      span.style.backgroundColor = highlightColor;
+    }
+
+    span.innerHTML = fontEl.innerHTML;
+    fontEl.replaceWith(span);
+    mergeAdjacentNoteSpans(noteEditor);
+  });
+}
+
+
+function closeAllNoteColorMenus() {
+  if (noteTextColorMenu) noteTextColorMenu.classList.add("hidden");
+  if (noteHighlightColorMenu) noteHighlightColorMenu.classList.add("hidden");
+}
+
+function toggleNoteColorMenu(menu) {
+  if (!menu) return;
+  const isHidden = menu.classList.contains("hidden");
+  closeAllNoteColorMenus();
+  if (isHidden) {
+    menu.classList.remove("hidden");
+  }
+}
+
+function applyNoteColor(kind, color) {
+  if (!color) return;
+  const cmd =
+    kind === "highlight"
+      ? (document.queryCommandSupported("hiliteColor") ? "hiliteColor" : "backColor")
+      : "foreColor";
+
+  applyNoteCommand(cmd, color);
+  mergeAdjacentNoteSpans(noteEditor);
+}
+
+function saveNoteFromModal() {
+  if (!noteEditor) return;
+
+  mergeAdjacentNoteSpans(noteEditor);
+  const rawHtml = noteEditor.innerHTML;
+  const sanitizedHtml = sanitizeNoteHtml(rawHtml).trim();
+  if (!sanitizedHtml) {
+    closeNoteModal();
+    return;
+  }
+
+  const applyLineHeightToContent = (contentEl) => {
+    if (!contentEl) return;
+    const lh = clampLineHeight(currentNoteLineHeight);
+    contentEl.style.lineHeight = lh;
+    contentEl.dataset.lineHeight = String(lh);
+  };
+
+  if (currentEditingNote) {
+    const contentEl = currentEditingNote.querySelector(".text-content");
+    if (contentEl) {
+      contentEl.innerHTML = sanitizedHtml;
+      applyLineHeightToContent(contentEl);
+    }
+    if (typeof onBoardMutated === "function") {
+      onBoardMutated("edit_note_text");
+    }
+  } else {
+    const newEl = addTextNote(sanitizedHtml);
+    if (newEl) {
+      const contentEl = newEl.querySelector(".text-content");
+      applyLineHeightToContent(contentEl);
+    }
+    if (typeof onBoardMutated === "function") {
+      onBoardMutated("add_note");
+    }
+  }
+
   closeNoteModal();
 }
 
-// Wire up Modal Buttons
-if (noteSaveBtn) {
-  noteSaveBtn.addEventListener("click", saveNoteFromModal);
+
+
+// ===== Note modal Save/Cancel + backdrop/Escape wiring (missing) =====
+(function wireNoteModalActions() {
+  // prevent double-wiring if script is reloaded
+  if (window.__BB_NOTE_MODAL_WIRED__) return;
+  window.__BB_NOTE_MODAL_WIRED__ = true;
+
+  if (noteSaveBtn) {
+    noteSaveBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      saveNoteFromModal();
+    });
+  }
+
+  if (noteCancelBtn) {
+    noteCancelBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      // discard changes (do NOT call save)
+      if (typeof closeAllNoteColorMenus === "function") closeAllNoteColorMenus();
+      closeNoteModal();
+    });
+  }
+
+  // Click outside the editor card closes (acts like Cancel)
+  // if (noteModal) {
+  //   noteModal.addEventListener("mousedown", (e) => {
+  //     if (e.target === noteModal) {
+  //       if (typeof closeAllNoteColorMenus === "function") closeAllNoteColorMenus();
+  //       closeNoteModal();
+  //     }
+  //   });
+  // }
+
+  // Escape closes, Ctrl/Cmd+S saves (while modal is open)
+  document.addEventListener(
+    "keydown",
+    (e) => {
+      if (!noteModal || noteModal.classList.contains("hidden")) return;
+
+      if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
+        if (typeof closeAllNoteColorMenus === "function") closeAllNoteColorMenus();
+        closeNoteModal();
+        return;
+      }
+
+      const key = (e.key || "").toLowerCase();
+      if ((e.ctrlKey || e.metaKey) && key === "s") {
+        e.preventDefault();
+        e.stopPropagation();
+        saveNoteFromModal();
+      }
+    },
+    true // capture so it wins vs other global hotkeys
+  );
+})();
+
+
+
+
+// ===== Sync toolbar to selection/caret inside note editor =====
+let _noteToolbarSyncRaf = 0;
+
+function _isNoteModalOpen() {
+  return noteModal && !noteModal.classList.contains("hidden");
 }
-if (noteCancelBtn) {
-  noteCancelBtn.addEventListener("click", closeNoteModal);
+
+function _getNoteSelectionElement() {
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0) return null;
+
+  let node = sel.focusNode || sel.anchorNode;
+  if (!node) return null;
+
+  // text node -> parent element
+  if (node.nodeType === Node.TEXT_NODE) node = node.parentElement;
+
+  return node && node.nodeType === Node.ELEMENT_NODE ? node : null;
 }
-// Close on backdrop click
-if (noteModal) {
-  noteModal.addEventListener("click", (e) => {
-    if (e.target === noteModal) closeNoteModal();
+
+function _safeQueryCommandState(cmd) {
+  try {
+    // works best when selection is inside a contenteditable
+    return document.queryCommandState(cmd);
+  } catch {
+    return null;
+  }
+}
+
+function _ensureSelectHasNumericOption(selectEl, n) {
+  if (!selectEl || !Number.isFinite(n)) return;
+  const val = String(n);
+
+  if (Array.from(selectEl.options).some((o) => o.value === val)) return;
+
+  const opt = document.createElement("option");
+  opt.value = val;
+  opt.textContent = val;
+
+  // Insert in numeric order, after the placeholder (value="")
+  const options = Array.from(selectEl.options);
+  const insertBefore =
+    options.find((o) => o.value && Number(o.value) > n) || null;
+
+  selectEl.insertBefore(opt, insertBefore);
+}
+
+function _nearestSelectNumericValue(selectEl, target) {
+  if (!selectEl || !Number.isFinite(target)) return "";
+
+  let bestValue = "";
+  let bestDist = Infinity;
+
+  for (const o of selectEl.options) {
+    const n = parseFloat(o.value);
+    if (!Number.isFinite(n)) continue;
+    const d = Math.abs(n - target);
+    if (d < bestDist) {
+      bestDist = d;
+      bestValue = o.value;
+    }
+  }
+  return bestValue;
+}
+
+function _setCmdActive(cmd, on) {
+  const btn = noteToolbar?.querySelector(`[data-cmd="${cmd}"]`);
+  if (btn) btn.classList.toggle("is-active", !!on);
+}
+
+function syncNoteToolbarToSelection() {
+  if (!_isNoteModalOpen() || !noteEditor) return;
+
+  const el = _getNoteSelectionElement();
+  if (!el || !noteEditor.contains(el)) return;
+
+  const cs = window.getComputedStyle(el);
+
+  // --- Font size (px) ---
+  const fontSizePx = Math.round(parseFloat(cs.fontSize || "16"));
+  if (noteFontSizeSelect && Number.isFinite(fontSizePx)) {
+    // allow sizes like 22 that aren’t pre-listed
+    _ensureSelectHasNumericOption(noteFontSizeSelect, fontSizePx);
+    noteFontSizeSelect.value = String(fontSizePx);
+  }
+
+  // --- Line height (store as ratio like 1.4, 1.6, etc) ---
+  if (noteLineHeightSelect) {
+    const fs = parseFloat(cs.fontSize || "16");
+    const lhStr = cs.lineHeight;
+
+    let ratio = Number(currentNoteLineHeight) || DEFAULT_NOTE_LINE_HEIGHT;
+
+    if (lhStr && lhStr !== "normal") {
+      const lhNum = parseFloat(lhStr);
+      if (Number.isFinite(lhNum)) {
+        // if computed in px, convert to ratio
+        ratio =
+          lhStr.endsWith("px") && Number.isFinite(fs) && fs > 0
+            ? lhNum / fs
+            : lhNum;
+      }
+    }
+
+    const best = _nearestSelectNumericValue(noteLineHeightSelect, ratio);
+    if (best) noteLineHeightSelect.value = best;
+  }
+
+  // --- Bold / Italic / Underline active states ---
+  const qsBold = _safeQueryCommandState("bold");
+  const qsItalic = _safeQueryCommandState("italic");
+  const qsUnderline = _safeQueryCommandState("underline");
+
+  const bold =
+    qsBold !== null
+      ? qsBold
+      : (parseInt(cs.fontWeight, 10) || 0) >= 600 || cs.fontWeight === "bold";
+
+  const italic =
+    qsItalic !== null
+      ? qsItalic
+      : cs.fontStyle === "italic" || cs.fontStyle === "oblique";
+
+  const deco = (cs.textDecorationLine || cs.textDecoration || "").toLowerCase();
+  const underline =
+    qsUnderline !== null ? qsUnderline : deco.includes("underline");
+
+  _setCmdActive("bold", bold);
+  _setCmdActive("italic", italic);
+  _setCmdActive("underline", underline);
+}
+
+function scheduleNoteToolbarSync() {
+  if (_noteToolbarSyncRaf) cancelAnimationFrame(_noteToolbarSyncRaf);
+  _noteToolbarSyncRaf = requestAnimationFrame(() => {
+    _noteToolbarSyncRaf = 0;
+    syncNoteToolbarToSelection();
   });
 }
 
-// Update Main Action Button
-if (textBtn) {
-  // We need to replace the old clone to strip previous listeners if possible,
-  // or just ensure this one runs and we preventDefault.
-  // Since we can't easily remove anonymous listeners, ensuring this logic
-  // supersedes or we modify the original function is key.
-  // For now, I will attach a new listener and rely on the fact that
-  // calling openNoteModal is the new desired behavior.
 
-  // To be clean, let's recreate the button to strip old listeners
-  const newTextBtn = textBtn.cloneNode(true);
-  textBtn.parentNode.replaceChild(newTextBtn, textBtn);
 
-  newTextBtn.addEventListener("click", (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    openNoteModal(null); // Open empty for new note
+// Toolbar wiring
+if (noteToolbar && noteEditor) {
+  noteToolbar.addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-cmd]");
+    if (btn) {
+      const cmd = btn.dataset.cmd;
+      if (!cmd) return;
+
+      if (cmd === "removeFormat") {
+        applyNoteCommand("removeFormat");
+        scheduleNoteToolbarSync();
+        return;
+      }
+
+      applyNoteCommand(cmd);
+      scheduleNoteToolbarSync();
+      return;
+    }
+  });
+
+  if (noteFontSizeSelect) {
+    noteFontSizeSelect.addEventListener("change", (e) => {
+      const val = e.target.value;
+      if (!val) return;
+      applyNoteFontSize(val);
+      scheduleNoteToolbarSync();
+    });
+  }
+
+  if (noteLineHeightSelect) {
+    noteLineHeightSelect.addEventListener("change", (e) => {
+      const val = e.target.value;
+      currentNoteLineHeight = clampLineHeight(val);
+      noteEditor.style.setProperty("--note-editor-line-height", currentNoteLineHeight);
+      noteEditor.style.lineHeight = currentNoteLineHeight;
+
+      scheduleNoteToolbarSync();
+    });
+  }
+
+  // Keep toolbar synced while typing / moving caret
+  ["keyup", "mouseup", "input", "focus", "click"].forEach((evt) => {
+    noteEditor.addEventListener(evt, scheduleNoteToolbarSync);
+  });
+
+  document.addEventListener("selectionchange", () => {
+    if (!_isNoteModalOpen()) return;
+    scheduleNoteToolbarSync();
+  });
+
+  // ===== Color toggles =====
+  if (noteTextColorToggle) {
+    noteTextColorToggle.addEventListener("click", (e) => {
+      e.stopPropagation();
+      toggleNoteColorMenu(noteTextColorMenu);
+    });
+  }
+
+  if (noteHighlightColorToggle) {
+    noteHighlightColorToggle.addEventListener("click", (e) => {
+      e.stopPropagation();
+      toggleNoteColorMenu(noteHighlightColorMenu);
+    });
+  }
+
+  // Swatch clicks (delegated)
+  if (noteTextColorMenu) {
+    noteTextColorMenu.addEventListener("click", (e) => {
+      const swatch = e.target.closest(".note-color-swatch");
+      if (swatch) {
+        const hex = swatch.dataset.color;
+        applyNoteColor("text", hex);
+        closeAllNoteColorMenus();
+        return;
+      }
+
+      const btn = e.target.closest(".note-color-custom-btn");
+      if (!btn) return;
+
+      const role = btn.dataset.role;
+      if (
+        (role === "custom-text-plus" || role === "custom-text-picker") &&
+        noteTextCustomInput
+      ) {
+        noteTextCustomInput.click();
+      }
+    });
+  }
+
+  if (noteHighlightColorMenu) {
+    noteHighlightColorMenu.addEventListener("click", (e) => {
+      const swatch = e.target.closest(".note-color-swatch");
+      if (swatch) {
+        const hex = swatch.dataset.color;
+        applyNoteColor("highlight", hex);
+        closeAllNoteColorMenus();
+        return;
+      }
+
+      const btn = e.target.closest(".note-color-custom-btn");
+      if (!btn) return;
+
+      const role = btn.dataset.role;
+      if (
+        (role === "custom-highlight-plus" || role === "custom-highlight-picker") &&
+        noteHighlightCustomInput
+      ) {
+        noteHighlightCustomInput.click();
+      }
+    });
+  }
+
+  // Custom color inputs -> apply and close menus
+  if (noteTextCustomInput) {
+    noteTextCustomInput.addEventListener("input", (e) => {
+      const color = e.target.value;
+      if (!color) return;
+      applyNoteColor("text", color);
+      closeAllNoteColorMenus();
+    });
+  }
+
+  if (noteHighlightCustomInput) {
+    noteHighlightCustomInput.addEventListener("input", (e) => {
+      const color = e.target.value;
+      if (!color) return;
+      applyNoteColor("highlight", color);
+      closeAllNoteColorMenus();
+    });
+  }
+
+  // Click outside to close color menus
+  document.addEventListener("click", (e) => {
+    if (
+      e.target.closest("#note-text-color-menu") ||
+      e.target.closest("#note-highlight-color-menu") ||
+      e.target.closest("#note-text-color-toggle") ||
+      e.target.closest("#note-highlight-color-toggle")
+    ) {
+      return;
+    }
+    closeAllNoteColorMenus();
   });
 }
 
-// Updated addTextNote (Removed color, fixed Z-Index)
-function addTextNote(initial = "New note") {
+// Build palettes once toolbar exists
+buildNoteColorPalette(noteTextColorMenu);
+buildNoteColorPalette(noteHighlightColorMenu);
+
+
+
+
+
+// Updated addTextNote (supports per-note font size)
+function addTextNote(initial = "New note", color, fontSize) {
   currentIndex += 1;
   if (window.__readOnly && !window.__RESTORING_FROM_SUPABASE) return;
 
@@ -4917,10 +5692,9 @@ function addTextNote(initial = "New note") {
   el.style.top = `${y}px`;
   el.style.zIndex = currentIndex;
 
-  // UPDATED HTML: Includes the hidden .edit-btn
   el.innerHTML = `
     <div class="note-content">
-      <div class="verse-text note-label">NOTE</div>
+      <div class="verse-text note-label" style="display:none">NOTE</div>
       <div class="text-content">${initial}</div>
     </div>
     <button class="edit-btn" aria-label="Edit Note" title="Edit Text">
@@ -4935,7 +5709,19 @@ function addTextNote(initial = "New note") {
   workspace.appendChild(el);
   el.dataset.vkey = itemKey(el);
 
-  // --- Logic ---
+  // Apply font-size if provided (clamped 10–30px)
+  const contentDiv = el.querySelector(".text-content");
+  if (contentDiv) {
+    const sizePx =
+      fontSize ||
+      (typeof currentNoteFontSize === "number"
+        ? currentNoteFontSize + "px"
+        : null);
+    if (sizePx) {
+      const clamped = clampFontSizePx(sizePx);
+      contentDiv.style.fontSize = clamped + "px";
+    }
+  }
 
   // 1. Edit Button Logic: Opens the modal
   const editBtn = el.querySelector(".edit-btn");
@@ -4953,8 +5739,7 @@ function addTextNote(initial = "New note") {
     });
   }
 
-  // 2. Drag/Select Logic
-  // (Clicking the card body will bubble to workspace, triggering 'selectItem')
+  // 2. Drag/Select Logic (unchanged)
   let startX = 0,
     startY = 0;
 
@@ -4965,11 +5750,20 @@ function addTextNote(initial = "New note") {
     startX = e.clientX;
     startY = e.clientY;
     startDragMouse(el, e);
+    selectItem(el, e);
+  };
+
+  el.onmouseup = (e) => {
+    const dx = Math.abs(e.clientX - startX);
+    const dy = Math.abs(e.clientY - startY);
+    if (dx < 2 && dy < 2) {
+      selectItem(el, e);
+    }
+    onBoardMutated("item_move_mouse_up");
   };
 
   el.ontouchstart = (e) => {
-    if (e.target.closest(".edit-btn")) return;
-    if (isConnectMode || window.__readOnly || e.touches.length !== 1) return;
+    if (isConnectMode) return;
     const t = e.touches[0];
     const rect = el.getBoundingClientRect();
 
@@ -4991,7 +5785,6 @@ function addTextNote(initial = "New note") {
     }, 0);
   };
 
-  onBoardMutated("add_note");
   return el;
 }
 
@@ -7201,28 +7994,46 @@ function initCrossRefSelectionDelegation() {
 // ... (window.addBibleVerse unchanged) ...
 window.addBibleVerse = addBibleVerse;
 
-// ==================== NEW: Share Button Logic ====================
+// ==================== NEW: Share Modal + Visibility Logic ====================
 const shareBtn = document.getElementById("share-btn");
-const sharePopover = document.getElementById("share-popover");
-const shareLinkInput = document.getElementById("share-link");
-const copyLinkBtn = document.getElementById("copy-link-btn");
-const nativeShareBtn = document.getElementById("native-share-btn");
+const shareModalBackdrop = document.getElementById("share-modal-backdrop");
+const shareModalCloseBtn = document.getElementById("share-modal-close-btn");
+const shareModalLinkInput = document.getElementById("share-modal-link-input");
+const shareModalCopyBtn = document.getElementById("share-modal-copy-btn");
+const shareVisibilitySelect = document.getElementById("share-visibility-select");
 
+// Global visibility (default to private).
+// You can hydrate this from Supabase in supabase-sync.js later.
+window.__boardVisibility = window.__boardVisibility || "private";
+
+/**
+ * Builds the canonical share URL for this board.
+ * Uses your existing BOARD_ID + OWNER_UID globals.
+ */
 function getShareUrl() {
-  const url = new URL(location.origin); // Use origin for a clean base
-  url.pathname = "/board/index.html"; // Set canonical path
-  if (BOARD_ID) url.searchParams.set("board", BOARD_ID);
-  if (OWNER_UID) url.searchParams.set("owner", OWNER_UID);
+  const url = new URL(location.origin);
+  // If you ever host this somewhere else, adjust this path:
+  url.pathname = "/board/index.html";
+  if (typeof BOARD_ID !== "undefined" && BOARD_ID) {
+    url.searchParams.set("board", BOARD_ID);
+  }
+  if (typeof OWNER_UID !== "undefined" && OWNER_UID) {
+    url.searchParams.set("owner", OWNER_UID);
+  }
+  // Optional: mark read-only views explicitly
+  // url.searchParams.set("mode", "view");
   return url.toString();
 }
 
+/**
+ * Tiny toast helper reused from the old share popover.
+ */
 function showToast(msg) {
   try {
     const el = document.createElement("div");
     el.className = "toast";
     el.textContent = msg;
     document.body.appendChild(el);
-    // Animation handles fade out, remove after
     setTimeout(() => {
       el.remove();
     }, 1600);
@@ -7231,60 +8042,139 @@ function showToast(msg) {
   }
 }
 
-function toggleSharePopover(open) {
-  const willOpen = open ?? sharePopover.hasAttribute("hidden");
-  if (willOpen) {
-    sharePopover.removeAttribute("hidden");
-    shareBtn.setAttribute("aria-expanded", "true");
-    shareLinkInput.value = getShareUrl();
-    setTimeout(() => shareLinkInput.select(), 0); // Select after paint
-  } else {
-    sharePopover.setAttribute("hidden", "");
-    shareBtn.setAttribute("aria-expanded", "false");
+function openShareModal() {
+  if (!shareModalBackdrop) return;
+
+  shareModalBackdrop.classList.remove("hidden");
+  shareModalBackdrop.style.display = "flex";
+
+  if (shareModalLinkInput) {
+    shareModalLinkInput.value = getShareUrl();
+    // Focus/select after paint
+    setTimeout(() => {
+      try {
+        shareModalLinkInput.focus();
+        shareModalLinkInput.select();
+      } catch (e) {
+        console.warn("Failed to focus share link input:", e);
+      }
+    }, 0);
+  }
+
+  if (shareVisibilitySelect) {
+    shareVisibilitySelect.value = window.__boardVisibility || "private";
   }
 }
 
+function closeShareModal() {
+  if (!shareModalBackdrop) return;
+  shareModalBackdrop.classList.add("hidden");
+  shareModalBackdrop.style.display = "none";
+}
+
+// Open on Share button
 shareBtn?.addEventListener("click", (e) => {
   e.stopPropagation();
-  toggleSharePopover();
+  openShareModal();
 });
 
-document.addEventListener("click", (e) => {
-  if (
-    sharePopover &&
-    !sharePopover.hasAttribute("hidden") &&
-    !sharePopover.contains(e.target) &&
-    e.target !== shareBtn
-  ) {
-    toggleSharePopover(false);
+// Close with X button
+shareModalCloseBtn?.addEventListener("click", () => {
+  closeShareModal();
+});
+
+// Close when clicking backdrop
+shareModalBackdrop?.addEventListener("click", (e) => {
+  if (e.target === shareModalBackdrop) {
+    closeShareModal();
   }
 });
 
-copyLinkBtn?.addEventListener("click", async () => {
+// Close on Escape
+document.addEventListener("keydown", (e) => {
+  if (
+    e.key === "Escape" &&
+    shareModalBackdrop &&
+    !shareModalBackdrop.classList.contains("hidden")
+  ) {
+    closeShareModal();
+  }
+});
+
+// Copy link to clipboard
+shareModalCopyBtn?.addEventListener("click", async () => {
+  if (!shareModalLinkInput) return;
   try {
-    await navigator.clipboard.writeText(shareLinkInput.value);
+    await navigator.clipboard.writeText(shareModalLinkInput.value);
     showToast("Link copied");
-  } catch {
-    shareLinkInput.select();
+  } catch (err) {
+    try {
+      shareModalLinkInput.select();
+    } catch (_) {}
     showToast("Press Ctrl/Cmd+C to copy");
   }
-  toggleSharePopover(false); // Close popover on action
 });
 
-if (navigator.share) {
-  nativeShareBtn.hidden = false;
-  nativeShareBtn.addEventListener("click", async () => {
-    try {
-      await navigator.share({
-        title: "Bible Board",
-        text: `Check out this Bible Board: ${
-          document.getElementById("title-textbox")?.value || ""
-        }`,
-        url: getShareUrl(),
-      });
-    } catch {}
-    toggleSharePopover(false); // Close popover on action
+/**
+ * Handle switching between:
+ *  - "private"
+ *  - "public_view"
+ */
+shareVisibilitySelect?.addEventListener("change", async (e) => {
+  const next = e.target.value === "public_view" ? "public_view" : "private";
+  await toggleBoardVisibility(next);
+});
+
+/**
+ * Core toggle function.
+ * Right now this just updates a global and logs.
+ * Later you can replace the "TODO" section with a real Supabase call.
+ */
+async function toggleBoardVisibility(newVisibility) {
+  const prev = window.__boardVisibility || "private";
+  if (prev === newVisibility) return;
+
+  window.__boardVisibility = newVisibility;
+
+  // 🟡 TODO: Replace this with a real backend update.
+  //
+  // Example (Supabase) shape, **if** you add a visibility column:
+  //
+  //   // boards table: id (uuid), owner_id (uuid), title, visibility
+  //   //
+  //   // visibility ENUM: 'private' | 'public_view'
+  //   //
+  //   // RLS (pseudocode):
+  //   //  - owner can select/update their rows
+  //   //  - everyone can select rows where visibility = 'public_view'
+  //
+  //   import { sb } from "../supabaseClient.js";
+  //
+  //   const { error } = await sb
+  //     .from("boards")
+  //     .update({ visibility: newVisibility })
+  //     .eq("id", BOARD_ID)
+  //     .eq("owner_id", OWNER_UID);
+  //
+  //   if (error) {
+  //     console.error("[Share] Failed to update visibility:", error);
+  //     window.__boardVisibility = prev;
+  //     showToast("Could not update sharing settings");
+  //     return;
+  //   }
+
+  console.log("[Share] Visibility changed", {
+    boardId: typeof BOARD_ID !== "undefined" ? BOARD_ID : null,
+    owner: typeof OWNER_UID !== "undefined" ? OWNER_UID : null,
+    prev,
+    next: newVisibility,
   });
+
+  showToast(
+    newVisibility === "public_view"
+      ? "Anyone with the link can now view this board"
+      : "Link access set to private"
+  );
 }
 
 // ==================== NEW: Export Functions ====================
@@ -7694,9 +8584,14 @@ function serializeBoard() {
             base.reference = el.dataset.reference;
             base.text = el.dataset.text;
             break;
-          case "note":
-            base.text = el.querySelector(".text-content")?.innerHTML || ""; // Get live text
+          case "note": {
+            const noteTextEl = el.querySelector(".text-content");
+            base.text = noteTextEl?.innerHTML || ""; // Get live text
+            const fs = noteTextEl && noteTextEl.style ? noteTextEl.style.fontSize : "";
+            if (fs) base.fontSize = fs;
             break;
+          }
+
           case "song":
             base.title = el.dataset.title;
             base.artist = el.dataset.artist;
@@ -7762,8 +8657,8 @@ function deserializeBoard(data) {
               el = addBibleVerse(item.reference, item.text, true, item.version);
               break;
             case "note":
-              // Updated to support color if present
-              el = addTextNote(item.text, item.color);
+              // text, optional color, optional fontSize
+              el = addTextNote(item.text, item.color, item.fontSize);
               break;
             case "song":
               el = addSongElement(item);
@@ -9907,7 +10802,7 @@ function addInterlinearCard(data, delay = 0) {
   // --- HTML Content ---
   el.innerHTML = `
     <div style="width:100%">
-      <div class="interlinear-card-header">
+      <div class="interlinear-card-header" style="display:none;">
         <span class="interlinear-card-badge">Interlinear</span>
         <span class="interlinear-card-ref">${data.reference || ""}</span>
       </div>
@@ -10813,7 +11708,9 @@ function renderChapter(
     KJV: `Public Domain.`,
     ASV: `Public Domain.`,
     ESV: `Scripture quotations are from the ESV® Bible (The Holy Bible, English Standard Version®), copyright © 2001 by Crossway, a publishing ministry of Good News Publishers. Used by permission. All rights reserved.`,
+    NASB2020: `Scripture quotations taken from the NEW AMERICAN STANDARD BIBLE® (NASB®), copyright © 1960, 1962, 1963, 1968, 1971, 1972, 1973, 1975, 1977, 1995, 2020 by The Lockman Foundation. Used by permission. All rights reserved. <a href="https://lockman.org" target="_blank" rel="noopener noreferrer">lockman.org</a>`,
   }[version];
+
 
   if (noticeText) {
     const copyright = document.createElement("div");
