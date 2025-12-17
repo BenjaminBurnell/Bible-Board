@@ -1224,267 +1224,266 @@
           <div id="note-modal-colors" class="note-color-picker"></div>
         </div>
       </div>
-    </div>
-
-    <!-- Toolbar -->
-    <div id="note-modal-toolbar" class="note-editor-toolbar">
-      <div class="note-toolbar-left">
-        <button
-          type="button"
-          class="note-tool-btn"
-          data-cmd="bold"
-          aria-label="Bold"
-        >
-          <span style="font-weight: 700">B</span>
-        </button>
-        <button
-          type="button"
-          class="note-tool-btn"
-          data-cmd="italic"
-          aria-label="Italic"
-        >
-          <span style="font-style: italic">I</span>
-        </button>
-        <button
-          type="button"
-          class="note-tool-btn"
-          data-cmd="underline"
-          aria-label="Underline"
-        >
-          <span style="text-decoration: underline">U</span>
-        </button>
-
-        <span class="note-toolbar-divider"></span>
-
-        <button
-          type="button"
-          class="note-tool-btn"
-          data-cmd="insertUnorderedList"
-          aria-label="Bulleted list"
-        >
-          •
-        </button>
-        <button
-          type="button"
-          class="note-tool-btn"
-          data-cmd="insertOrderedList"
-          aria-label="Numbered list"
-        >
-          1.
-        </button>
-
-        <span class="note-toolbar-divider"></span>
-
-        <button
-          type="button"
-          class="note-tool-btn"
-          data-cmd="justifyLeft"
-          aria-label="Align left"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            class="alight-text-icon"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="var(--fg)"
-            stroke-width="3"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            class="icon icon-tabler icons-tabler-outline icon-tabler-align-left"
-          >
-            <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-            <path d="M4 6l16 0" />
-            <path d="M4 12l10 0" />
-            <path d="M4 18l14 0" />
-          </svg>
-        </button>
-        <button
-          type="button"
-          class="note-tool-btn"
-          data-cmd="justifyCenter"
-          aria-label="Align center"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            class="alight-text-icon"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            class="icon icon-tabler icons-tabler-outline icon-tabler-align-center"
-          >
-            <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-            <path d="M4 6l16 0" />
-            <path d="M8 12l8 0" />
-            <path d="M6 18l12 0" />
-          </svg>
-        </button>
-        <button
-          type="button"
-          class="note-tool-btn"
-          data-cmd="justifyRight"
-          aria-label="Align right"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            class="alight-text-icon"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            class="icon icon-tabler icons-tabler-outline icon-tabler-align-right"
-          >
-            <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-            <path d="M4 6l16 0" />
-            <path d="M10 12l10 0" />
-            <path d="M6 18l14 0" />
-          </svg>
-        </button>
-
-        <span class="note-toolbar-divider"></span>
-
-        <label class="note-toolbar-select-label">
-          <span>Size</span>
-          <select id="note-font-size-select">
-            <option value="">–</option>
-            <option value="12">12</option>
-            <option value="14">14</option>
-            <option value="16" selected>16</option>
-            <option value="18">18</option>
-            <option value="20">20</option>
-            <option value="24">24</option>
-            <option value="28">28</option>
-            <option value="30">30</option>
-          </select>
-        </label>
-
-        <label class="note-toolbar-select-label" style="display: none">
-          <span>Line</span>
-          <select id="note-line-height-select">
-            <option value="1">1</option>
-            <option value="1.2">1.2</option>
-            <option value="1.4" selected>1.4</option>
-            <option value="1.6">1.6</option>
-            <option value="1.8">1.8</option>
-            <option value="2">2.0</option>
-          </select>
-        </label>
-
-        <span class="note-toolbar-divider"></span>
-
-        <!-- Color / highlight group -->
-        <div class="note-color-group">
-          <!-- Text color toggle -->
+      <!-- Toolbar -->
+      <div id="note-modal-toolbar" class="note-editor-toolbar">
+        <div class="note-toolbar-left">
           <button
             type="button"
-            id="note-text-color-toggle"
-            class="note-tool-btn note-color-toggle"
-            aria-label="Text color"
+            class="note-tool-btn"
+            data-cmd="bold"
+            aria-label="Bold"
           >
-            <span class="note-color-icon">A</span>
+            <span style="font-weight: 700">B</span>
           </button>
-
-          <!-- Highlight color toggle -->
           <button
             type="button"
-            id="note-highlight-color-toggle"
-            class="note-tool-btn note-color-toggle"
-            aria-label="Highlight color"
+            class="note-tool-btn"
+            data-cmd="italic"
+            aria-label="Italic"
           >
-            <span class="note-highlight-icon">🖍</span>
+            <span style="font-style: italic">I</span>
+          </button>
+          <button
+            type="button"
+            class="note-tool-btn"
+            data-cmd="underline"
+            aria-label="Underline"
+          >
+            <span style="text-decoration: underline">U</span>
           </button>
 
-          <!-- Text color menu -->
-          <div
-            id="note-text-color-menu"
-            class="note-color-menu hidden"
-            data-type="text"
-          >
-            <span>Text Color:</span>
-            <div class="note-color-grid" data-role="palette"></div>
+          <span class="note-toolbar-divider"></span>
 
-            <div class="note-color-custom-row">
-              <span class="note-color-custom-label">CUSTOM</span>
-              <button
-                type="button"
-                class="note-color-custom-btn"
-                data-role="custom-text-plus"
-                aria-label="Choose custom text color"
-              >
-                +
-              </button>
-              <button
-                type="button"
-                class="note-color-custom-btn"
-                data-role="custom-text-picker"
-                aria-label="Pick text color"
-              >
-                🎯
-              </button>
-              <input
-                type="color"
-                id="note-text-color-custom-input"
-                class="note-color-input-hidden"
-              />
+          <button
+            type="button"
+            class="note-tool-btn"
+            data-cmd="insertUnorderedList"
+            aria-label="Bulleted list"
+          >
+            •
+          </button>
+          <button
+            type="button"
+            class="note-tool-btn"
+            data-cmd="insertOrderedList"
+            aria-label="Numbered list"
+          >
+            1.
+          </button>
+
+          <span class="note-toolbar-divider"></span>
+
+          <button
+            type="button"
+            class="note-tool-btn"
+            data-cmd="justifyLeft"
+            aria-label="Align left"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="alight-text-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="var(--fg)"
+              stroke-width="3"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              class="icon icon-tabler icons-tabler-outline icon-tabler-align-left"
+            >
+              <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+              <path d="M4 6l16 0" />
+              <path d="M4 12l10 0" />
+              <path d="M4 18l14 0" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            class="note-tool-btn"
+            data-cmd="justifyCenter"
+            aria-label="Align center"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="alight-text-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              class="icon icon-tabler icons-tabler-outline icon-tabler-align-center"
+            >
+              <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+              <path d="M4 6l16 0" />
+              <path d="M8 12l8 0" />
+              <path d="M6 18l12 0" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            class="note-tool-btn"
+            data-cmd="justifyRight"
+            aria-label="Align right"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="alight-text-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              class="icon icon-tabler icons-tabler-outline icon-tabler-align-right"
+            >
+              <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+              <path d="M4 6l16 0" />
+              <path d="M10 12l10 0" />
+              <path d="M6 18l14 0" />
+            </svg>
+          </button>
+
+          <span class="note-toolbar-divider"></span>
+
+          <label class="note-toolbar-select-label">
+            <span>Size</span>
+            <select id="note-font-size-select">
+              <option value="">–</option>
+              <option value="12">12</option>
+              <option value="14">14</option>
+              <option value="16" selected>16</option>
+              <option value="18">18</option>
+              <option value="20">20</option>
+              <option value="24">24</option>
+              <option value="28">28</option>
+              <option value="30">30</option>
+            </select>
+          </label>
+
+          <label class="note-toolbar-select-label" style="display: none">
+            <span>Line</span>
+            <select id="note-line-height-select">
+              <option value="1">1</option>
+              <option value="1.2">1.2</option>
+              <option value="1.4" selected>1.4</option>
+              <option value="1.6">1.6</option>
+              <option value="1.8">1.8</option>
+              <option value="2">2.0</option>
+            </select>
+          </label>
+
+          <span class="note-toolbar-divider"></span>
+
+          <!-- Color / highlight group -->
+          <div class="note-color-group">
+            <!-- Text color toggle -->
+            <button
+              type="button"
+              id="note-text-color-toggle"
+              class="note-tool-btn note-color-toggle"
+              aria-label="Text color"
+            >
+              <span class="note-color-icon">A</span>
+            </button>
+
+            <!-- Highlight color toggle -->
+            <button
+              type="button"
+              id="note-highlight-color-toggle"
+              class="note-tool-btn note-color-toggle"
+              aria-label="Highlight color"
+            >
+              <span class="note-highlight-icon">🖍</span>
+            </button>
+
+            <!-- Text color menu -->
+            <div
+              id="note-text-color-menu"
+              class="note-color-menu hidden"
+              data-type="text"
+            >
+              <span>Text Color:</span>
+              <div class="note-color-grid" data-role="palette"></div>
+
+              <div class="note-color-custom-row">
+                <span class="note-color-custom-label">CUSTOM</span>
+                <button
+                  type="button"
+                  class="note-color-custom-btn"
+                  data-role="custom-text-plus"
+                  aria-label="Choose custom text color"
+                >
+                  +
+                </button>
+                <button
+                  type="button"
+                  class="note-color-custom-btn"
+                  data-role="custom-text-picker"
+                  aria-label="Pick text color"
+                >
+                  🎯
+                </button>
+                <input
+                  type="color"
+                  id="note-text-color-custom-input"
+                  class="note-color-input-hidden"
+                />
+              </div>
             </div>
-          </div>
 
-          <!-- Highlight color menu -->
-          <div
-            id="note-highlight-color-menu"
-            class="note-color-menu hidden"
-            data-type="highlight"
-          >
-            <span>Highlight Color:</span>
-            <div class="note-color-grid" data-role="palette"></div>
+            <!-- Highlight color menu -->
+            <div
+              id="note-highlight-color-menu"
+              class="note-color-menu hidden"
+              data-type="highlight"
+            >
+              <span>Highlight Color:</span>
+              <div class="note-color-grid" data-role="palette"></div>
 
-            <div class="note-color-custom-row">
-              <span class="note-color-custom-label">CUSTOM</span>
-              <button
-                type="button"
-                class="note-color-custom-btn"
-                data-role="custom-highlight-plus"
-                aria-label="Choose custom highlight color"
-              >
-                +
-              </button>
-              <button
-                type="button"
-                class="note-color-custom-btn"
-                data-role="custom-highlight-picker"
-                aria-label="Pick highlight color"
-              >
-                🎯
-              </button>
-              <input
-                type="color"
-                id="note-highlight-color-custom-input"
-                class="note-color-input-hidden"
-              />
+              <div class="note-color-custom-row">
+                <span class="note-color-custom-label">CUSTOM</span>
+                <button
+                  type="button"
+                  class="note-color-custom-btn"
+                  data-role="custom-highlight-plus"
+                  aria-label="Choose custom highlight color"
+                >
+                  +
+                </button>
+                <button
+                  type="button"
+                  class="note-color-custom-btn"
+                  data-role="custom-highlight-picker"
+                  aria-label="Pick highlight color"
+                >
+                  🎯
+                </button>
+                <input
+                  type="color"
+                  id="note-highlight-color-custom-input"
+                  class="note-color-input-hidden"
+                />
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <div class="note-toolbar-right">
-        <button
-          id="note-modal-cancel-btn"
-          type="button"
-          class="note-tool-secondary"
-        >
-          Cancel
-        </button>
-        <button
-          id="note-modal-save-btn"
-          type="button"
-          class="note-tool-primary"
-        >
-          Save
-        </button>
+        <div class="note-toolbar-right">
+          <button
+            id="note-modal-cancel-btn"
+            type="button"
+            class="note-tool-secondary"
+          >
+            Cancel
+          </button>
+          <button
+            id="note-modal-save-btn"
+            type="button"
+            class="note-tool-primary"
+          >
+            Save
+          </button>
+        </div>
       </div>
     </div>
 

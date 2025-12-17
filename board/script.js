@@ -5078,6 +5078,7 @@ function openNoteModal(noteEl = null) {
   }
 
   noteModal.classList.remove("hidden");
+  document.body.classList.add("bb-note-modal-open");
 
   setTimeout(() => {
     noteEditor.focus();
@@ -5089,6 +5090,7 @@ function openNoteModal(noteEl = null) {
 function closeNoteModal() {
   if (!noteModal) return;
   noteModal.classList.add("hidden");
+  document.body.classList.remove("bb-note-modal-open");
   currentEditingNote = null;
 }
 
