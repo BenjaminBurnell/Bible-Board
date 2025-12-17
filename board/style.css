@@ -2626,7 +2626,7 @@ body.read-only .connection-handle {
   /* overflow-x: scroll;
   overflow-y:visible; */
   padding:0px 20px; 
-  position: fixed;
+  position: fixed !important;
   bottom:15px;
   left:50%;
   transform:translate(-50%);
@@ -4502,17 +4502,21 @@ body.scripture-mode-on #scripture-mode-toggle {
 /* 5) Toolbar: fixed and always on top */
 #note-modal-toolbar.note-editor-toolbar {
   position: fixed !important;
-  bottom: 16px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 600001;
+  bottom: 16px !important;
+
+  /* center in the space to the right of the sidebar */
+  left: calc(var(--sidebar-width) + (100% - var(--sidebar-width)) / 2) !important;
+  transform: translateX(-50%) !important;
+
+  z-index: 600005 !important;
 }
 
 @media (max-width: 900px) {
-  #note-modal-backdrop.note-editor-backdrop {
-    left: 0; /* matches your existing mobile behavior */
+  #note-modal-toolbar.note-editor-toolbar {
+    left: 50% !important;
   }
 }
+
 
 
 @media (max-width:600px) {
@@ -4533,4 +4537,35 @@ body.scripture-mode-on #scripture-mode-toggle {
     align-items: center;
     gap: 4px;
   }
+}
+
+
+
+#note-modal-backdrop.note-editor-backdrop {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  isolation: isolate;
+  background: transparent !important;
+}
+
+#note-modal-backdrop.note-editor-backdrop::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: var(--sidebar-width);
+  right: 0;
+
+  background:var(--bg);
+
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* keep real modal content above the blur layer */
+#note-editor-wrapper { position: relative; z-index: 1; }
+#note-modal-toolbar  { z-index: 2; }
+
+@media (max-width: 900px) {
+  #note-modal-backdrop.note-editor-backdrop::before { left: 0; }
 }
