@@ -3310,7 +3310,7 @@ async function openVerseStudyBookInfo(referenceString, options = {}) {
     const detailLines = [];
     if (authorInfo.sex && String(authorInfo.sex).trim() !== "") {
       detailLines.push(
-        `<div><strong>Sex:</strong> ${escapeHtml(String(authorInfo.sex))}</div>`
+        `<div><strong>Sex:</strong> <span style="text-transform: capitalize;margin-left:25px;color:var(--fg);">${escapeHtml(String(authorInfo.sex))}</span></div>`
       );
     }
     if (authorInfo.tribe && String(authorInfo.tribe).trim() !== "") {
@@ -3439,14 +3439,9 @@ async function openVerseStudyBookInfo(referenceString, options = {}) {
     content.innerHTML = `
       <div class="bookinfo-header">
         <div class="bookinfo-title">Book of ${escapeHtml(bookTitle)}</div>
-        <div class="bookinfo-subtitle">
-          Background for ${escapeHtml(
-            `${ref.book} ${ref.chapter}:${ref.verse}`
-          )}
+        <div class="bookinfo-meta">
+          ${rowsHtml}
         </div>
-      </div>
-      <div class="bookinfo-meta">
-        ${rowsHtml}
       </div>
       ${authorDetailsHtml || ""}
       ${
@@ -3457,6 +3452,12 @@ async function openVerseStudyBookInfo(referenceString, options = {}) {
           : ""
       }
     `;
+
+    // <div class="bookinfo-subtitle">
+    //   Background for ${escapeHtml(
+    //     `${ref.book} ${ref.chapter}:${ref.verse}`
+    //   )}
+    // </div>
 
   } catch (err) {
     console.error("[VerseStudy BookInfo] fetch failed:", err);
@@ -9090,6 +9091,289 @@ function setupBoardSettingsPanel() {
   }
 }
 
+
+
+
+
+// --- PEOPLE + PLACES (Verse Study) ---
+
+const META_PEOPLE_VERSE_BASE = "https://full-bible-api.onrender.com/meta/people_verse";
+const META_PLACES_VERSE_BASE = "https://full-bible-api.onrender.com/meta/places_verse";
+const META_PERSON_REFS_BASE = "https://full-bible-api.onrender.com/meta/person_refs";
+
+
+// fallback if you ever expose them without /meta
+const ROOT_PEOPLE_VERSE_BASE = "https://full-bible-api.onrender.com/people_verse";
+const ROOT_PLACES_VERSE_BASE = "https://full-bible-api.onrender.com/places_verse";
+
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function bookSlug(book) {
+  return String(book || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
+function getRefPartsForPeoplePlaces(referenceString) {
+  // Prefer the same parser you use in boards.js
+  if (typeof parseReferenceToParts === "function") {
+    return parseReferenceToParts(referenceString);
+  }
+  // fallback to parseFullRef() output style (book/chapter/verse)
+  if (typeof parseFullRef === "function") {
+    const r = parseFullRef(referenceString);
+    return { book: r?.book || "", chapter: r?.chapter || 0, verse: r?.verse || 0 };
+  }
+  return { book: "", chapter: 0, verse: 0 };
+}
+
+async function fetchFirstOk(urls) {
+  let lastErr = null;
+  for (const url of urls) {
+    try {
+      const resp = await fetch(url, { mode: "cors" });
+      if (resp.ok) return resp.json();
+      lastErr = new Error(`Bad status ${resp.status} for ${url}`);
+    } catch (e) {
+      lastErr = e;
+    }
+  }
+  throw lastErr || new Error("All endpoints failed");
+}
+
+function extractListFromResponse(data, keys) {
+  for (const k of keys) {
+    if (Array.isArray(data?.[k])) return data[k];
+  }
+  // Sometimes APIs just return an array directly
+  if (Array.isArray(data)) return data;
+  return [];
+}
+
+async function openVerseStudyPeople(referenceString, options = {}) {
+  const { skipTabSwitch = false, forceReload = false } = options;
+
+  const sec = document.getElementById("people-section");
+  const loader = document.getElementById("people-section-loader");
+  const content = document.getElementById("people-section-content");
+  if (!sec || !loader || !content) return;
+
+  const parts = getRefPartsForPeoplePlaces(referenceString);
+  if (!parts.book || !parts.chapter || !parts.verse) {
+    content.innerHTML = `<div style="color:var(--muted)">Couldn’t parse "${escapeHtml(referenceString)}".</div>`;
+    return;
+  }
+
+  const normalizedRef = `${parts.book} ${parts.chapter}:${parts.verse}`;
+  const alreadyLoadedFor = sec.dataset.loadedRef || "";
+
+  if (!forceReload && alreadyLoadedFor === normalizedRef && content.innerHTML.trim() !== "") {
+    if (!skipTabSwitch) activateVerseStudyTab("verse-study-open-people", "people-section");
+    return;
+  }
+
+  sec.dataset.loadedRef = normalizedRef;
+
+  if (!skipTabSwitch) activateVerseStudyTab("verse-study-open-people", "people-section");
+  loader.style.display = "flex";
+  content.innerHTML = "";
+
+  const book = parts.book;
+  const chap = parts.chapter;
+  const verse = parts.verse;
+
+  // Try book as-is, then slug, then bibleBookCodes mapping if present
+  const bookCode = window.bibleBookCodes?.[book] || "";
+  const candidates = [book, bookSlug(book), bookCode].filter(Boolean);
+
+  const urls = [];
+  for (const b of candidates) {
+    urls.push(`${META_PEOPLE_VERSE_BASE}/${encodeURIComponent(b)}/${chap}/${verse}`);
+    urls.push(`${ROOT_PEOPLE_VERSE_BASE}/${encodeURIComponent(b)}/${chap}/${verse}`);
+  }
+
+  try {
+    const data = await fetchFirstOk(urls);
+    loader.style.display = "none";
+
+    const people = extractListFromResponse(data, ["people", "results", "items", "data"]);
+
+    if (!people.length) {
+      content.innerHTML = `<div style="color:var(--muted)">No people tagged for ${escapeHtml(referenceString)}.</div>`;
+      return;
+    }
+
+    content.innerHTML = `
+      <div class="verse-section-header" style="display:none;">People in this verse</div>
+
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        ${people
+          .map((p, idx) => {
+            const pid = (p?.id || p?.person_id || "").trim();
+            const name = p?.name || p?.person_name || p?.title || String(p);
+            const descRaw = (p?.description || p?.summary || p?.role || "").trim();
+            const desc = descRaw.replace(/^In this dataset,\s*/i, "");
+
+
+            // Use id when available; fallback to name (endpoint supports exact-name match)
+            const personKey = pid || name;
+
+            const detailsId = `person-dd-${idx}-${String(personKey).replace(/[^a-zA-Z0-9_-]/g, "")}`;
+
+            return `
+              <details
+                id="${detailsId}"
+                data-person-key="${escapeHtml(personKey)}"
+                style="border:1px solid var(--border);border-radius:14px;padding:10px;background:rgba(255,255,255,0.02);"
+              >
+                <summary style="cursor:pointer; list-style:none; display:flex; align-items:center; justify-content:space-between; gap:12px;">
+                  <div style="display:flex; flex-direction:column; min-width:0; flex:1;">
+                    <div style="font-weight:900;font-size: 20px;line-height: 1.1;">${escapeHtml(name)}</div>
+
+                    ${
+                      desc
+                        ? `<div
+                            style="
+                              margin-top: 4px;
+                              white-space: nowrap;
+                              overflow: hidden;
+                              text-overflow: ellipsis;
+                              max-width: 100%;
+                              font-size: .9rem;
+                              font-weight: 700;
+                              color: var(--muted);
+                            "
+                            class="person-desc"
+                            title="${escapeHtml(desc)}"
+                          >${escapeHtml(desc)}</div>`
+                        : ""
+                    }
+                  </div>
+                  <span class="material-symbols-outlined" style="color:var(--muted);font-size:18px;flex:0 0 auto;">expand_more</span>
+                </summary>
+                <div
+                  class="person-refs-panel"
+                  data-loaded="0"
+                  style="margin-top:10px;"
+                ></div>
+              </details>
+            `;
+          })
+          .join("")}
+      </div>
+    `;
+
+    // Wire up lazy-loading on open
+    content.querySelectorAll("details[data-person-key]").forEach((detailsEl) => {
+      detailsEl.addEventListener("toggle", () => {
+        if (!detailsEl.open) return;
+
+        const personKey = detailsEl.getAttribute("data-person-key") || "";
+        const panel = detailsEl.querySelector(".person-refs-panel");
+        loadPersonRefsInto(panel, personKey);
+      });
+    });
+
+  } catch (err) {
+    loader.style.display = "none";
+    content.innerHTML = `<div style="color:var(--muted)">People lookup failed: ${escapeHtml(err?.message || err)}</div>`;
+  }
+}
+
+async function openVerseStudyPlaces(referenceString, options = {}) {
+  const { skipTabSwitch = false, forceReload = false } = options;
+
+  const sec = document.getElementById("places-section");
+  const loader = document.getElementById("places-section-loader");
+  const content = document.getElementById("places-section-content");
+  if (!sec || !loader || !content) return;
+
+  const parts = getRefPartsForPeoplePlaces(referenceString);
+  if (!parts.book || !parts.chapter || !parts.verse) {
+    content.innerHTML = `<div style="color:var(--muted)">Couldn’t parse "${escapeHtml(referenceString)}".</div>`;
+    return;
+  }
+
+  const normalizedRef = `${parts.book} ${parts.chapter}:${parts.verse}`;
+  const alreadyLoadedFor = sec.dataset.loadedRef || "";
+
+  if (!forceReload && alreadyLoadedFor === normalizedRef && content.innerHTML.trim() !== "") {
+    if (!skipTabSwitch) activateVerseStudyTab("verse-study-open-places", "places-section");
+    return;
+  }
+
+  sec.dataset.loadedRef = normalizedRef;
+
+  if (!skipTabSwitch) activateVerseStudyTab("verse-study-open-places", "places-section");
+  loader.style.display = "flex";
+  content.innerHTML = "";
+
+  const book = parts.book;
+  const chap = parts.chapter;
+  const verse = parts.verse;
+
+  const bookCode = window.bibleBookCodes?.[book] || "";
+  const candidates = [book, bookSlug(book), bookCode].filter(Boolean);
+
+  const urls = [];
+  for (const b of candidates) {
+    urls.push(`${META_PLACES_VERSE_BASE}/${encodeURIComponent(b)}/${chap}/${verse}`);
+    urls.push(`${ROOT_PLACES_VERSE_BASE}/${encodeURIComponent(b)}/${chap}/${verse}`);
+  }
+
+  try {
+    const data = await fetchFirstOk(urls);
+    loader.style.display = "none";
+
+    const places = extractListFromResponse(data, ["places", "results", "items", "data"]);
+
+    if (!places.length) {
+      content.innerHTML = `<div style="color:var(--muted)">No places tagged for ${escapeHtml(referenceString)}.</div>`;
+      return;
+    }
+
+    content.innerHTML = `
+      <div class="verse-section-header">Places in this verse</div>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        ${places
+          .map((p) => {
+            const name = p?.name || p?.place_name || p?.title || String(p);
+            const desc = p?.description || p?.summary || p?.type || "";
+            return `
+              <div style="border:1px solid var(--border);border-radius:14px;padding:12px;">
+                <div style="font-weight:900;">${escapeHtml(name)}</div>
+                ${desc ? `<div style="color:var(--muted);font-weight:700;margin-top:4px;">${escapeHtml(desc)}</div>` : ""}
+              </div>
+            `;
+          })
+          .join("")}
+      </div>
+    `;
+  } catch (err) {
+    loader.style.display = "none";
+    content.innerHTML = `<div style="color:var(--muted)">Places lookup failed: ${escapeHtml(err?.message || err)}</div>`;
+  }
+}
+
+// expose (so boards.js can call them)
+window.openVerseStudyPeople = openVerseStudyPeople;
+window.openVerseStudyPlaces = openVerseStudyPlaces;
+
+
+
+
+
+
+
+
 // ============================================================
 //                  CROSS REFERENCE MODE (FINAL)
 // ============================================================
@@ -9099,6 +9383,9 @@ const CROSSREF_API_BASE = "https://full-bible-api.onrender.com/crossref";
 
 // Book / author metadata for verse-study modal
 const META_VERSE_API_BASE = "https://full-bible-api.onrender.com/meta/verse";
+
+const PERSON_REFS_BASE = "https://full-bible-api.onrender.com/person_refs";
+
 
 let crossRefResults = [];
 let crossRefRenderedCount = 0;
@@ -9678,6 +9965,164 @@ function populateInterlinearFromCurrentQuery() {
         : `<div class="search-query-no-verse-found-container" style="text-align:center; color:var(--muted); padding: 12px;">No interlinear.</div>`;
   }
 }
+
+
+
+
+
+
+const _personRefsCache = new Map(); // key: personKey -> { total, verses[] }
+
+async function loadPersonRefsInto(panelEl, personKey) {
+  if (!panelEl || !personKey) return;
+
+  // Already loaded for this panel
+  if (panelEl.dataset.loaded === "1") return;
+  panelEl.dataset.loaded = "1";
+
+  panelEl.innerHTML = `<div style="color:var(--muted);font-weight:700;">Loading references…</div>`;
+
+  // Cache hit
+  if (_personRefsCache.has(personKey)) {
+    renderPersonRefs(panelEl, _personRefsCache.get(personKey));
+    return;
+  }
+
+  const urls = [
+    `${META_PERSON_REFS_BASE}/${encodeURIComponent(personKey)}?limit=2000&offset=0`,
+    `${PERSON_REFS_BASE}/${encodeURIComponent(personKey)}?limit=2000&offset=0`,
+  ];
+
+  try {
+    const data = await fetchFirstOk(urls);
+
+    const verses = extractListFromResponse(data, ["verses"]);
+    const payload = {
+      total: typeof data?.total === "number" ? data.total : verses.length,
+      verses,
+      person: data?.person || null,
+      person_id: data?.person_id || personKey,
+    };
+
+    _personRefsCache.set(personKey, payload);
+    renderPersonRefs(panelEl, payload);
+  } catch (err) {
+    panelEl.dataset.loaded = "0"; // allow retry
+    panelEl.innerHTML = `<div style="color:var(--muted)">Failed to load references: ${escapeHtml(err?.message || err)}</div>`;
+  }
+}
+
+
+
+// --- USFM book code -> full name (for "LUK 1:5" -> "Luke 1:5") ---
+const USFM_TO_BOOKNAME = (() => {
+  const out = {
+    GEN:"Genesis", EXO:"Exodus", LEV:"Leviticus", NUM:"Numbers", DEU:"Deuteronomy",
+    JOS:"Joshua", JDG:"Judges", RUT:"Ruth", "1SA":"1 Samuel", "2SA":"2 Samuel",
+    "1KI":"1 Kings", "2KI":"2 Kings", "1CH":"1 Chronicles", "2CH":"2 Chronicles",
+    EZR:"Ezra", NEH:"Nehemiah", EST:"Esther", JOB:"Job", PSA:"Psalms", PRO:"Proverbs",
+    ECC:"Ecclesiastes", SNG:"Song of Solomon", ISA:"Isaiah", JER:"Jeremiah", LAM:"Lamentations",
+    EZK:"Ezekiel", DAN:"Daniel", HOS:"Hosea", JOL:"Joel", AMO:"Amos", OBA:"Obadiah",
+    JON:"Jonah", MIC:"Micah", NAM:"Nahum", HAB:"Habakkuk", ZEP:"Zephaniah",
+    HAG:"Haggai", ZEC:"Zechariah", MAL:"Malachi",
+
+    MAT:"Matthew", MRK:"Mark", LUK:"Luke", JHN:"John", ACT:"Acts", ROM:"Romans",
+    "1CO":"1 Corinthians", "2CO":"2 Corinthians", GAL:"Galatians", EPH:"Ephesians",
+    PHP:"Philippians", COL:"Colossians", "1TH":"1 Thessalonians", "2TH":"2 Thessalonians",
+    "1TI":"1 Timothy", "2TI":"2 Timothy", TIT:"Titus", PHM:"Philemon", HEB:"Hebrews",
+    JAS:"James", "1PE":"1 Peter", "2PE":"2 Peter", "1JN":"1 John", "2JN":"2 John",
+    "3JN":"3 John", JUD:"Jude", REV:"Revelation",
+  };
+
+  // If you already have window.bibleBookCodes (name -> code), reverse it too
+  if (window.bibleBookCodes && typeof window.bibleBookCodes === "object") {
+    Object.entries(window.bibleBookCodes).forEach(([name, code]) => {
+      const c = String(code || "").toUpperCase();
+      if (c) out[c] = name;
+    });
+  }
+  return out;
+})();
+
+function prettyReferenceFromParts(book, chapter, verse) {
+  const code = String(book || "").trim().toUpperCase();
+  const bookName = USFM_TO_BOOKNAME[code] || book || "";
+  return `${bookName} ${Number(chapter)}:${Number(verse)}`;
+}
+
+function prettyReference(rawRef, fallbackBook, fallbackChapter, fallbackVerse) {
+  // Prefer explicit parts if present
+  if (fallbackBook && fallbackChapter && fallbackVerse) {
+    return prettyReferenceFromParts(fallbackBook, fallbackChapter, fallbackVerse);
+  }
+
+  const s = String(rawRef || "").trim();
+
+  // Match "LUK 1:5", "1JN 2:1", etc.
+  const m = s.match(/^([1-3]?[A-Za-z]{2,3})\s+(\d+)\s*:\s*(\d+)$/);
+  if (m) return prettyReferenceFromParts(m[1], m[2], m[3]);
+
+  // If it's already "Luke 1:5" (or any non-USFM), just return it
+  return s;
+}
+
+function renderPersonRefs(panelEl, payload) {
+  const verses = Array.isArray(payload?.verses) ? payload.verses : [];
+  if (!verses.length) {
+    panelEl.innerHTML = `<div style="color:var(--muted)">No references found.</div>`;
+    return;
+  }
+  // ${escapeHtml(String(payload.total ?? verses.length))}
+
+  panelEl.innerHTML = `
+    <div style="margin-top:15px; color:var(--fg); font-weight:800;font-size:15px;">
+      Other references:
+    </div>
+
+    <div
+      style="
+        margin-top:6px;
+        display:flex;
+        flex-wrap:wrap;
+        gap:4px;
+        align-items:flex-start;
+      "
+    >
+      ${verses
+        .map((v) => {
+          const refPretty = prettyReference(v?.reference, v?.book, v?.chapter, v?.verse);
+          const notes = (v?.notes || v?.role || "").trim();
+
+          return `
+            <div
+              title="${escapeHtml(notes ? `${refPretty} — ${notes}` : refPretty)}"
+              style="
+                display:inline-flex;
+                align-items:center;
+                justify-content:center;
+                border:1px solid var(--border);
+                border-radius:999px;
+                padding:6px 10px;
+                font-weight:500;
+                font-size:.9rem;
+                white-space:nowrap;
+                user-select:none;
+                color:var(--muted);
+              "
+            >
+              ${escapeHtml(refPretty)}
+            </div>
+          `;
+        })
+        .join("")}
+    </div>
+  `;
+}
+
+
+
+
+
 
 // --- BEGIN: Interlinear-from-query hardening (drop-in) ---
 
@@ -11799,9 +12244,11 @@ document.getElementById("grouping-mode-btn")?.addEventListener("click", (e) => {
 function resetVerseStudySections() {
   // 1. Hide all sections
   const sections = [
-    "interlinear-section", 
-    "crossref-section", 
-    "bookinfo-section"
+    "interlinear-section",
+    "crossref-section",
+    "people-section",
+    "places-section",
+    "bookinfo-section",
   ];
   sections.forEach(id => {
     const el = document.getElementById(id);
@@ -11810,9 +12257,11 @@ function resetVerseStudySections() {
 
   // 2. Deactivate all buttons
   const buttons = [
-    "verse-study-open-interlinear", 
-    "verse-study-open-crossref", 
-    "verse-study-open-bookinfo"
+    "verse-study-open-interlinear",
+    "verse-study-open-crossref",
+    "verse-study-open-people",
+    "verse-study-open-places",
+    "verse-study-open-bookinfo",
   ];
   buttons.forEach(id => {
     const btn = document.getElementById(id);
@@ -11831,7 +12280,13 @@ function resetVerseStudySections() {
  */
 function activateVerseStudyTab(btnId, sectionId) {
   // 1. Hide all sections visually (but DO NOT clear innerHTML)
-  const sections = ["interlinear-section", "crossref-section", "bookinfo-section"];
+  const sections = [
+    "interlinear-section",
+    "crossref-section",
+    "people-section",
+    "places-section",
+    "bookinfo-section",
+  ];
   sections.forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = "none";
@@ -11841,7 +12296,13 @@ function activateVerseStudyTab(btnId, sectionId) {
   if (bookContent) bookContent.style.display = "none";
 
   // 2. Deactivate all buttons
-  const buttons = ["verse-study-open-interlinear", "verse-study-open-crossref", "verse-study-open-bookinfo"];
+  const buttons = [
+    "verse-study-open-interlinear",
+    "verse-study-open-crossref",
+    "verse-study-open-people",
+    "verse-study-open-places",
+    "verse-study-open-bookinfo",
+  ];
   buttons.forEach(id => {
     const btn = document.getElementById(id);
     if (btn) btn.classList.remove("verse-study-tab-active");

@@ -2594,8 +2594,8 @@ body {
 }
 
 .bookinfo-author-section {
-  margin-top: 16px;
-  padding-top: 12px;
+  height:100%;
+  margin-right: 20px;
   /* border-top: 1px solid var(--border); */
 }
 
@@ -2642,8 +2642,6 @@ body {
 
 
 .bookinfo-author-section {
-  margin-top: 16px;
-  padding-top: 12px;
   /* border-top: 1px solid var(--border); */
 }
 

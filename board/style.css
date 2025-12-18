@@ -4154,6 +4154,14 @@ body.scripture-mode-on #scripture-mode-toggle {
   padding:35px 3px;
 }
 
+#people-section {
+  padding: 35px 3px;
+}
+
+#places-section {
+  padding: 35px 3px;
+}
+
 #interlinear-section {
   padding:41px 0px;
 }
@@ -4569,3 +4577,80 @@ body.scripture-mode-on #scripture-mode-toggle {
 @media (max-width: 900px) {
   #note-modal-backdrop.note-editor-backdrop::before { left: 0; }
 }
+
+#bookinfo-section-content {
+  display:flex !important;
+  flex-direction: row !important;
+  align-items:start;
+  gap: 50px;
+}
+
+@media (max-width:900px) {
+  #bookinfo-section-content {
+    display:flex !important;
+    flex-direction:column !important;
+    align-items:start;
+    gap: 15px;
+    justify-content: space-between;
+  }
+}
+
+
+
+/* ---------------------------
+   People tab dropdown rows
+---------------------------- */
+
+/* If your people section content container has a different id, change this selector */
+#people-section-content details.person-item > summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* hide default marker */
+#people-section-content details.person-item > summary::-webkit-details-marker {
+  display: none;
+}
+
+#people-section-content .person-summary-left {
+  flex: 1;
+  min-width: 0; /* IMPORTANT for ellipsis to work correctly in flex */
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+#people-section-content .person-name {
+  font-weight: 850;
+  line-height: 1.1;
+}
+
+#people-section-content .person-desc {
+  font-size: 0.85rem;
+  color: var(--muted);
+
+  /* one-line "..." */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+
+  overflow: hidden;
+}
+
+/* When opened: show full description (no "...") */
+#people-section-content details.person-item[open] .person-desc,
+#people-section-content .person-desc.is-expanded {
+  -webkit-line-clamp: unset !important;
+  overflow: visible !important;
+  display: block !important;
+  white-space: normal !important;
+}
+
+/* Optional: when open, align summary top so multi-line looks nice */
+#people-section-content details.person-item[open] > summary {
+  align-items: flex-start;
+}
+  

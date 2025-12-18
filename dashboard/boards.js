@@ -3195,6 +3195,8 @@ function initVerseStudyModal() {
   const closeBtn = backdrop.querySelector(".verse-study-close");
   const interBtn = document.getElementById("verse-study-open-interlinear");
   const crossBtn = document.getElementById("verse-study-open-crossref");
+  const peopleBtn = document.getElementById("verse-study-open-people");
+  const placesBtn = document.getElementById("verse-study-open-places");
   const bookBtn = document.getElementById("verse-study-open-bookinfo");
   
   const headerAddBtn = document.getElementById("verse-study-add-btn");
@@ -3279,6 +3281,26 @@ function initVerseStudyModal() {
       const data = window.currentVerseStudyData;
       if (data && typeof openVerseStudyBookInfo === "function") {
         openVerseStudyBookInfo(data.reference);
+      }
+    });
+  }
+
+    if (peopleBtn) {
+    peopleBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      const ref = window.currentVerseStudyData?.reference || "";
+      if (typeof window.openVerseStudyPeople === "function" && ref) {
+        window.openVerseStudyPeople(ref);
+      }
+    });
+  }
+
+  if (placesBtn) {
+    placesBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      const ref = window.currentVerseStudyData?.reference || "";
+      if (typeof window.openVerseStudyPlaces === "function" && ref) {
+        window.openVerseStudyPlaces(ref);
       }
     });
   }
