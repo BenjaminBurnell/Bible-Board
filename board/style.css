@@ -4598,11 +4598,12 @@ body.scripture-mode-on #scripture-mode-toggle {
 
 
 /* ---------------------------
-   People tab dropdown rows
+   People + Places tab dropdown rows
 ---------------------------- */
 
-/* If your people section content container has a different id, change this selector */
-#people-section-content details.person-item > summary {
+/* Apply same styling to both containers */
+#people-section-content details.person-item > summary,
+#places-section-content details.person-item > summary {
   list-style: none;
   cursor: pointer;
   display: flex;
@@ -4611,24 +4612,28 @@ body.scripture-mode-on #scripture-mode-toggle {
 }
 
 /* hide default marker */
-#people-section-content details.person-item > summary::-webkit-details-marker {
+#people-section-content details.person-item > summary::-webkit-details-marker,
+#places-section-content details.person-item > summary::-webkit-details-marker {
   display: none;
 }
 
-#people-section-content .person-summary-left {
+#people-section-content .person-summary-left,
+#places-section-content .person-summary-left {
   flex: 1;
-  min-width: 0; /* IMPORTANT for ellipsis to work correctly in flex */
+  min-width: 0; /* IMPORTANT for ellipsis */
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
 
-#people-section-content .person-name {
+#people-section-content .person-name,
+#places-section-content .person-name {
   font-weight: 850;
   line-height: 1.1;
 }
 
-#people-section-content .person-desc {
+#people-section-content .person-desc,
+#places-section-content .person-desc {
   font-size: 0.85rem;
   color: var(--muted);
 
@@ -4642,7 +4647,9 @@ body.scripture-mode-on #scripture-mode-toggle {
 
 /* When opened: show full description (no "...") */
 #people-section-content details.person-item[open] .person-desc,
-#people-section-content .person-desc.is-expanded {
+#places-section-content details.person-item[open] .person-desc,
+#people-section-content .person-desc.is-expanded,
+#places-section-content .person-desc.is-expanded {
   -webkit-line-clamp: unset !important;
   overflow: visible !important;
   display: block !important;
@@ -4650,7 +4657,7 @@ body.scripture-mode-on #scripture-mode-toggle {
 }
 
 /* Optional: when open, align summary top so multi-line looks nice */
-#people-section-content details.person-item[open] > summary {
+#people-section-content details.person-item[open] > summary,
+#places-section-content details.person-item[open] > summary {
   align-items: flex-start;
 }
-  

@@ -90,6 +90,8 @@ function splitUniqueAttributesPreservingParens(raw) {
   if (current.trim()) {
     parts.push(current.trim());
   }
+  parts.reverse()
+  parts.pop(0)
 
   return parts;
 }
@@ -3315,7 +3317,7 @@ async function openVerseStudyBookInfo(referenceString, options = {}) {
     }
     if (authorInfo.tribe && String(authorInfo.tribe).trim() !== "") {
       detailLines.push(
-        `<div><strong>Tribe:</strong> ${escapeHtml(String(authorInfo.tribe))}</div>`
+        `<div><strong>Tribe:</strong> <span style="text-transform: capitalize;margin-left:14px;color:var(--fg);">${escapeHtml(String(authorInfo.tribe))}</span></div>`
       );
     }
     if (
@@ -3343,18 +3345,16 @@ async function openVerseStudyBookInfo(referenceString, options = {}) {
 
       if (parts.length > 0) {
         const itemsHtml = parts
-          .map((p) => `<li>${escapeHtml(p)}</li>`)
-          .join("");
+          .map((p) => `${escapeHtml(p)}`)
+          .join(" ");
 
         detailLines.push(
           `
           <div class="bookinfo-unique-attributes-block">
             <div class="bookinfo-unique-attributes-title">
-              Unique Attributes:
+              Description:
+              <span style="color:white;">${itemsHtml}</span>
             </div>
-            <ul class="bookinfo-unique-attributes-list">
-              ${itemsHtml}
-            </ul>
           </div>
           `
         );
@@ -9341,22 +9341,81 @@ async function openVerseStudyPlaces(referenceString, options = {}) {
     }
 
     content.innerHTML = `
-      <div class="verse-section-header">Places in this verse</div>
+      <div class="verse-section-header" style="display:none;">Places in this verse</div>
+
       <div style="display:flex;flex-direction:column;gap:10px;">
         ${places
-          .map((p) => {
+          .map((p, idx) => {
+            const placeId = (p?.place_id || p?.id || "").toString().trim();
             const name = p?.name || p?.place_name || p?.title || String(p);
-            const desc = p?.description || p?.summary || p?.type || "";
+
+            // placeholder subtext like you requested
+            const desc = "Placeholder text (same style as People)";
+
+            // Use id when available; fallback to name
+            const placeKey = placeId || name;
+
+            const detailsId = `place-dd-${idx}-${String(placeKey).replace(/[^a-zA-Z0-9_-]/g, "")}`;
+
             return `
-              <div style="border:1px solid var(--border);border-radius:14px;padding:12px;">
-                <div style="font-weight:900;">${escapeHtml(name)}</div>
-                ${desc ? `<div style="color:var(--muted);font-weight:700;margin-top:4px;">${escapeHtml(desc)}</div>` : ""}
-              </div>
+              <details
+                id="${detailsId}"
+                data-place-key="${escapeHtml(placeKey)}"
+                style="border:1px solid var(--border);border-radius:14px;padding:10px;background:rgba(255,255,255,0.02);"
+              >
+                <summary style="cursor:pointer; list-style:none; display:flex; align-items:center; justify-content:space-between; gap:12px;">
+                  <div style="display:flex; flex-direction:column; min-width:0; flex:1;">
+                    <div style="font-weight:900;font-size: 20px;line-height: 1.1;">${escapeHtml(name)}</div>
+
+                    ${
+                      desc
+                        ? `<div
+                            style="
+                              margin-top: 4px;
+                              white-space: nowrap;
+                              overflow: hidden;
+                              text-overflow: ellipsis;
+                              max-width: 100%;
+                              font-size: .9rem;
+                              font-weight: 700;
+                              color: var(--muted);
+                            "
+                            class="place-desc"
+                            title="${escapeHtml(desc)}"
+                          >${escapeHtml(desc)}</div>`
+                        : ""
+                    }
+                  </div>
+
+                  <span class="material-symbols-outlined" style="color:var(--muted);font-size:18px;flex:0 0 auto;">expand_more</span>
+                </summary>
+
+                <div
+                  class="place-refs-panel"
+                  data-loaded="0"
+                  style="margin-top:10px;"
+                ></div>
+              </details>
             `;
           })
           .join("")}
       </div>
     `;
+
+    // Lazy-load the refs when a place dropdown is opened
+    content.querySelectorAll("details[data-place-key]").forEach((detailsEl) => {
+      detailsEl.addEventListener("toggle", () => {
+        if (!detailsEl.open) return;
+
+        const placeKey = detailsEl.dataset.placeKey || "";
+        const panel = detailsEl.querySelector(".place-refs-panel");
+        if (!panel) return;
+
+        loadPlaceRefsInto(panel, placeKey);
+      });
+    });
+
+
   } catch (err) {
     loader.style.display = "none";
     content.innerHTML = `<div style="color:var(--muted)">Places lookup failed: ${escapeHtml(err?.message || err)}</div>`;
@@ -9385,6 +9444,8 @@ const CROSSREF_API_BASE = "https://full-bible-api.onrender.com/crossref";
 const META_VERSE_API_BASE = "https://full-bible-api.onrender.com/meta/verse";
 
 const PERSON_REFS_BASE = "https://full-bible-api.onrender.com/person_refs";
+const META_PLACE_REFS_BASE = `https://full-bible-api.onrender.com/place_refs`;
+const PLACE_REFS_BASE = `https://full-bible-api.onrender.com//place_refs`;
 
 
 let crossRefResults = [];
@@ -9670,6 +9731,101 @@ function renderCrossRefPage(isFirstPage) {
     moreWrap.appendChild(btn);
     wrap.appendChild(moreWrap);
   }
+}
+
+// -------------------- PLACE REFS (mirror of People) --------------------
+
+const _placeRefsCache = new Map(); // key: placeId -> { total, verses[] }
+
+async function loadPlaceRefsInto(panelEl, placeId) {
+  if (!panelEl || !placeId) return;
+
+  // Already loaded for this panel
+  if (panelEl.dataset.loaded === "1") return;
+  panelEl.dataset.loaded = "1";
+
+  panelEl.innerHTML = `<div style="color:var(--muted);font-weight:700;">Loading references…</div>`;
+
+  // Cache hit
+  if (_placeRefsCache.has(placeId)) {
+    renderPlaceRefs(panelEl, _placeRefsCache.get(placeId));
+    return;
+  }
+
+  const urls = [
+    `${META_PLACE_REFS_BASE}/${encodeURIComponent(placeId)}?limit=2000&offset=0`,
+    `${PLACE_REFS_BASE}/${encodeURIComponent(placeId)}?limit=2000&offset=0`,
+  ];
+
+  try {
+    const data = await fetchFirstOk(urls);
+
+    const verses = extractListFromResponse(data, ["verses"]);
+    const payload = {
+      total: typeof data?.total === "number" ? data.total : verses.length,
+      verses,
+      place: data?.place || null,
+      place_id: data?.place_id || placeId,
+    };
+
+    _placeRefsCache.set(placeId, payload);
+    renderPlaceRefs(panelEl, payload);
+  } catch (err) {
+    panelEl.dataset.loaded = "0"; // allow retry
+    panelEl.innerHTML = `<div style="color:var(--muted)">Failed to load references: ${escapeHtml(err?.message || err)}</div>`;
+  }
+}
+
+function renderPlaceRefs(panelEl, payload) {
+  const verses = Array.isArray(payload?.verses) ? payload.verses : [];
+  if (!verses.length) {
+    panelEl.innerHTML = `<div style="color:var(--muted)">No references found.</div>`;
+    return;
+  }
+
+  panelEl.innerHTML = `
+    <div style="margin-top:15px; color:var(--fg); font-weight:800;font-size:15px;">
+      Other references:
+    </div>
+
+    <div
+      style="
+        margin-top:6px;
+        display:flex;
+        flex-wrap:wrap;
+        gap:4px;
+        align-items:flex-start;
+      "
+    >
+      ${verses
+        .map((v) => {
+          const refPretty = prettyReference(v?.reference, v?.book, v?.chapter, v?.verse);
+          const notes = (v?.notes || v?.role || "").trim();
+
+          return `
+            <div
+              title="${escapeHtml(notes ? `${refPretty} — ${notes}` : refPretty)}"
+              style="
+                display:inline-flex;
+                align-items:center;
+                justify-content:center;
+                border:1px solid var(--border);
+                border-radius:999px;
+                padding:6px 10px;
+                font-weight:500;
+                font-size:.9rem;
+                white-space:nowrap;
+                user-select:none;
+                color:var(--muted);
+              "
+            >
+              ${escapeHtml(refPretty)}
+            </div>
+          `;
+        })
+        .join("")}
+    </div>
+  `;
 }
 
 // Fetch API → parse → render
