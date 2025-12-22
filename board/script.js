@@ -4682,6 +4682,11 @@ function sanitizeVerseText(text) {
 
   return clean;
 }
+
+function reverseString(str) {
+  return str.split('').reverse().join('');
+}
+
 // ==================== Element Creation ====================
 function addBibleVerse(
   reference,
@@ -4729,9 +4734,26 @@ function addBibleVerse(
     bringToFront(el);
   }
 
-  const displayReference = createdFromLoad ? reference : `- ${reference}`;
-  const versionLabel = version ? ` ${version.toUpperCase()}` : "";
   const htmlContent = formatVerseContent(robustText);
+    // --- Normalize reference/version for UI (and keep requests using NASB2020) ---
+  let refStr = String(reference || "").trim();
+  let verCode = (version || "").trim();
+
+  // If a caller accidentally included the version in the reference text, strip it
+  // and recover verCode so the UI stays clean.
+  if (!verCode && /\bNASB2020\b/i.test(refStr)) verCode = "NASB2020";
+  refStr = refStr.replace(/\bNASB2020\b/gi, "").replace(/\s+/g, " ").trim();
+
+  const verUI = verCode
+    ? (verCode.toUpperCase() === "NASB2020" ? "NASB" : verCode.toUpperCase())
+    : "";
+
+  // Store clean values
+  el.dataset.reference = refStr;
+  if (verCode) el.dataset.version = verCode;
+
+  const displayReference = createdFromLoad ? refStr : `- ${refStr}`;
+  const versionLabel = verUI ? ` ${verUI}` : "";
 
   el.innerHTML = `
     <div id="bible-text-content">
@@ -4740,6 +4762,7 @@ function addBibleVerse(
       <div class="verse-text-reference">${displayReference}${versionLabel}</div>
     </div>
   `;
+
 
   attachSelectionFrame(el);
 
