@@ -7314,8 +7314,12 @@ connectBtn?.addEventListener("click", (e) => {
 textBtn?.addEventListener("click", (e) => {
   e.preventDefault();
   e.stopPropagation();
-  window.BoardAPI.addTextNote("New note");
+
+  // Open the note modal in "create new note" mode.
+  // Save will create the note; Cancel closes and nothing is added.
+  openNoteModal(null);
 });
+
 
 // [UPDATE] Inside deleteBtn event listener
 deleteBtn?.addEventListener("click", (e) => {
