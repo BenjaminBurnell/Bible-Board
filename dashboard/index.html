@@ -12,6 +12,7 @@
     <!-- Dashboard styles (your uploaded file) -->
     <link rel="stylesheet" href="boards.css" />
     <link rel="stylesheet" href="crossrefs.css" />
+    <link rel="stylesheet" href="../board/reader-gestures.css" />
 
     <link
       rel="shortcut icon"
@@ -1002,32 +1003,6 @@
 
             <button
               type="button"
-              id="verse-study-open-people"
-              class="verse-study-action-btn"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="3"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                class="icon icon-tabler icons-tabler-outline icon-tabler-grid-scan"
-              >
-                <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-                <path d="M9 7m-4 0a4 4 0 1 0 8 0a4 4 0 1 0 -8 0" />
-                <path d="M3 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2" />
-                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                <path d="M21 21v-2a4 4 0 0 0 -3 -3.85" />
-              </svg>
-              People
-            </button>
-
-            <button
-              type="button"
               id="verse-study-open-places"
               class="verse-study-action-btn"
             >
@@ -1050,6 +1025,32 @@
                 />
               </svg>
               Places
+            </button>
+
+            <button
+              type="button"
+              id="verse-study-open-people"
+              class="verse-study-action-btn"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="3"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                class="icon icon-tabler icons-tabler-outline icon-tabler-grid-scan"
+              >
+                <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                <path d="M9 7m-4 0a4 4 0 1 0 8 0a4 4 0 1 0 -8 0" />
+                <path d="M3 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2" />
+                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                <path d="M21 21v-2a4 4 0 0 0 -3 -3.85" />
+              </svg>
+              People
             </button>
 
             <button
@@ -2020,6 +2021,44 @@
       </div>
     </aside>
 
+    <div id="gesture-guide-modal" class="gesture-modal-backdrop" style="display: none;">
+      <div class="gesture-modal-content">
+        <h2 class="gesture-title">Reader Gestures</h2>
+        
+        <div id="gesture-step-1" class="gesture-row active">
+          <div class="gesture-icon-box">
+            <div class="gesture-hand-container">
+              <div class="gesture-tip-circle"></div>
+              <svg class="gesture-hand-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                <path d="M7.904 17.563a1.2 1.2 0 0 0 2.228 .308l2.09 -3.093l4.907 4.907a1.067 1.067 0 0 0 1.509 0l1.047 -1.047a1.067 1.067 0 0 0 0 -1.509l-4.907 -4.907l3.113 -2.09a1.2 1.2 0 0 0 -.309 -2.228l-13.582 -3.904l3.904 13.563" />
+              </svg>
+            </div>
+          </div>
+          <div class="gesture-text">
+            <strong>Tap</strong> a verse to add it to your board.
+          </div>
+        </div>
+
+        <div id="gesture-step-2" class="gesture-row">
+          <div class="gesture-icon-box">
+            <div class="gesture-hand-container">
+              <div class="gesture-tip-circle"></div>
+              <svg class="gesture-hand-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                <path d="M7.904 17.563a1.2 1.2 0 0 0 2.228 .308l2.09 -3.093l4.907 4.907a1.067 1.067 0 0 0 1.509 0l1.047 -1.047a1.067 1.067 0 0 0 0 -1.509l-4.907 -4.907l3.113 -2.09a1.2 1.2 0 0 0 -.309 -2.228l-13.582 -3.904l3.904 13.563" />
+              </svg>
+            </div>
+          </div>
+          <div class="gesture-text">
+            <strong>Hold</strong> a verse to see info & cross-refs.
+          </div>
+        </div>
+
+        <button id="gesture-guide-close" class="gesture-btn">Got it</button>
+      </div>
+    </div>
+
     <script>
       function closeModal() {
         document.getElementById("modal-backdrop").classList.add("hidden");
@@ -2075,5 +2114,7 @@
     <!-- Missing script (this is the fix!) -->
     <!-- <script src="./crossrefs.js"></script> -->
     <script type="module" src="boards.js"></script>
+    <script src="../board/reader-gestures.js"></script>
+    <script src="../board/verse-study-fix.js"></script>
   </body>
 </html>

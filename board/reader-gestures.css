@@ -1,0 +1,150 @@
+/* board/reader-gestures.css */
+
+/* Top-level overlay that doesn't block clicks */
+.gesture-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 400000; /* Must be higher than bible-query-reader (350000) */
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* The Hand Container */
+.gesture-hand-wrapper {
+  position: absolute;
+  width: 60px;
+  height: 60px;
+  pointer-events: none;
+  filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3));
+  transition: transform 0.5s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.3s ease;
+  z-index: 400001;
+}
+
+/* The Hand SVG */
+.gesture-hand-svg {
+  width: 100%;
+  height: 100%;
+  fill: #ffffff;
+  stroke: #171717;
+  stroke-width: 2px;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+/* Label text (Tooltip) */
+.gesture-label {
+  position: absolute;
+  background: rgba(23, 23, 23, 0.9);
+  color: #fff;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+.gesture-label.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* --- ANIMATIONS --- */
+
+/* 1. Tap Animation Class */
+.animate-tap .gesture-hand-svg {
+  animation: gesture-tap-action 1.5s infinite;
+}
+
+@keyframes gesture-tap-action {
+  0% { transform: scale(1) rotate(0deg); }
+  15% { transform: scale(0.85) rotate(-5deg); } /* Press */
+  30% { transform: scale(1) rotate(0deg); }   /* Release */
+  100% { transform: scale(1) rotate(0deg); }  /* Wait */
+}
+
+/* 2. Hold Animation Class */
+.animate-hold .gesture-hand-svg {
+  animation: gesture-hold-action 2.5s infinite;
+}
+
+@keyframes gesture-hold-action {
+  0% { transform: scale(1); }
+  10% { transform: scale(0.9); } /* Press down */
+  70% { transform: scale(0.9); } /* Hold... */
+  80% { transform: scale(1.1); } /* Pop up (success) */
+  100% { transform: scale(1); }
+}
+
+/* Ripple effect for tap */
+.gesture-ripple {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 20px;
+  height: 20px;
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: 50%;
+  transform: translate(-50%, -50%) scale(0);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.animate-tap .gesture-ripple {
+  animation: ripple-effect 1.5s infinite;
+}
+
+@keyframes ripple-effect {
+  15% { opacity: 1; transform: translate(-50%, -50%) scale(0.5); }
+  40% { opacity: 0; transform: translate(-50%, -50%) scale(2.5); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(2.5); }
+}
+
+/* Progress ring for hold */
+.gesture-hold-ring {
+  position: absolute;
+  top: -10px;
+  left: -10px;
+  width: 80px;
+  height: 80px;
+  pointer-events: none;
+  opacity: 0;
+}
+
+.animate-hold .gesture-hold-ring {
+  animation: hold-ring-fade 2.5s infinite;
+}
+
+.gesture-hold-circle {
+  fill: none;
+  stroke: var(--accent, #67e495);
+  stroke-width: 4;
+  stroke-dasharray: 200;
+  stroke-dashoffset: 200;
+  transform: rotate(-90deg);
+  transform-origin: 50% 50%;
+}
+
+.animate-hold .gesture-hold-circle {
+  animation: hold-fill 2.5s infinite;
+}
+
+@keyframes hold-fill {
+  10% { stroke-dashoffset: 200; }
+  70% { stroke-dashoffset: 0; }   /* Fill up during the hold phase */
+  100% { stroke-dashoffset: 0; }
+}
+
+@keyframes hold-ring-fade {
+  10% { opacity: 1; }
+  70% { opacity: 1; }
+  80% { opacity: 0; }
+  100% { opacity: 0; }
+}

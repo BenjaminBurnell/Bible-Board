@@ -2494,7 +2494,7 @@ function handleBoardSearch(query) {
         };
 
         div.innerHTML = `
-          <span class="material-symbols-outlined">chat_bubble</span>
+          <span class="material-symbols-outlined" style="font-weight:900;color:var(--muted);">chat_bubble</span>
           <span class="search-result-title">${highlightText(
             match.board.title,
             term

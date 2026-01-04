@@ -16,7 +16,7 @@
   --bg-alt: #202020;
   --fg: #e6e6e6;
   --fg-seethrough: #e6e6e620;
-  --accent: #67e495;
+  --accent: #007bff;
   --border: #2f2f2f;
   --muted: #8b949e;
   --brightness: 1000%;
@@ -39,7 +39,7 @@ body.light {
   --fg-seethrough: #29292920;
   /* --fg-seethrough-solid:#f1f1f1; */
   --border: #dfdfdf;
-  --accent: #2ea043;
+  --accent: #007bff;
   --muted: #57606a;
   --invert-num:1;
 }
@@ -3579,7 +3579,7 @@ body.scripture-mode-on #bible-query-container {
 /* Bible Query Reader – fixed bottom card that mirrors the verses */
 #bible-query-reader {
   position: fixed;
-  height:100vh;
+  height:auto;
   left: var(--sidebar-width);
   right: 0px;
   bottom: 0px;
@@ -4004,9 +4004,11 @@ body.scripture-mode-on #scripture-mode-toggle {
 }
 
 .verse-study-actions {
-  width:100%;
+  width:100vw;
   overflow-x: scroll;
   overflow-y: hidden;
+  margin-left: -25px;
+  padding-left: 25px;
 }
 
 #verse-study-action-buttons-container {
@@ -4014,6 +4016,7 @@ body.scripture-mode-on #scripture-mode-toggle {
   display: flex;
   justify-content: left;
   flex-direction: row-reverse;
+  margin-right: 50px;
   gap: 8px;
 }
 
@@ -4160,6 +4163,18 @@ body.scripture-mode-on #scripture-mode-toggle {
 
 #places-section {
   padding: 35px 3px;
+}
+
+@media (max-width:900px) {
+  #people-section {
+    width:calc(100vw - 52px);
+    padding: 35px 3px;
+  }
+
+  #places-section {
+    width:calc(100vw - 52px);
+    padding: 35px 3px;
+  }
 }
 
 #interlinear-section {
@@ -4597,6 +4612,71 @@ body.scripture-mode-on #scripture-mode-toggle {
 
 
 
+/* ==========================================
+   Note editor open animation (fade + slide up)
+   ========================================== */
+
+#note-modal-backdrop.note-editor-backdrop {
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+/* If you’re using the ::before overlay in another part of the CSS,
+   this will animate it too. If not, harmless. */
+#note-modal-backdrop.note-editor-backdrop::before {
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+/* Slide the content up from bottom */
+#note-modal-backdrop.note-editor-backdrop #note-editor-wrapper {
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+/* Toolbar: preserve your centering transform, just add translateY */
+#note-modal-backdrop.note-editor-backdrop #note-modal-toolbar {
+  opacity: 0;
+  transform: translateX(-50%) translateY(12px);
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+#note-modal-backdrop.note-editor-backdrop.is-open {
+  opacity: 1;
+}
+
+#note-modal-backdrop.note-editor-backdrop.is-open::before {
+  opacity: 1;
+}
+
+#note-modal-backdrop.note-editor-backdrop.is-open #note-editor-wrapper {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+#note-modal-backdrop.note-editor-backdrop.is-open #note-modal-toolbar {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+
+/* ==========================================
+   Fade the board away while note modal is open
+   (matches your scripture drawer vibe)
+   ========================================== */
+
+#main-content-container {
+  transition: opacity 0.25s ease, top 0.25s ease;
+  /* will-change: opacity; */
+}
+
+body.bb-note-modal-open #main-content-container {
+  opacity: 0;
+  pointer-events: none;
+}
+
+
 /* ---------------------------
    People + Places tab dropdown rows
 ---------------------------- */
@@ -4660,4 +4740,283 @@ body.scripture-mode-on #scripture-mode-toggle {
 #people-section-content details.person-item[open] > summary,
 #places-section-content details.person-item[open] > summary {
   align-items: flex-start;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* --- Gesture Guide Modal --- */
+.gesture-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(5px);
+  z-index: 1000000;
+  top:0px;
+  left:0px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: gestureFadeIn 0.3s ease;
+}
+
+.gesture-modal-content {
+  background: var(--bg-dots);
+  border: 1px solid var(--border, #333);
+  padding: 30px;
+  border-radius: 16px;
+  width: 90%;
+  max-width: 380px;
+  text-align: center;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.1);
+}
+
+.gesture-title {
+  margin-top: 0;
+  margin-bottom: 30px;
+  font-size: 25px;
+  color: var(--fg);
+  letter-spacing: 0.5px;
+}
+
+/* Rows: Inactive rows are dim, Active rows are bright */
+.gesture-row {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 20px;
+  text-align: left;
+  opacity: 0.3;
+  transition: opacity 0.4s ease;
+  filter: grayscale(1);
+}
+
+.gesture-row.active {
+  opacity: 1;
+  filter: grayscale(0);
+}
+
+.gesture-text {
+  color: var(--muted, #aaa);
+  font-size: 1rem;
+  font-weight: 900;
+  line-height: 1.4;
+}
+.gesture-text strong {
+  color: var(--accent);
+}
+
+.gesture-btn {
+  border-radius: 999px;
+  border: 1px solid var(--fg-seethrough);
+  background: var(--bg-dots);
+  color: var(--fg);
+  font-size: 13px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+
+
+  
+  width:150px;
+  margin-left: auto;
+  margin-right: auto;
+  max-width: 600px;
+  height: 50px;
+  padding:0px 20px; 
+  background: var(--fg);
+  cursor: pointer;
+  border-radius: 50px;
+  border: 1px solid var(--border);
+  display: flex;
+  z-index: 100;
+  overflow: hidden;
+  justify-content:center;
+  align-items:center;
+  gap:5px;
+  color:var(--bg);
+  font-size: 15px;
+  font-weight: 900;
+}
+.gesture-btn:hover { opacity: 0.9; }
+
+/* --- ICON BOX & HAND --- */
+.gesture-icon-box {
+  width: 60px;
+  height: 60px;
+  background: var(--bg-dots);
+  border-radius: 12px;
+  position: relative;
+  flex-shrink: 0;
+  /* We allow overflow slightly so the pointer can move */
+}
+
+.gesture-row.active > .gesture-icon-box {
+  width: 60px;
+  height: 60px;
+  background: var(--bg);
+  border-radius: 12px;
+  position: relative;
+  flex-shrink: 0;
+  /* We allow overflow slightly so the pointer can move */
+}
+
+@media (max-width:900px) {
+  .gesture-modal-content {
+    background: var(--bg-dots);
+    border: 1px solid var(--border, #333);
+    padding: 30px 15px;
+    border-radius: 0px;
+    border-top-left-radius: 15px;
+    border-top-right-radius: 15px;
+    max-width: 380px;
+    text-align: center;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.1);
+    position: fixed;
+    bottom:0px;
+    width:calc(100vw - 30px);
+  }
+}
+
+/* Wrapper to center the hand */
+.gesture-hand-container {
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 28px; height: 28px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.gesture-hand-svg {
+  width: 100%; height: 100%;
+  color: var(--fg);
+  /* CRITICAL: Fill it with the box background color so it blocks the circle behind it */
+  fill: var(--bg-alt); 
+  position: relative;
+  z-index: 2; /* Hand is on top */
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+}
+
+/* The Tip Circle */
+.gesture-tip-circle {
+  position: absolute;
+  /* Adjust these to align with the tip of your specific pointer SVG */
+  top: 0px; 
+  left: 0px;
+  width: 16px;
+  height: 16px;
+  background: var(--accent);
+  border-radius: 50%;
+  transform: scale(0);
+  opacity: 0.8;
+  z-index: 0; /* Circle is BEHIND the hand */
+  box-shadow: 0 0 10px var(--accent);
+}
+
+/* --- ANIMATION: TAP (Row 1) --- */
+#gesture-step-1.active .gesture-hand-container {
+  animation: handTapMove 3s infinite ease-in-out;
+}
+#gesture-step-1.active .gesture-tip-circle {
+  animation: circleTapPop 3s infinite ease-in-out;
+}
+
+@keyframes handTapMove {
+  0% { transform: translate(-50%, -50%) scale(1) rotate(0deg); }
+  15% { transform: translate(-50%, -50%) scale(0.85) rotate(-5deg); } /* Click */
+  35% { transform: translate(-50%, -50%) scale(1) rotate(0deg); }   /* Release */
+  65% { transform: translate(-50%, -50%) scale(1) rotate(0deg); }
+  100% { transform: translate(-50%, -50%) scale(1) rotate(0deg); }
+}
+
+@keyframes circleTapPop {
+  0% { transform: scale(0); opacity: 0; }
+  12% { transform: scale(0); opacity: 0; }
+  15% { transform: scale(1.8); opacity: 0.6; } /* Burst out behind hand */
+  35% { transform: scale(0); opacity: 0; }
+  100% { transform: scale(0); opacity: 0; }
+}
+
+/* --- ANIMATION: HOLD (Row 2) --- */
+#gesture-step-2.active .gesture-hand-container {
+  animation: handHoldMove 3s infinite ease-in-out;
+}
+#gesture-step-2.active .gesture-tip-circle {
+  animation: circleHoldGrow 3s infinite ease-in-out;
+}
+
+@keyframes handHoldMove {
+  0% { transform: translate(-50%, -50%) scale(1); }
+  25% { transform: translate(-50%, -50%) scale(0.9); } /* Press down */
+  30% { transform: translate(-50%, -50%) scale(0.9); } /* Hold... */
+  90% { transform: translate(-50%, -50%) scale(1.1); } /* Release */
+  100% { transform: translate(-50%, -50%) scale(1); }
+}
+
+@keyframes circleHoldGrow {
+  0% { transform: scale(0); opacity: 0; }
+  25% { transform: scale(1.5); opacity: .7; } /* Appear behind hand */
+  75% { transform: scale(1); opacity: .7; } /* Expand outward */
+  100% { transform: scale(0); opacity: 0; }
+}
+
+@keyframes gestureFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+
+
+/* ... (Keep all your existing code above) ... */
+
+/* --- MOBILE MODAL ADJUSTMENTS (Bottom Sheet) --- */
+@media (max-width: 600px) {
+  .gesture-modal-backdrop {
+    align-items: flex-end; /* Align to bottom instead of center */
+    padding-bottom: 0;
+  }
+
+  .gesture-modal-content {
+    border-radius: 24px 24px 0 0; /* Round top corners only */
+    border-bottom: none;
+    margin: 0;
+    animation: gestureSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  
+  .gesture-title {
+    font-size: 1.3rem;
+    margin-bottom: 25px;
+  }
+}
+
+@keyframes gestureSlideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
 }

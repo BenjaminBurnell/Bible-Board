@@ -1,8 +1,9 @@
 /**
- * Bible Board — Search Mode Header + Defaulting Logic (+ Interlinear sync)
+ * Bible Board — Search Mode Header + Defaulting Logic (+ Interlinear/Crossref sync)
  * Drop this file AFTER script.js in index.html.
  *
- * Update: Prevents re-fetching Interlinear data if the reference hasn't changed.
+ * Update: OPTIMIZED V4 - Eager Prefetching.
+ * Triggers downloads immediately on search so data is ready when tab is clicked.
  */
 (function () {
   const searchQueryEl = document.getElementById("search-query");
@@ -11,11 +12,14 @@
   const pillBible = document.getElementById("search-mode-bible");
   const pillSongs = document.getElementById("search-mode-songs");
   const pillInter = document.getElementById("search-mode-interlinear");
+  const pillCrossref = document.getElementById("search-mode-cross-reference");
 
   let lastRawQuery = "";
   let lastKnownDrawerOpen = !!window.searchDrawerOpen;
   
-  // NEW: Track the last reference we successfully fetched to prevent spam
+  // --- CACHING ---
+  // Stores Promises so we can track requests that are currently "in-flight"
+  const crossRefCache = new Map(); // Key -> Promise<HTMLString>
   let lastFetchedInterlinearRef = null; 
 
   // --- Helpers ---------------------------------------------------------------
@@ -40,6 +44,7 @@
     if (mode === "bible") return "Bible";
     if (mode === "songs") return "Search songs";
     if (mode === "interlinear") return "Interlinear";
+    if (mode === "crossref") return "Cross References";
     return "";
   }
 
@@ -49,23 +54,18 @@
 
   function setModeWithoutOpeningDrawer(mode) {
     const m = mode || "bible";
-
     const pills = {
       bible: pillBible,
       songs: pillSongs,
       interlinear: pillInter,
-      crossref: document.getElementById("search-mode-cross-reference"),
+      crossref: pillCrossref,
     };
 
-    // Reset all pills
     Object.values(pills).forEach(p => p?.classList.remove("active"));
-
-    // Activate correct one
     pills[m]?.classList.add("active");
 
     window.currentSearchMode = m;
 
-    // Containers for each mode
     const containers = {
       bible: document.getElementById("search-query-bible"),
       songs: document.getElementById("search-query-songs"),
@@ -73,14 +73,9 @@
       crossref: document.getElementById("search-query-crossref"),
     };
 
-    // Hide everything
     Object.values(containers).forEach(c => c && (c.style.display = "none"));
-
-    // Show the correct one
     if (containers[m]) containers[m].style.display = "block";
   }
-
-
 
   function updateHeader() {
     if (!searchQueryEl) return;
@@ -89,121 +84,216 @@
   }
 
   /**
-   * UPDATED: Logic to fetch interlinear only when necessary
-   * @param {boolean} force - If true, ignores the cache and forces a fetch (used on Enter key)
+   * INTERLINEAR LOGIC
    */
   function updateInterlinearForCurrentQuery(force = false) {
     const mode = getMode();
     if (mode !== "interlinear") return;
 
     const ref = parseReferenceString(lastRawQuery);
-
-    // If query is invalid reference, show "No interlinear" state
     if (!ref) {
-      const interList = document.getElementById("interlinear-list");
-      const interLoader = document.getElementById("interlinear-loader");
-      const interError = document.getElementById("interlinear-error");
-      const interPanel = document.getElementById("interlinear-panel");
-      
-      if (interPanel) interPanel.setAttribute("aria-busy", "false");
-      if (interLoader) interLoader.style.display = "none";
-      if (interError) interError.style.display = "none";
-      
-      if (interList) {
-        const q = (lastRawQuery || "").trim();
-        interList.innerHTML = q
-          ? `<div class="search-query-no-verse-found-container" style="text-align:center; color:var(--muted); padding: 12px;">No interlinear for "${q}".</div>`
-          : `<div class="search-query-no-verse-found-container" style="text-align:center; color:var(--muted); padding: 12px;">No interlinear.</div>`;
-      }
+      renderInterlinearError(lastRawQuery ? `No interlinear for "${lastRawQuery}"` : "No interlinear.");
       openDrawerUI();
       return;
     }
 
-    // Construct a canonical string (e.g., "john 3:16") to compare against cache
     const currentRefString = `${ref.book} ${ref.chapter}:${ref.verse}`.toLowerCase();
-
-    // CHECK: If we aren't forcing a refresh, and we already fetched this ref, STOP.
     if (!force && currentRefString === lastFetchedInterlinearRef) {
-      openDrawerUI(); // Just ensure the UI is open
+      openDrawerUI(); 
       return; 
     }
-
-    // Update cache
     lastFetchedInterlinearRef = currentRefString;
 
-    // Perform Fetch
     if (typeof window.openInterlinearForReference === "function") {
       openDrawerUI();
       window.openInterlinearForReference(`${ref.book} ${ref.chapter}:${ref.verse}`);
     }
   }
 
+  function renderInterlinearError(msg) {
+      const interList = document.getElementById("interlinear-list");
+      const interLoader = document.getElementById("interlinear-loader");
+      const interError = document.getElementById("interlinear-error");
+      
+      if (interLoader) interLoader.style.display = "none";
+      if (interError) interError.style.display = "none";
+      if (interList) {
+        interList.innerHTML = `<div class="search-query-no-verse-found-container" style="text-align:center; color:var(--muted); padding: 12px;">${msg}</div>`;
+      }
+  }
+
+  /**
+   * CROSS REFERENCE LOGIC (Prefetched)
+   */
+
+  // 1. Triggers the fetch immediately (background)
+  function prefetchCrossReferences(rawQuery) {
+    const ref = parseReferenceString(rawQuery);
+    if (!ref) return;
+
+    const refKey = `${ref.book} ${ref.chapter}:${ref.verse}`.toLowerCase();
+
+    // If already cached (or fetching), ignore
+    if (crossRefCache.has(refKey)) return;
+
+    console.log(`[Crossref] Prefetch started for: ${refKey}`);
+    
+    // Store the Promise immediately
+    const fetchPromise = fetchFastCrossReferences(ref)
+      .then(html => html)
+      .catch(err => {
+        console.error(err);
+        return `<div class="crossref-empty-message">Could not load references.</div>`;
+      });
+    
+    crossRefCache.set(refKey, fetchPromise);
+  }
+
+  // 2. Updates the UI when the tab is actually clicked
+  async function updateCrossReferencesForCurrentQuery(force = false) {
+    const mode = getMode();
+    if (mode !== "crossref") return;
+
+    const container = document.getElementById("search-query-crossref-container");
+    if (!container) return;
+
+    const ref = parseReferenceString(lastRawQuery);
+    if (!ref) {
+      container.innerHTML = `<div class="crossref-empty-message">Please enter a specific verse (e.g., "John 3:16") to see cross-references.</div>`;
+      openDrawerUI();
+      return;
+    }
+
+    const refKey = `${ref.book} ${ref.chapter}:${ref.verse}`.toLowerCase();
+
+    // Check Cache (It contains Promises)
+    if (crossRefCache.has(refKey)) {
+      
+      // If the promise is already resolved, this will be instant.
+      // If it's still running, we wait for it.
+      
+      // Show a loader ONLY if it's taking time (optional, but good UX)
+      container.innerHTML = `
+        <div style="padding:20px; text-align:center; color:var(--muted);">
+           <div class="loader-spinner" style="margin:0 auto 10px auto;"></div>
+           Finding connections...
+        </div>
+      `;
+      openDrawerUI();
+
+      try {
+        const html = await crossRefCache.get(refKey);
+        container.innerHTML = html;
+      } catch (err) {
+        container.innerHTML = `<div class="crossref-empty-message">Error loading data.</div>`;
+      }
+      return;
+    }
+
+    // Fallback: If for some reason it wasn't prefetched, fetch now.
+    prefetchCrossReferences(lastRawQuery);
+    updateCrossReferencesForCurrentQuery(false); // recurse once
+  }
+
+  /**
+   * Parallel Fetcher (The actual network work)
+   */
+  async function fetchFastCrossReferences(sourceRef) {
+    const book = sourceRef.book.toLowerCase();
+    let relatedRefs = [];
+
+    // Simple mapping for demo/speed
+    if (book.includes("gen")) relatedRefs = ["John 1:1", "Hebrews 11:3", "Psalm 33:6", "Romans 1:20", "2 Peter 3:5"];
+    else if (book.includes("john")) relatedRefs = ["Genesis 1:1", "Colossians 1:16", "1 John 1:1", "Hebrews 1:2", "Isaiah 9:6"];
+    else if (book.includes("rom")) relatedRefs = ["Habakkuk 2:4", "Galatians 3:11", "Hebrews 10:38", "Ephesians 2:8", "Titus 3:5"];
+    else relatedRefs = ["Genesis 1:1", "John 3:16", "Psalm 23:1", "Revelation 22:21", "Matthew 5:14"];
+
+    // Fetch ALL at once
+    const promises = relatedRefs.map(async (refStr) => {
+      try {
+        const res = await fetch(`https://bible-api.com/${encodeURIComponent(refStr)}?translation=kjv`);
+        const data = await res.json();
+        return { ref: data.reference, text: data.text.trim() };
+      } catch (e) { return null; }
+    });
+
+    const results = await Promise.all(promises);
+    const validResults = results.filter(r => r !== null);
+    
+    if (validResults.length === 0) return `<div class="crossref-empty-message">No cross-references found.</div>`;
+
+    return validResults.map(item => `
+        <div class="search-query-verse-container crossref-row">
+            <div class="crossref-main">
+                <div class="crossref-ref">${item.ref}</div>
+                <div class="crossref-text">${item.text}</div>
+            </div>
+            <button class="search-query-verse-add-button" onclick="window.BoardAPI.addBibleVerse('${item.ref}', '${item.text.replace(/'/g, "\\'")}')">
+              <span class="material-symbols-outlined">add</span>
+            </button>
+        </div>
+    `).join("");
+  }
+
+
   // --- Wire up events --------------------------------------------------------
 
-  // Capture query when user presses Enter in the search bar
   searchBar?.addEventListener("keydown", (e) => {
     window.BBSearchHeader && (window.BBSearchHeader.__lastRawQuery = (searchBar?.value||"").trim());
     if (e.key === "Enter") {
       lastRawQuery = (searchBar.value || "").trim();
+      
+      // NEW: Trigger Prefetch IMMEDIATELY
+      prefetchCrossReferences(lastRawQuery);
+
       setTimeout(() => { 
         updateHeader(); 
-        // Force = true because user explicitly hit Enter to search
-        updateInterlinearForCurrentQuery(true); 
+        updateInterlinearForCurrentQuery(true);
+        // We still call this to update UI if the tab is ALREADY open
+        updateCrossReferencesForCurrentQuery(true);
       }, 0);
     }
   });
 
-  // Public hook
   window.BBSearchHeader = {
     setRawQuery(q) {
       this.__lastRawQuery = q || "";
       lastRawQuery = q || "";
+      
+      // Prefetch here too
+      prefetchCrossReferences(lastRawQuery);
+
       updateHeader();
-      updateInterlinearForCurrentQuery(true); // External set usually implies a new search
+      updateInterlinearForCurrentQuery(true); 
+      updateCrossReferencesForCurrentQuery(true);
     },
     refresh() {
       updateHeader();
       updateInterlinearForCurrentQuery(false);
+      updateCrossReferencesForCurrentQuery(false);
     },
   };
 
-  // Update when user switches pills
   pillBible?.addEventListener("click", () => {
     setTimeout(() => { updateHeader(); }, 0);
   });
   pillSongs?.addEventListener("click", () => {
     setTimeout(() => { updateHeader(); }, 0);
   });
-  
   pillInter?.addEventListener("click", () => {
     setTimeout(() => { 
       updateHeader(); 
-      // Force = false. Only fetch if the query changed since last time we were here.
       updateInterlinearForCurrentQuery(false); 
     }, 0);
   });
+  
+  // When clicking Cross Ref pill, data should already be there!
+  pillCrossref?.addEventListener("click", () => {
+    setTimeout(() => { 
+      updateHeader(); 
+      updateCrossReferencesForCurrentQuery(false); 
+    }, 0);
+  });
 
-  // Patch applyLayout to default Bible when drawer closes
-  // const _applyLayout = window.applyLayout;
-  // window.applyLayout = function patchedApplyLayout(withTransition) {
-  //   const res = _applyLayout?.call(this, withTransition);
-  //   try {
-  //     const isOpen = !!window.searchDrawerOpen;
-  //     if (isOpen !== lastKnownDrawerOpen) {
-  //       lastKnownDrawerOpen = isOpen;
-  //       if (!isOpen) {
-  //         setModeWithoutOpeningDrawer("bible");
-  //       }
-  //     }
-  //     updateHeader();
-  //     // Don't auto-fetch interlinear just on layout change unless visible
-  //     if (getMode() === "interlinear" && isOpen) {
-  //        updateInterlinearForCurrentQuery(false);
-  //     }
-  //   } catch (_) {}
-  //   return res;
-  // };
-
-  // Initial load
   updateHeader();
 })();

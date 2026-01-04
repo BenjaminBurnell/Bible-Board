@@ -5063,46 +5063,43 @@ function focusNoteEditorAtEnd() {
   sel.addRange(range);
 }
 
-function openNoteModal(noteEl = null) {
-  if (window.__readOnly) return;
-  if (!noteModal || !noteEditor) return;
+const NOTE_MODAL_ANIM_MS = 250;
+let _noteModalHideTimer = null;
 
-  currentEditingNote = noteEl;
+function openNoteModal(noteElement = null) {
+  currentEditingNote = noteElement;
 
-  if (noteEl) {
-    const contentEl = noteEl.querySelector(".text-content");
-    const html = contentEl ? contentEl.innerHTML : "";
-    noteEditor.innerHTML = html || "";
-
-    const lhAttr =
-      (contentEl && (contentEl.dataset.lineHeight || contentEl.style.lineHeight)) ||
-      "";
-    currentNoteLineHeight = lhAttr ? clampLineHeight(lhAttr) : DEFAULT_NOTE_LINE_HEIGHT;
+  // load existing content if editing
+  if (currentEditingNote) {
+    const content = currentEditingNote.querySelector(".text-content");
+    noteEditor.innerHTML = content ? content.innerHTML : "";
   } else {
     noteEditor.innerHTML = "";
-    currentNoteLineHeight = DEFAULT_NOTE_LINE_HEIGHT;
   }
 
-  noteEditor.style.setProperty(
-    "--note-editor-line-height",
-    currentNoteLineHeight
-  );
-  noteEditor.style.lineHeight = currentNoteLineHeight;
-
+  // reset selects (keep your existing behavior)
   if (noteLineHeightSelect) {
     const target = String(currentNoteLineHeight);
-    const has = Array.from(noteLineHeightSelect.options).some(
-      (o) => o.value === target
-    );
+    const has = Array.from(noteLineHeightSelect.options).some((o) => o.value === target);
     noteLineHeightSelect.value = has ? target : String(DEFAULT_NOTE_LINE_HEIGHT);
   }
+  if (noteFontSizeSelect) noteFontSizeSelect.value = "";
 
-  if (noteFontSizeSelect) {
-    noteFontSizeSelect.value = "";
+  // cancel any pending close
+  if (_noteModalHideTimer) {
+    clearTimeout(_noteModalHideTimer);
+    _noteModalHideTimer = null;
   }
 
+  // show modal in "closed" visual state first
   noteModal.classList.remove("hidden");
+  noteModal.classList.remove("is-open"); // ensure starting state
   document.body.classList.add("bb-note-modal-open");
+
+  // next frame: flip to open so transitions run
+  requestAnimationFrame(() => {
+    noteModal.classList.add("is-open");
+  });
 
   setTimeout(() => {
     noteEditor.focus();
@@ -5113,10 +5110,21 @@ function openNoteModal(noteEl = null) {
 
 function closeNoteModal() {
   if (!noteModal) return;
-  noteModal.classList.add("hidden");
+  if (noteModal.classList.contains("hidden")) return;
+
+  // start closing animation
+  noteModal.classList.remove("is-open");
   document.body.classList.remove("bb-note-modal-open");
-  currentEditingNote = null;
+
+  // after animation, fully hide
+  if (_noteModalHideTimer) clearTimeout(_noteModalHideTimer);
+  _noteModalHideTimer = setTimeout(() => {
+    noteModal.classList.add("hidden");
+    currentEditingNote = null;
+    _noteModalHideTimer = null;
+  }, NOTE_MODAL_ANIM_MS);
 }
+
 
 function applyNoteCommand(cmd, value = null) {
   if (!noteEditor) return;
@@ -12506,3 +12514,73 @@ function activateVerseStudyTab(btnId, sectionId) {
 // Expose globally
 window.activateVerseStudyTab = activateVerseStudyTab;
 window.resetVerseStudySections = resetVerseStudySections;
+
+// --- GESTURE ONBOARDING SEQUENCER ---
+(function() {
+  const KEY = "bb_gestures_seen_simple_v2";
+  const modal = document.getElementById("gesture-guide-modal");
+  const closeBtn = document.getElementById("gesture-guide-close");
+  const toggleBtn = document.getElementById("scripture-mode-toggle");
+  
+  let sequenceInterval = null;
+
+  function startAnimationLoop() {
+    const row1 = document.getElementById("gesture-step-1");
+    const row2 = document.getElementById("gesture-step-2");
+    
+    if(!row1 || !row2) return;
+
+    // Reset
+    row1.classList.remove("active");
+    row2.classList.remove("active");
+
+    // Cycle function
+    let phase = 0; // 0 = Tap, 1 = Hold
+    
+    const runCycle = () => {
+      if (phase === 0) {
+        // TAP PHASE (2 seconds)
+        row1.classList.add("active");
+        row2.classList.remove("active");
+        phase = 1;
+        setTimeout(runCycle, 2000); // Switch to Hold after 2s
+      } else {
+        // HOLD PHASE (3 seconds)
+        row1.classList.remove("active");
+        row2.classList.add("active");
+        phase = 0;
+        setTimeout(runCycle, 3000); // Switch to Tap after 3s
+      }
+    };
+
+    // Start
+    runCycle();
+  }
+
+  // Close Logic
+  if (closeBtn) {
+    closeBtn.addEventListener("click", () => {
+      modal.style.display = "none";
+      localStorage.setItem(KEY, "true");
+      // Note: We don't strictly need to clear the timeout as the modal is hidden
+      // but it's fine to let it run in background or reload page to stop.
+    });
+  }
+
+  // Open Logic
+  if (toggleBtn) {
+    toggleBtn.addEventListener("click", () => {
+      const hasSeen = localStorage.getItem(KEY) === "true";
+      const isOpening = !document.body.classList.contains("scripture-mode-on");
+
+      if (!hasSeen && isOpening) {
+        setTimeout(() => {
+          if(modal) {
+             modal.style.display = "flex";
+             startAnimationLoop();
+          }
+        }, 500);
+      }
+    });
+  }
+})();

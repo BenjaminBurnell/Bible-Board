@@ -16,7 +16,7 @@
   --bg-alt: #202020;
   --fg: #e6e6e6;
   --fg-seethrough: #e6e6e620;
-  --accent: #67e495;
+  --accent: #007bff;
   --border: #2f2f2f;
   --muted: #8b949e;
   
@@ -33,7 +33,7 @@ body.light {
   --fg: #343434;
   --fg-seethrough: #29292920;
   --border: #dfdfdf;
-  --accent: #2ea043;
+  --accent: #007bff;
   --muted: #57606a;
   
   /* Light Mode: Lower brightness to make the logo dark */
@@ -927,7 +927,8 @@ body {
 /* Group Headers (e.g., Today, Yesterday) */
 .search-results-group-header {
   font-size: 0.85rem;
-  color: var(--muted);
+  font-weight: 900;
+  color: var(--fg);
   padding: 15px 10px 5px 10px;
   margin-top: 10px;
   text-transform: uppercase;
