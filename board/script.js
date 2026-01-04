@@ -12517,7 +12517,7 @@ window.resetVerseStudySections = resetVerseStudySections;
 
 // --- GESTURE ONBOARDING SEQUENCER ---
 (function() {
-  const KEY = "bb_gestures_seen_simple_v2";
+  const KEY = "bb_gestures_seen_simple_v3";
   const modal = document.getElementById("gesture-guide-modal");
   const closeBtn = document.getElementById("gesture-guide-close");
   const toggleBtn = document.getElementById("scripture-mode-toggle");

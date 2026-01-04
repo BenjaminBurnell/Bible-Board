@@ -16,7 +16,7 @@
   --bg-alt: #202020;
   --fg: #e6e6e6;
   --fg-seethrough: #e6e6e620;
-  --accent: #007bff;
+  --accent: #67e495;
   --border: #2f2f2f;
   --muted: #8b949e;
   
@@ -33,7 +33,7 @@ body.light {
   --fg: #343434;
   --fg-seethrough: #29292920;
   --border: #dfdfdf;
-  --accent: #007bff;
+  --accent: #2ea043;
   --muted: #57606a;
   
   /* Light Mode: Lower brightness to make the logo dark */
