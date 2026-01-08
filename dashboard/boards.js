@@ -70,6 +70,8 @@ const BUCKET = "bible-boards";
 const FREE_BOARD_LIMIT = 3; // The maximum number of boards for a free user
 const FREE_ITEM_LIMIT_PER_BOARD = 100;
 
+let guestAuthModalTimer = null;
+
 // Pre-made template boards shown in the "get started" hero
 const TEMPLATE_BOARDS = [
   {
@@ -232,6 +234,71 @@ let hasProCheckCompleted = false;
 
 // Local overrides for board titles to work around storage caching
 let boardTitleOverrides = {};
+
+
+
+// Allow viewer to copy the currently-open board into their own account
+window.makeCopyOfCurrentBoard = async function () {
+  try {
+    if (!currentUser) {
+      showToast("Please log in to make a copy", { variant: "info" });
+      return;
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    const srcBoardId = params.get("board");
+    const srcOwnerId = params.get("owner");
+    if (!srcBoardId || !srcOwnerId) {
+      showToast("No board to copy", { variant: "error" });
+      return;
+    }
+
+    const srcPath =
+      srcOwnerId === currentUser.id
+        ? `${srcOwnerId}/boards/${srcBoardId}.json`
+        : `${srcOwnerId}/public/${srcBoardId}.json`;
+
+    const { data: blob, error } = await sb.storage.from(BUCKET).download(srcPath);
+    if (error) throw error;
+
+    const board = JSON.parse(await blob.text());
+
+    const newId = crypto.randomUUID();
+    const now = new Date().toISOString();
+
+    board.id = newId;
+    board.title = board.title ? `Copy of ${board.title}` : "Copy of Board";
+    board.createdAt = now;
+    board.updatedAt = now;
+
+    const outBlob = new Blob([JSON.stringify(board, null, 2)], {
+      type: "application/json",
+    });
+
+    const destPath = `${currentUser.id}/boards/${newId}.json`;
+    const { error: upErr } = await sb.storage.from(BUCKET).upload(destPath, outBlob, {
+      contentType: "application/json",
+      cacheControl: "0",
+      upsert: false,
+    });
+    if (upErr) throw upErr;
+
+    // Jump to the new board (loadBoards will open it)
+    const newUrl = new URL(window.location);
+    newUrl.searchParams.set("board", newId);
+    newUrl.searchParams.set("owner", currentUser.id);
+    window.history.replaceState({}, "", newUrl.toString());
+
+    await loadBoards();
+    showToast("Copied to your boards", { variant: "success", duration: 2200 });
+  } catch (err) {
+    console.error("[MakeCopy] Failed:", err);
+    showToast("Could not make a copy", { variant: "error" });
+  }
+};
+
+
+
 
 function loadBoardTitleOverrides() {
   try {
@@ -1865,19 +1932,27 @@ async function loadBoards() {
     const ownerFromUrl = params.get("owner");
 
     if (targetBoardId) {
-      const owner = ownerFromUrl || user.id;
+      const isSharedLink = ownerFromUrl && ownerFromUrl !== user.id;
+
+      // ✅ Shared link: do NOT fall back just because it's not in my sidebar list
+      if (isSharedLink) {
+        switchBoard(targetBoardId, ownerFromUrl);
+        return;
+      }
+
+      // ✅ Own boards: normal behavior
       const exists = sorted.some((b) => b.id === targetBoardId);
 
       if (exists) {
-        switchBoard(targetBoardId, owner);
+        switchBoard(targetBoardId, user.id);
       } else if (sorted.length > 0) {
-        // Deleted or invalid board id in URL – fall back to first board
+        // Deleted/invalid board id in URL – fall back to first *owned* board
         const fallback = sorted[0];
         const newUrl = new URL(window.location);
         newUrl.searchParams.set("board", fallback.id);
-        newUrl.searchParams.set("owner", owner);
+        newUrl.searchParams.set("owner", user.id); // ✅ important
         window.history.replaceState({}, "", newUrl);
-        switchBoard(fallback.id, owner);
+        switchBoard(fallback.id, user.id);
       } else {
         // No boards left at all – clear params and workspace
         const newUrl = new URL(window.location);
@@ -1887,14 +1962,14 @@ async function loadBoards() {
 
         const workspace = document.getElementById("workspace");
         if (workspace) {
-          workspace.innerHTML =
-            '<svg id="connections" class="connections"></svg>';
+          workspace.innerHTML = '<svg id="connections" class="connections"></svg>';
         }
         renderStatus("No boards yet. Get started creating.");
       }
     } else if (sorted.length > 0) {
       switchBoard(sorted[0].id, user.id);
     }
+
   } catch (err) {
     console.error("Failed to load boards:", err);
     renderStatus("Error loading boards.");
@@ -2333,11 +2408,112 @@ function closeProfileMenu() {
   }
 }
 
+
+
+
+
+
+
+
+
+
+
+
+function isSharedBoardLink() {
+  const p = new URLSearchParams(window.location.search);
+  return !!(p.get("board") && p.get("owner"));
+}
+
+function openGuestAuthModal() {
+  if (currentUser) return; // ✅ never show for logged-in users
+  const backdrop = document.getElementById("guest-auth-backdrop");
+  if (!backdrop) return;
+
+  backdrop.classList.remove("hidden");
+  backdrop.setAttribute("aria-hidden", "false");
+
+  if (backdrop.dataset.wired === "1") return;
+  backdrop.dataset.wired = "1";
+
+  const closeToHome = () => {
+    backdrop.classList.add("hidden");
+    backdrop.setAttribute("aria-hidden", "true");
+    window.location = "./";
+  };
+
+  backdrop.addEventListener("click", (e) => {
+    if (e.target === backdrop) closeToHome();
+  });
+
+  document.getElementById("guest-auth-close")?.addEventListener("click", closeToHome);
+  document.getElementById("guest-auth-home")?.addEventListener("click", closeToHome);
+
+  document.getElementById("guest-auth-google")?.addEventListener("click", async () => {
+    const redirectTo = window.location.origin + window.location.pathname + window.location.search;
+
+    const { error } = await sb.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo },
+    });
+
+    if (error) {
+      console.error("[OAuth] signInWithOAuth error:", error);
+      alert(error.message || "Login failed");
+    }
+  });
+
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !backdrop.classList.contains("hidden")) closeToHome();
+  });
+}
+
+function closeGuestAuthModal() {
+  const backdrop = document.getElementById("guest-auth-backdrop");
+  if (!backdrop) return;
+  backdrop.classList.add("hidden");
+  backdrop.setAttribute("aria-hidden", "true");
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 // ==================== AUTH GATEKEEPER ====================
 async function handleAuthChange(user, valid = false) {
   currentUser = user;
 
+  // ✅ If logged in: cancel any pending guest modal and close it
   if (user) {
+    if (guestAuthModalTimer) clearTimeout(guestAuthModalTimer);
+    guestAuthModalTimer = null;
+    closeGuestAuthModal?.();
+
     updateUserProfileUI(user);
 
     hasProCheckCompleted = false;
@@ -2347,14 +2523,31 @@ async function handleAuthChange(user, valid = false) {
     const isPro = await isProUser();
     window.BIBLEBOARD_IS_PRO = !!isPro;
 
-    await loadBoards(); // 👈 important: wait for boardsLoaded
+    await loadBoards();
 
     hasProCheckCompleted = true;
     updateBoardCreateButtonState?.();
-  } else if (valid) {
-    window.location = "../";
+    return;
   }
+
+  // ✅ Don’t do anything until we’ve completed the initial getSession() check
+  if (!valid) return;
+
+  // ✅ Guest + shared link => show modal (delayed) instead of redirect
+  if (isSharedBoardLink?.()) {
+    if (guestAuthModalTimer) clearTimeout(guestAuthModalTimer);
+    guestAuthModalTimer = setTimeout(() => {
+      // only open if STILL not logged in
+      if (!currentUser) openGuestAuthModal?.();
+    }, 200);
+    return;
+  }
+
+  // normal behavior for non-shared pages
+  window.location = "../";
 }
+
+
 
 // ==================== ADVANCED SEARCH LOGIC ====================
 const searchBackdrop = document.getElementById("search-modal-backdrop");

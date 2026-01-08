@@ -657,7 +657,7 @@ textarea:focus {
 }
 
 .toggle-btn {
-  background: var(--bg-dots) !important;
+  background: var(--bg-alt) !important;
   border: none;
   display: flex;
   align-items: center;
@@ -1513,182 +1513,15 @@ body {
 /* === NEW: Share Popover & Toast (as requested) === */
 .share-btn {
   /* Styles for the main share button (if not already styled inline) */
+  position:fixed;
+  top:15px !important;
+  right: 75px !important;
   padding: 6px 10px;
   border: 1px solid var(--border);
-  border-radius: 8px;
-}
-
-.share-popover {
-  position: absolute;
-  top: 420px;
-  /* Positioned below the top bar items */
-  right: 70px;
-  /* Aligned with auth controls */
-  background: var(--bg-seethroug);
-  backdrop-filter: blur(1rem);
-  -webkit-backdrop-filter: blur(1rem);
-  border: 1px solid var(--border);
-  padding: 10px;
-  border-radius: 10px;
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.25);
-  width: min(420px, 92vw);
-  z-index: 10010;
-}
-
-.share-link {
-  width: 100%;
-  font-family: monospace;
-  padding: 8px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--bg-alt);
-  color: var(--muted);
-  box-sizing: border-box;
-  /* Ensure padding doesn't break layout */
-}
-
-.share-actions {
-  display: flex;
-  gap: 8px;
-  margin-top: 8px;
-  justify-content: flex-end;
-}
-
-/* Using existing .btn styles from index.html for consistency */
-.share-actions .btn {
-  font-family: inherit;
-  font-size: 14px;
-  font-weight: 700;
-  padding: 6px 12px;
-  border-radius: 8px;
-  border: 1px solid var(--border);
-  background: var(--bg-alt);
-  color: var(--fg);
-  cursor: pointer;
-}
-
-.share-actions .btn:hover {
-  border-color: var(--muted);
-}
-
-.share-actions .btn#copy-link-btn {
-  background: var(--fg);
-  color: var(--bg);
-  border-color: var(--fg);
-}
-
-.toast {
-  position: absolute;
-  bottom: 15px;
-  right: 15px;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  padding: 8px 16px;
-  border-radius: 999px;
-  z-index: 10020;
-  color: var(--fg);
-  font-weight: 700;
-  font-size: 14px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  opacity: 0;
-  animation: bb-toast-fade 1.6s ease-out;
-}
-
-/* --- Share Modal (centered, Google Docs–style) --- */
-#share-modal-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.35);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  z-index: 10030;
-  display: none;
-  align-items: center;
-  justify-content: center;
-}
-
-#share-modal-backdrop:not(.hidden) {
-  display: flex;
-}
-
-.share-modal-content {
-  max-width: 420px;
-  width: min(420px, 92vw);
-  background: var(--bg);
-  border-radius: 12px;
-  border: 1px solid var(--border);
-  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.35);
-  padding: 16px 18px 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.share-modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 4px;
-}
-
-.share-modal-header h3 {
-  margin: 0;
-  font-size: 1.05rem;
-  font-weight: 700;
-}
-
-.share-modal-row {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.share-field-label {
-  font-size: 0.85rem;
-  font-weight: 700;
-  color: var(--muted);
-}
-
-.share-link-row {
-  display: flex;
-  gap: 8px;
-  margin-top: 4px;
-}
-
-#share-modal-link-input {
-  flex: 1;
-  font-family: monospace;
-  padding: 8px;
-  border-radius: 8px;
-  border: 1px solid var(--border);
-  background: var(--bg-alt);
-  color: var(--muted);
-  box-sizing: border-box;
-}
-
-#share-modal-copy-btn {
-  white-space: nowrap;
-  font-size: 0.9rem;
-  font-weight: 700;
-  padding: 8px 12px;
-}
-
-#share-visibility-select {
-  margin-top: 4px;
-  width: 100%;
-  border-radius: 8px;
-  border: 1px solid var(--border);
-  background: var(--bg-alt);
-  color: var(--fg);
-  padding: 6px 8px;
-  font-size: 0.9rem;
+  color:var(--fg) !important;
+  border-radius: 30px !important;
+  font-size: 15px;
   font-weight: 600;
-}
-
-.share-helper-text {
-  margin: 2px 0 0;
-  font-size: 0.75rem;
-  color: var(--muted);
 }
 
 @keyframes bb-toast-fade {
@@ -5017,4 +4850,164 @@ body.bb-note-modal-open #main-content-container {
 @keyframes gestureSlideUp {
   from { transform: translateY(100%); }
   to { transform: translateY(0); }
+}
+
+/* === SHARE MODAL (BibleBoard style) === */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(6px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000000;
+}
+
+.modal-backdrop.visible {
+  display: flex;
+  animation: fadeIn 0.25s ease forwards;
+}
+
+.modal.share-modal {
+  background: var(--bg);
+  border-radius: 25px;
+  
+  border: 1px solid var(--border);
+  padding: 24px;
+  color: var(--fg);
+  animation: slideUp 0.25s ease forwards;
+  display: flex;
+  flex-direction: column;
+  /* gap: 18px; */
+}
+
+.modal.share-modal h3 {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.modal-subtext {
+  margin: 10px 0px;
+  margin-bottom: 20px;
+  font-size: 0.9rem;
+  font-weight: 400;
+  color: var(--muted);
+  line-height: 1;
+}
+
+.share-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.share-section label {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.share-link-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom:10px;
+}
+
+.share-link-row input {
+  flex: 1;
+  background: var(--bg-dots);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 0.9rem;
+  outline: none;
+}
+.share-link-row input:focus {
+  border-color: var(--fg);
+}
+
+.share-link-row .btn-secondary {
+  flex-shrink: 0;
+}
+
+.share-section select {
+  background: var(--bg-dots);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  padding: 8px 10px;
+  outline: none;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.btn-primary {
+  background:#007bff;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-weight: 600;
+  transition: opacity 0.2s;
+  cursor: pointer;
+}
+.btn-primary:hover {
+  opacity: 0.7;
+  transition: opacity 0.1s;
+}
+
+.btn-secondary {
+  background: var(--bg-dots);
+  border: 1px solid var(--border);
+  color: var(--fg);
+  padding: 10px 20px;
+  border-radius: 8px;
+  margin-right: 0px;
+  cursor: pointer;
+  display:flex;
+  flex-direction: row;
+  justify-content:center;
+  align-items:center;
+  gap: 5px;
+}
+.btn-secondary:hover {
+  background: var(--bg-alt);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@media (max-width:900px) {
+  .modal.share-modal {
+    background: linear-gradient(180deg, #171717, #121212);
+    border-radius: 25px;
+    
+    border: 1px solid var(--border);
+    padding: 24px;
+    color: #fff;
+    animation: slideUp 0.25s ease forwards;
+    display: flex;
+    flex-direction: column;
+    /* gap: 18px; */
+    position:fixed;
+    bottom:0px;
+    border-bottom-left-radius: 0px !important;
+    border-bottom-right-radius: 0px !important;
+  }
 }

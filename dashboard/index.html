@@ -203,7 +203,7 @@
             border-radius: 10px;
             font-weight: 700;
             font-size: 15px;
-            background: var(--bg-seethroug);
+            background: var(--bg-alt);
             border-radius: 10px;
             -webkit-backdrop-filter: blur(1rem);
             backdrop-filter: blur(1rem);
@@ -211,15 +211,38 @@
             padding: 5px 15px;
             color: var(--muted);
             position: absolute;
-            font-size: 12px;
-            font-weight: 700;
+            font-size: 13px;
+            font-weight: 800;
             cursor: pointer;
             top: 0px;
             right: 100px;
-            display: none;
+            display: flex;
+            flex-direction: row;
+            justify-content: center;
+            align-items: center;
+            gap: 5px;
           "
         >
-          Share
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="16px"
+            height="16px"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="var(--fg)"
+            stroke-width="3"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            class="icon icon-tabler icons-tabler-outline icon-tabler-share-2"
+          >
+            <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+            <path
+              d="M8 9h-1a2 2 0 0 0 -2 2v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-8a2 2 0 0 0 -2 -2h-1"
+            />
+            <path d="M12 14v-11" />
+            <path d="M9 6l3 -3l3 3" />
+          </svg>
+          <span id="share-btn-label">Share</span>
         </button>
       </div>
       <div
@@ -966,7 +989,7 @@
             <button
               id="verse-study-open-bookinfo"
               class="verse-study-action-btn"
-              style="display:none;"
+              style="display: none"
               onclick="
               // Use the same reference you use for the other two tabs
               // If you don't already pass it, this version just uses the header text:
@@ -1845,8 +1868,8 @@
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              width="24"
-              height="24"
+              width="22px"
+              height="22px"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -2021,17 +2044,32 @@
       </div>
     </aside>
 
-    <div id="gesture-guide-modal" class="gesture-modal-backdrop" style="display: none;">
+    <div
+      id="gesture-guide-modal"
+      class="gesture-modal-backdrop"
+      style="display: none"
+    >
       <div class="gesture-modal-content">
         <h2 class="gesture-title">Reader Gestures</h2>
-        
+
         <div id="gesture-step-1" class="gesture-row active">
           <div class="gesture-icon-box">
             <div class="gesture-hand-container">
               <div class="gesture-tip-circle"></div>
-              <svg class="gesture-hand-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
-                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                <path d="M7.904 17.563a1.2 1.2 0 0 0 2.228 .308l2.09 -3.093l4.907 4.907a1.067 1.067 0 0 0 1.509 0l1.047 -1.047a1.067 1.067 0 0 0 0 -1.509l-4.907 -4.907l3.113 -2.09a1.2 1.2 0 0 0 -.309 -2.228l-13.582 -3.904l3.904 13.563" />
+              <svg
+                class="gesture-hand-svg"
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                <path
+                  d="M7.904 17.563a1.2 1.2 0 0 0 2.228 .308l2.09 -3.093l4.907 4.907a1.067 1.067 0 0 0 1.509 0l1.047 -1.047a1.067 1.067 0 0 0 0 -1.509l-4.907 -4.907l3.113 -2.09a1.2 1.2 0 0 0 -.309 -2.228l-13.582 -3.904l3.904 13.563"
+                />
               </svg>
             </div>
           </div>
@@ -2044,9 +2082,20 @@
           <div class="gesture-icon-box">
             <div class="gesture-hand-container">
               <div class="gesture-tip-circle"></div>
-              <svg class="gesture-hand-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
-                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                <path d="M7.904 17.563a1.2 1.2 0 0 0 2.228 .308l2.09 -3.093l4.907 4.907a1.067 1.067 0 0 0 1.509 0l1.047 -1.047a1.067 1.067 0 0 0 0 -1.509l-4.907 -4.907l3.113 -2.09a1.2 1.2 0 0 0 -.309 -2.228l-13.582 -3.904l3.904 13.563" />
+              <svg
+                class="gesture-hand-svg"
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                <path
+                  d="M7.904 17.563a1.2 1.2 0 0 0 2.228 .308l2.09 -3.093l4.907 4.907a1.067 1.067 0 0 0 1.509 0l1.047 -1.047a1.067 1.067 0 0 0 0 -1.509l-4.907 -4.907l3.113 -2.09a1.2 1.2 0 0 0 -.309 -2.228l-13.582 -3.904l3.904 13.563"
+                />
               </svg>
             </div>
           </div>
@@ -2056,6 +2105,140 @@
         </div>
 
         <button id="gesture-guide-close" class="gesture-btn">Got it</button>
+      </div>
+    </div>
+
+    <!-- Share Modal -->
+    <div id="share-modal-backdrop" class="modal-backdrop hidden">
+      <div class="modal share-modal">
+        <h3>Share board</h3>
+        <p class="modal-subtext">
+          Share your board with others or make it public for viewing only.
+        </p>
+
+        <div class="share-section">
+          <label for="share-modal-link-input">Link</label>
+          <div class="share-link-row">
+            <input id="share-modal-link-input" type="text" readonly />
+            <button id="share-modal-copy-btn" class="btn-secondary">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16px"
+                height="16px"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="3"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                class="icon icon-tabler icons-tabler-outline icon-tabler-link"
+              >
+                <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                <path d="M9 15l6 -6" />
+                <path d="M11 6l.463 -.536a5 5 0 0 1 7.071 7.072l-.534 .464" />
+                <path
+                  d="M13 18l-.397 .534a5.068 5.068 0 0 1 -7.127 0a4.972 4.972 0 0 1 0 -7.071l.524 -.463"
+                />
+              </svg>
+              <span class="copy-btn-label">Copy</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="share-section">
+          <label for="share-visibility-select">Visibility</label>
+          <select id="share-visibility-select">
+            <option value="private">Private (only you)</option>
+            <option value="public_view">Anyone with the link can view</option>
+          </select>
+        </div>
+
+        <div class="modal-actions">
+          <button
+            id="share-modal-cancel"
+            class="btn-secondary"
+            onclick="closeShareModal()"
+          >
+            Cancel
+          </button>
+          <button id="share-modal-save" class="btn-primary">Save</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Guest Auth Modal (shown when opening a shared link while logged out) -->
+    <div
+      id="guest-auth-backdrop"
+      class="guest-auth-backdrop hidden"
+      aria-hidden="true"
+    >
+      <div
+        class="guest-auth-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="guest-auth-title"
+      >
+        <button
+          id="guest-auth-close"
+          class="guest-auth-close"
+          aria-label="Close"
+          style="display: none;"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="currentColor"
+            class="icon icon-tabler icons-tabler-filled icon-tabler-square-rounded-x"
+          >
+            <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+            <path
+              d="M12 2l.324 .001l.318 .004l.616 .017l.299 .013l.579 .034l.553 .046c4.785 .464 6.732 2.411 7.196 7.196l.046 .553l.034 .579c.005 .098 .01 .198 .013 .299l.017 .616l.005 .642l-.005 .642l-.017 .616l-.013 .299l-.034 .579l-.046 .553c-.464 4.785 -2.411 6.732 -7.196 7.196l-.553 .046l-.579 .034c-.098 .005 -.198 .01 -.299 .013l-.616 .017l-.642 .005l-.642 -.005l-.616 -.017l-.299 -.013l-.579 -.034l-.553 -.046c-4.785 -.464 -6.732 -2.411 -7.196 -7.196l-.046 -.553l-.034 -.579a28.058 28.058 0 0 1 -.013 -.299l-.017 -.616c-.003 -.21 -.005 -.424 -.005 -.642l.001 -.324l.004 -.318l.017 -.616l.013 -.299l.034 -.579l.046 -.553c.464 -4.785 2.411 -6.732 7.196 -7.196l.553 -.046l.579 -.034c.098 -.005 .198 -.01 .299 -.013l.616 -.017c.21 -.003 .424 -.005 .642 -.005zm-1.489 7.14a1 1 0 0 0 -1.218 1.567l1.292 1.293l-1.292 1.293l-.083 .094a1 1 0 0 0 1.497 1.32l1.293 -1.292l1.293 1.292l.094 .083a1 1 0 0 0 1.32 -1.497l-1.292 -1.293l1.292 -1.293l.083 -.094a1 1 0 0 0 -1.497 -1.32l-1.293 1.292l-1.293 -1.292l-.094 -.083z"
+              fill="var(--fg)"
+              stroke-width="0"
+            />
+          </svg>
+        </button>
+
+        <h2 id="guest-auth-title">Log in or sign up</h2>
+        <p>Create a free account to view this shared board.</p>
+
+        <button id="guest-auth-google" class="guest-auth-provider">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="800px"
+            height="800px"
+            viewBox="-3 0 262 262"
+            preserveAspectRatio="xMidYMid"
+            id="google-icon"
+          >
+            <path
+              d="M255.878 133.451c0-10.734-.871-18.567-2.756-26.69H130.55v48.448h71.947c-1.45 12.04-9.283 30.172-26.69 42.356l-.244 1.622 38.755 30.023 2.685.268c24.659-22.774 38.875-56.282 38.875-96.027"
+              fill="#4285F4"
+            ></path>
+            <path
+              d="M130.55 261.1c35.248 0 64.839-11.605 86.453-31.622l-41.196-31.913c-11.024 7.688-25.82 13.055-45.257 13.055-34.523 0-63.824-22.773-74.269-54.25l-1.531.13-40.298 31.187-.527 1.465C35.393 231.798 79.49 261.1 130.55 261.1"
+              fill="#34A853"
+            ></path>
+            <path
+              d="M56.281 156.37c-2.756-8.123-4.351-16.827-4.351-25.82 0-8.994 1.595-17.697 4.206-25.82l-.073-1.73L15.26 71.312l-1.335.635C5.077 89.644 0 109.517 0 130.55s5.077 40.905 13.925 58.602l42.356-32.782"
+              fill="#FBBC05"
+            ></path>
+            <path
+              d="M130.55 50.479c24.514 0 41.05 10.589 50.479 19.438l36.844-35.974C195.245 12.91 165.798 0 130.55 0 79.49 0 35.393 29.301 13.925 71.947l42.211 32.783c10.59-31.477 39.891-54.251 74.414-54.251"
+              fill="#EB4335"
+            ></path>
+          </svg>
+
+          Continue with Google
+        </button>
+
+        <div class="guest-auth-divider"><span>or</span></div>
+
+        <button id="guest-auth-home" class="guest-auth-home">
+          Back to home
+        </button>
       </div>
     </div>
 

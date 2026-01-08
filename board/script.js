@@ -49,13 +49,6 @@ const TYPE_AHEAD_ENABLED = true; // <-- MODIFIED: Enabled as requested
 const params = new URLSearchParams(location.search);
 const BOARD_ID = params.get("board");
 const OWNER_UID = params.get("owner");
-function getShareUrl() {
-  const url = new URL(location.href);
-  url.pathname = "/board/index.html"; // canonical
-  url.searchParams.set("board", BOARD_ID);
-  url.searchParams.set("owner", OWNER_UID);
-  return url.toString();
-}
 
 // --- END NEW ---
 
@@ -5067,6 +5060,7 @@ const NOTE_MODAL_ANIM_MS = 250;
 let _noteModalHideTimer = null;
 
 function openNoteModal(noteElement = null) {
+  if (window.__readOnly) return;
   currentEditingNote = noteElement;
 
   // load existing content if editing
@@ -5306,6 +5300,7 @@ function applyNoteColor(kind, color) {
 }
 
 function saveNoteFromModal() {
+  if (window.__readOnly) return;
   if (!noteEditor) return;
 
   mergeAdjacentNoteSpans(noteEditor);
@@ -5710,6 +5705,8 @@ function addTextNote(initial = "New note", color, fontSize) {
   currentIndex += 1;
   if (window.__readOnly && !window.__RESTORING_FROM_SUPABASE) return;
 
+  const canEdit = !window.__readOnly;
+
   const el = document.createElement("div");
   el.classList.add("board-item", "text-note");
   el.dataset.type = "note";
@@ -5731,12 +5728,17 @@ function addTextNote(initial = "New note", color, fontSize) {
       <div class="verse-text note-label" style="display:none">NOTE</div>
       <div class="text-content">${initial}</div>
     </div>
-    <button class="edit-btn" aria-label="Edit Note" title="Edit Text">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" width="24px" fill="currentColor">
-        <path d="M200-200h57l391-391-57-57-391 391v57Zm-80 80v-170l528-527q12-11 26.5-17t30.5-6q16 0 31 6t26 18l55 56q12 11 17.5 26t5.5 30q0 16-5.5 30.5T817-647L290-120H120Zm640-584-56-56 56 56Zm-141 85-28-29 57 57-29-28Z"/>
-      </svg>
-    </button>
+    ${
+      canEdit
+        ? `<button class="edit-btn" aria-label="Edit Note" title="Edit Text">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" width="24px" fill="currentColor">
+              <path d="M200-200h57l391-391-57-57-391 391v57Zm-80 80v-170l528-527q12-11 26.5-17t30.5-6q16 0 31 6t26 18l55 56q12 11 17.5 26t5.5 30q0 16-5.5 30.5T817-647L290-120H120Zm640-584-56-56 56 56Zm-141 85-28-29 57 57-29-28Z"/>
+            </svg>
+          </button>`
+        : ``
+    }
   `;
+
 
   attachSelectionFrame(el);
 
@@ -5756,6 +5758,9 @@ function addTextNote(initial = "New note", color, fontSize) {
       contentDiv.style.fontSize = clamped + "px";
     }
   }
+
+  if (!canEdit) return el;
+
 
   // 1. Edit Button Logic: Opens the modal
   const editBtn = el.querySelector(".edit-btn");
@@ -7819,11 +7824,18 @@ function addSongElement({ title, artist, cover }, delay = 0) {
   if (!el) return;
 
   const trigger = () => {
-    // --- NEW: READ-ONLY GUARD ---
+    // update the browser tab title (do this even if read-only guard blocks saving)
+    const currentTitle =
+      el.tagName === "INPUT" || el.tagName === "TEXTAREA"
+        ? (el.value || "")
+        : (el.textContent || "");
+    document.title = `${(currentTitle || "").trim() || "Untitled Board"} - BibleBoard`;
+
+    // --- your existing save guard ---
     if (window.__readOnly) return;
-    // --- END NEW ---
     onBoardMutated("edit_title");
   };
+
 
   el.addEventListener("input", trigger, { passive: true });
   el.addEventListener("change", trigger, { passive: true });
@@ -8040,6 +8052,142 @@ const shareModalLinkInput = document.getElementById("share-modal-link-input");
 const shareModalCopyBtn = document.getElementById("share-modal-copy-btn");
 const shareVisibilitySelect = document.getElementById("share-visibility-select");
 
+// ===== Share Modal: save button states + link visibility =====
+const shareSaveBtn = document.getElementById("share-modal-save");
+const shareLinkSection = shareModalLinkInput?.closest(".share-section");
+
+let shareSavedVisibility = window.__boardVisibility || "private"; // ACTUALLY saved
+let sharePendingVisibility = shareSavedVisibility;                // UI selection
+let shareIsSaving = false;
+let shareResetTimer = null;
+
+function syncShareModalUI({ resetSaveText = false } = {}) {
+  const isPublicSaved = shareSavedVisibility === "public_view";
+
+  // Link only visible when ACTUALLY public
+  if (shareLinkSection) shareLinkSection.style.display = isPublicSaved ? "" : "none";
+
+  if (shareModalLinkInput) {
+    shareModalLinkInput.value = isPublicSaved ? getShareUrl() : "";
+  }
+
+  if (shareVisibilitySelect) {
+    shareVisibilitySelect.value = sharePendingVisibility;
+    shareVisibilitySelect.disabled = shareIsSaving;
+  }
+
+  if (shareSaveBtn) {
+    if (resetSaveText) shareSaveBtn.textContent = "Save";
+    shareSaveBtn.disabled = shareIsSaving || sharePendingVisibility === shareSavedVisibility;
+  }
+}
+
+window.addEventListener("bibleboard:visibility", (e) => {
+  // keep the modal UI synced even while it’s closed
+  syncShareModalUI();
+
+  // optional: prevent “flash” by disabling Share until ready
+  const ready = e?.detail?.ready !== false;
+  if (shareBtn) shareBtn.disabled = !ready;
+});
+
+
+async function openShareModal() {
+  closeContextMenu?.();
+
+  if (shareModalBackdrop) {
+    shareModalBackdrop.classList.remove("hidden");
+    shareModalBackdrop.style.display = "flex";
+  }
+
+  // ✅ IMPORTANT: refresh from storage for the CURRENT board
+  let vis = window.__boardVisibility || "private";
+  try {
+    if (window.BoardAPI?.refreshVisibility) {
+      vis = await window.BoardAPI.refreshVisibility();
+    }
+  } catch (e) {
+    console.warn("[Share] refreshVisibility failed:", e);
+  }
+
+  shareSavedVisibility = vis || "private";
+  sharePendingVisibility = shareSavedVisibility;
+
+  syncShareModalUI({ resetSaveText: true });
+}
+
+function closeShareModal() {
+  if (!shareModalBackdrop) return;
+  shareModalBackdrop.classList.add("hidden");
+  shareModalBackdrop.style.display = "none";
+}
+// your HTML calls closeShareModal() inline on Cancel
+window.closeShareModal = closeShareModal;
+
+shareBtn?.addEventListener("click", (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  openShareModal();
+});
+
+shareVisibilitySelect?.addEventListener("change", (e) => {
+  sharePendingVisibility = e.target.value === "public_view" ? "public_view" : "private";
+  syncShareModalUI();
+});
+
+shareSaveBtn?.addEventListener("click", async () => {
+  if (shareIsSaving) return;
+  if (sharePendingVisibility === shareSavedVisibility) return;
+
+  if (!window.BoardAPI || typeof window.BoardAPI.setBoardVisibility !== "function") {
+    showToast("Sharing is not ready yet");
+    return;
+  }
+
+  shareIsSaving = true;
+  shareSaveBtn.textContent = "Saving...";
+  syncShareModalUI();
+
+  try {
+    await window.BoardAPI.setBoardVisibility(sharePendingVisibility);
+
+    window.__boardVisibility = sharePendingVisibility;
+    shareSavedVisibility = sharePendingVisibility;
+
+    shareSaveBtn.textContent = "Saved";
+    syncShareModalUI();
+
+    shareResetTimer = setTimeout(() => {
+      if (!shareSaveBtn) return;
+      shareSaveBtn.textContent = "Save";
+      syncShareModalUI({ resetSaveText: true });
+    }, 1400);
+  } catch (err) {
+    console.error("[Share] save failed:", err);
+    showToast("Failed to save sharing settings");
+    sharePendingVisibility = shareSavedVisibility;
+    shareSaveBtn.textContent = "Save";
+  } finally {
+    shareIsSaving = false;
+    syncShareModalUI();
+  }
+});
+
+window.addEventListener("bibleboard:load", async (e) => {
+  try {
+    // grab current user and owner from globals that supabase-sync sets
+    const user = window.lastKnownUser || null;
+    const owner = window.currentOwnerId || null;
+    if (window.refreshVisibilityForCurrentBoard) {
+      await window.refreshVisibilityForCurrentBoard(user, owner);
+    }
+  } catch (err) {
+    console.warn("[Board] visibility refresh failed:", err);
+  }
+});
+
+
+
 // Global visibility (default to private).
 // You can hydrate this from Supabase in supabase-sync.js later.
 window.__boardVisibility = window.__boardVisibility || "private";
@@ -8049,19 +8197,19 @@ window.__boardVisibility = window.__boardVisibility || "private";
  * Uses your existing BOARD_ID + OWNER_UID globals.
  */
 function getShareUrl() {
-  const url = new URL(location.origin);
-  // If you ever host this somewhere else, adjust this path:
-  url.pathname = "/board/index.html";
+  // keep whatever page you’re currently on (index.html / / / etc.)
+  const url = new URL(window.location.href);
+
   if (typeof BOARD_ID !== "undefined" && BOARD_ID) {
     url.searchParams.set("board", BOARD_ID);
   }
   if (typeof OWNER_UID !== "undefined" && OWNER_UID) {
     url.searchParams.set("owner", OWNER_UID);
   }
-  // Optional: mark read-only views explicitly
-  // url.searchParams.set("mode", "view");
+
   return url.toString();
 }
+
 
 /**
  * Tiny toast helper reused from the old share popover.
@@ -8080,53 +8228,16 @@ function showToast(msg) {
   }
 }
 
-function openShareModal() {
-  if (!shareModalBackdrop) return;
 
-  shareModalBackdrop.classList.remove("hidden");
-  shareModalBackdrop.style.display = "flex";
-
-  if (shareModalLinkInput) {
-    shareModalLinkInput.value = getShareUrl();
-    // Focus/select after paint
-    setTimeout(() => {
-      try {
-        shareModalLinkInput.focus();
-        shareModalLinkInput.select();
-      } catch (e) {
-        console.warn("Failed to focus share link input:", e);
-      }
-    }, 0);
+document.getElementById("share-modal-save")?.addEventListener("click", async () => {
+  const select = document.getElementById("share-visibility-select");
+  const visibility = select?.value;
+  if (visibility) {
+    await window.BoardAPI.setBoardVisibility(visibility);
   }
-
-  if (shareVisibilitySelect) {
-    shareVisibilitySelect.value = window.__boardVisibility || "private";
-  }
-}
-
-function closeShareModal() {
-  if (!shareModalBackdrop) return;
-  shareModalBackdrop.classList.add("hidden");
-  shareModalBackdrop.style.display = "none";
-}
-
-// Open on Share button
-shareBtn?.addEventListener("click", (e) => {
-  e.stopPropagation();
-  openShareModal();
+  document.getElementById("share-modal-backdrop").classList.remove("visible");
 });
 
-// Close with X button
-shareModalCloseBtn?.addEventListener("click", () => {
-  closeShareModal();
-});
-
-// Close when clicking backdrop
-shareModalBackdrop?.addEventListener("click", (e) => {
-  if (e.target === shareModalBackdrop) {
-    closeShareModal();
-  }
-});
 
 // Close on Escape
 document.addEventListener("keydown", (e) => {
@@ -8139,19 +8250,45 @@ document.addEventListener("keydown", (e) => {
   }
 });
 
-// Copy link to clipboard
+// Copy button: Copy -> Copied -> Copy (without removing the SVG)
 shareModalCopyBtn?.addEventListener("click", async () => {
-  if (!shareModalLinkInput) return;
+  if (!shareModalCopyBtn) return;
+
+  const labelEl = shareModalCopyBtn.querySelector(".copy-btn-label");
+  if (!labelEl) return;
+
+  const originalLabel = labelEl.textContent || "Copy";
+
+  const isPublic = (window.__boardVisibility || "private") === "public_view";
+  const link = shareModalLinkInput?.value || "";
+
+  if (!isPublic || !link) {
+    showToast("Make the board public to copy a share link");
+    return;
+  }
+
+  if (shareModalCopyBtn.dataset.busy === "1") return;
+  shareModalCopyBtn.dataset.busy = "1";
+
   try {
-    await navigator.clipboard.writeText(shareModalLinkInput.value);
-    showToast("Link copied");
+    await navigator.clipboard.writeText(link);
+
+    labelEl.textContent = "Copied";
+    shareModalCopyBtn.disabled = true;
+
+    setTimeout(() => {
+      labelEl.textContent = originalLabel;
+      shareModalCopyBtn.disabled = false;
+      shareModalCopyBtn.dataset.busy = "0";
+    }, 1400);
   } catch (err) {
-    try {
-      shareModalLinkInput.select();
-    } catch (_) {}
-    showToast("Press Ctrl/Cmd+C to copy");
+    console.error("[Share] copy failed:", err);
+    shareModalCopyBtn.dataset.busy = "0";
+    showToast("Copy failed");
   }
 });
+
+
 
 /**
  * Handle switching between:
@@ -8172,48 +8309,33 @@ async function toggleBoardVisibility(newVisibility) {
   const prev = window.__boardVisibility || "private";
   if (prev === newVisibility) return;
 
+  // optimistic UI
   window.__boardVisibility = newVisibility;
 
-  // 🟡 TODO: Replace this with a real backend update.
-  //
-  // Example (Supabase) shape, **if** you add a visibility column:
-  //
-  //   // boards table: id (uuid), owner_id (uuid), title, visibility
-  //   //
-  //   // visibility ENUM: 'private' | 'public_view'
-  //   //
-  //   // RLS (pseudocode):
-  //   //  - owner can select/update their rows
-  //   //  - everyone can select rows where visibility = 'public_view'
-  //
-  //   import { sb } from "../supabaseClient.js";
-  //
-  //   const { error } = await sb
-  //     .from("boards")
-  //     .update({ visibility: newVisibility })
-  //     .eq("id", BOARD_ID)
-  //     .eq("owner_id", OWNER_UID);
-  //
-  //   if (error) {
-  //     console.error("[Share] Failed to update visibility:", error);
-  //     window.__boardVisibility = prev;
-  //     showToast("Could not update sharing settings");
-  //     return;
-  //   }
+  try {
+    if (!window.BoardAPI || typeof window.BoardAPI.setBoardVisibility !== "function") {
+      throw new Error("BoardAPI.setBoardVisibility not wired (supabase-sync.js)");
+    }
 
-  console.log("[Share] Visibility changed", {
-    boardId: typeof BOARD_ID !== "undefined" ? BOARD_ID : null,
-    owner: typeof OWNER_UID !== "undefined" ? OWNER_UID : null,
-    prev,
-    next: newVisibility,
-  });
+    // Ask supabase-sync.js (the only place that knows the signed-in user) to do it
+    await window.BoardAPI.setBoardVisibility(newVisibility);
 
-  showToast(
-    newVisibility === "public_view"
-      ? "Anyone with the link can now view this board"
-      : "Link access set to private"
-  );
+    showToast(
+      newVisibility === "public_view"
+        ? "Anyone with the link can now view this board"
+        : "Link access set to private"
+    );
+  } catch (err) {
+    console.error("[Share] Failed to update visibility:", err);
+
+    // revert UI
+    window.__boardVisibility = prev;
+    if (shareVisibilitySelect) shareVisibilitySelect.value = prev;
+
+    showToast("Could not update sharing settings");
+  }
 }
+
 
 // ==================== NEW: Export Functions ====================
 
@@ -8978,19 +9100,19 @@ function setupBoardSettingsPanel() {
 
     // Style panel
     panel.style.position = "absolute";
-    panel.style.right = "70px"; // Below 50px button + 25px top + 10px gap
-    panel.style.top = "15px";
+    panel.style.right = "15px"; // Below 50px button + 25px top + 10px gap
+    panel.style.top = "80px";
     panel.style.minWidth = "240px";
-    panel.style.background = "var(--bg-seethroug)";
-    panel.style.border = "1px solid var(--fg-seethrough)";
+    panel.style.background = "var(--bg-dots)";
+    panel.style.border = "1px solid var(--border)";
     panel.style.backdropFilter = "blur(1rem)";
-    panel.style.borderRadius = "12px";
-    panel.style.padding = "12px";
+    panel.style.borderRadius = "25px";
+    panel.style.padding = "20px";
     panel.style.zIndex = "10004";
     panel.style.display = "none"; // Start hidden
 
     // 4. --- Create Panel Internals ---
-    panel.innerHTML = `<div id="board-settings-title" style="font-size: 1rem; font-weight: 700; color: var(--fg); padding-bottom: 8px; border-bottom: 1px solid var(--border); margin-bottom: 12px;">Settings</div>
+    panel.innerHTML = `<div id="board-settings-title" style="font-size: 1rem; font-weight: 700; color: var(--fg); ">Settings</div>
                        <div id="board-settings-content" style="display: flex; flex-direction: column; gap: 8px;"></div>`;
     const content = panel.querySelector("#board-settings-content");
 

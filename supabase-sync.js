@@ -7,6 +7,75 @@ if (!window.BoardAPI) {
 }
 
 const BUCKET = "bible-boards";
+
+
+// =====================
+// Visibility helpers
+// =====================
+const VIS_PRIVATE = "private";
+const VIS_PUBLIC = "public_view";
+
+async function isBoardPublic(ownerId, boardId) {
+  if (!ownerId || !boardId) return false;
+
+  const fileName = `${boardId}.json`;
+  const folder = `${ownerId}/public`;
+
+  // Try LIST first (cheap)
+  try {
+    const { data, error } = await sb.storage
+      .from(BUCKET)
+      .list(folder, { search: fileName, limit: 1 });
+
+    if (!error && Array.isArray(data)) {
+      return data.some((f) => f.name === fileName);
+    }
+  } catch (_) {}
+
+  // Fallback: try signing the exact file (also cheap)
+  try {
+    const { data, error } = await sb.storage
+      .from(BUCKET)
+      .createSignedUrl(`${folder}/${fileName}`, 30);
+
+    return !!data?.signedUrl && !error;
+  } catch (_) {
+    return false;
+  }
+}
+
+// Refreshes window.__boardVisibility for the CURRENT URL board/owner
+async function refreshBoardVisibility() {
+  const params = new URLSearchParams(window.location.search);
+  const boardId = params.get("board");
+  const ownerId = params.get("owner");
+
+  if (!boardId || !ownerId) {
+    window.__boardVisibility = VIS_PRIVATE;
+    return window.__boardVisibility;
+  }
+
+  // If you're not the owner, you're necessarily viewing a public board
+  const { data: userData } = await sb.auth.getUser();
+  const viewerId = userData?.user?.id;
+
+  if (!viewerId || viewerId !== ownerId) {
+    window.__boardVisibility = VIS_PUBLIC;
+    return window.__boardVisibility;
+  }
+
+  window.__boardVisibility = (await isBoardPublic(ownerId, boardId))
+    ? VIS_PUBLIC
+    : VIS_PRIVATE;
+
+  return window.__boardVisibility;
+}
+
+window.BoardAPI = window.BoardAPI || {};
+window.BoardAPI.refreshVisibility = refreshBoardVisibility;
+
+
+
 const DEFAULT_TITLE = "Untitled Bible Board";
 const SAVE_DEBOUNCE_MS = 1000;
 const RETRY_DELAYS = [200, 500, 1200];
@@ -79,6 +148,12 @@ function readTitle() {
   if (el.tagName === "INPUT" || el.tagName === "TEXTAREA") return el.value || "";
   return (el.textContent || "").trim();
 }
+
+function setWindowTitle(title) {
+  const clean = (title || "").trim();
+  document.title = `${clean || "Untitled Board"} - BibleBoard`;
+}
+
 function writeTitle(v) {
   const el = getTitleEl();
   if (!el) return;
@@ -107,6 +182,80 @@ const pathFor = (uid, boardId) => {
   if (boardId) return `${uid}/boards/${boardId}.json`;
   return `${uid}/board.json`;
 };
+
+const pathForPublic = (uid, boardId) => `${uid}/public/${boardId}.json`;
+
+// ===============================
+// Visibility helpers
+// ===============================
+function setClientVisibility(v) {
+  // v: "private" | "public_view"
+  window.__boardVisibility = v;
+  window.dispatchEvent(
+    new CustomEvent("bibleboard:visibility", {
+      detail: { boardId: currentBoardId, ownerId: currentOwnerId, visibility: v },
+    })
+  );
+}
+
+async function computeOwnerVisibility(ownerId, boardId) {
+  const publicPath = pathForPublic(ownerId, boardId);
+
+  try {
+    const { data, error } = await sb.storage.from(BUCKET).createSignedUrl(publicPath, 30);
+    if (error || !data?.signedUrl) return "private";
+
+    const resp = await fetch(data.signedUrl, { method: "HEAD", cache: "no-store" });
+    return resp.ok ? "public_view" : "private";
+  } catch {
+    return "private";
+  }
+}
+
+async function refreshVisibilityForCurrentBoard(user, ownerId) {
+  // If you're not the owner, you can only be here via /public
+  if (!user || user.id !== ownerId) {
+    setClientVisibility("public_view");
+    return "public_view";
+  }
+
+  const v = await computeOwnerVisibility(ownerId, currentBoardId);
+  setClientVisibility(v);
+  return v;
+}
+
+/**
+ * Moves a board file between private and public folders.
+ * @param {string} uid - The user's Supabase UID
+ * @param {string} boardId - The board ID
+ * @param {boolean} makePublic - true = publish, false = unpublish
+ */
+async function moveBoardVisibility(uid, boardId, makePublic) {
+  const src = makePublic
+    ? pathFor(uid, boardId)
+    : pathForPublic(uid, boardId);
+  const dest = makePublic
+    ? pathForPublic(uid, boardId)
+    : pathFor(uid, boardId);
+
+  // Download board content
+  const { data, error: dlErr } = await sb.storage.from(BUCKET).download(src);
+  if (dlErr || !data) throw new Error("Download failed: " + (dlErr?.message || ""));
+
+  // Upload to destination
+  const blob = new Blob([await data.text()], { type: "application/json" });
+  const { error: upErr } = await sb.storage.from(BUCKET).upload(dest, blob, {
+    upsert: true,
+    cacheControl: "no-store",
+  });
+  if (upErr) throw new Error("Upload failed: " + (upErr.message || ""));
+
+  // Delete original (optional)
+  await sb.storage.from(BUCKET).remove([src]);
+
+  console.log(makePublic ? "✅ Board published." : "✅ Board unpublished.");
+  return dest;
+}
 
 async function downloadFreshOrThrow(path) {
   const { data, error } = await sb.storage.from(BUCKET).createSignedUrl(path, 10);
@@ -263,6 +412,7 @@ function deserializeBoard(payload) {
   try {
     clearBoard();
     writeTitle(payload.title || DEFAULT_TITLE);
+    setWindowTitle(payload.title || "");
 
     (payload.elements || []).forEach((data) => {
       let el;
@@ -347,25 +497,90 @@ async function ensureBoardFile(user, ownerId) {
   }
 }
 
+
+
+
+
+function setVisibilityState(visibility, ready = true) {
+  window.__boardVisibility = visibility;
+  window.__boardVisibilityReady = ready;
+
+  window.dispatchEvent(
+    new CustomEvent("bibleboard:visibility", {
+      detail: {
+        boardId: currentBoardId,
+        ownerId: currentOwnerId,
+        visibility,
+        ready,
+      },
+    })
+  );
+}
+
+async function refreshVisibility() {
+  // mark “not ready” immediately so UI can disable/hide things
+  setVisibilityState(window.__boardVisibility || "private", false);
+
+  const owner = currentOwnerId || lastKnownUser?.id;
+  const bid = currentBoardId;
+  if (!owner || !bid) {
+    setVisibilityState("private", true);
+    return "private";
+  }
+
+  const publicPath = pathForPublic(owner, bid);
+
+  // quickest “exists?” check without downloading the file
+  const { data, error } = await sb.storage.from(BUCKET).createSignedUrl(publicPath, 60);
+
+  const visibility = !error && data?.signedUrl ? "public_view" : "private";
+  setVisibilityState(visibility, true);
+  return visibility;
+}
+
+
+
+
+
+
 async function loadBoard(user, ownerId) {
   const path = pathFor(ownerId, currentBoardId);
   if (!path) return;
+  setClientVisibility("private"); // clear stale value from previous board
 
   // --- 1. STRICT CLIENT-SIDE GUARD ---
   // If the board belongs to someone else (based on URL), block it immediately.
   // We don't even need to ask Supabase, because we know the answer is "No".
   if (ownerId !== user.id) {
-    console.warn("Access denied: User ID does not match Board Owner ID.");
-    showPersistenceBadge("no-access");
-    
-    const blocker = document.getElementById("access-denied-blocker");
-    if (blocker) {
-      blocker.style.display = "flex";
+    console.warn("Attempting to load shared board...");
+
+    const publicPath = pathForPublic(ownerId, currentBoardId);
+    try {
+      showPersistenceBadge("loading");
+      const blob = await withRetries(() => downloadFreshOrThrow(publicPath));
+      const text = await blob.text();
+      const json = JSON.parse(text || "{}");
+      isReadOnly = true;
+      if (window.BoardAPI?.applyReadOnlyGuards) window.BoardAPI.applyReadOnlyGuards(true);
+      deserializeBoard(json);
+      loadedBoardId = currentBoardId; // good to set even in readonly
+      setClientVisibility("public_view");
+      const blocker = document.getElementById("access-denied-blocker");
+      if (blocker) blocker.style.display = "none";
+      hidePersistenceBadge();
+      await refreshVisibility();
+      await refreshVisibilityForCurrentBoard(user, ownerId);
+      return;
+    } catch {
+      console.warn("No shared board found or access denied.");
+      showPersistenceBadge("no-access");
+      const blocker = document.getElementById("access-denied-blocker");
+      if (blocker) blocker.style.display = "flex";
+      window.BoardAPI.clearBoard();
+      return;
     }
-    
-    window.BoardAPI.clearBoard();
-    return; // Stop here. Do not fetch.
   }
+
 
   // --- 2. Standard Loading for Owner ---
   showPersistenceBadge("loading");
@@ -446,6 +661,16 @@ async function saveBoard(user) {
     await verifyPersistence(path, hash);
     lastLoadedUpdatedAt = payload.updatedAt;
     showPersistenceBadge("saved");
+
+    // ✅ Add this here
+    if (window.__boardVisibility === "public_view") {
+      const publicPath = pathForPublic(user.id, activeId);
+      await sb.storage.from(BUCKET).upload(publicPath, blob, {
+        upsert: true,
+        contentType: "application/json",
+        cacheControl: "no-store",
+      });
+    }
   } catch (error) {
     console.warn("Failed to save:", error);
     showPersistenceBadge("error");
@@ -481,11 +706,89 @@ document.getElementById("signout-btn")?.addEventListener("click", async () => {
   window.location.reload(); // Reload on sign out is fine
 });
 
+let shareViewerInterceptorInstalled = false;
+
+function updateViewerTopButtons() {
+  const shareBtn = document.getElementById("share-btn");
+  const scriptureBtn = document.getElementById("scripture-mode-toggle");
+
+  const user = lastKnownUser;
+  const owner = currentOwnerId || user?.id;
+
+  const isOwner = !!user && !!owner && user.id === owner;
+  const isViewer = !!user && !!owner && user.id !== owner;
+
+  // Hide "Open Scripture" for viewers
+  if (scriptureBtn) scriptureBtn.style.display = isViewer ? "none" : "";
+
+  // Replace Share button for viewers
+  if (shareBtn) {
+    if (isViewer) {
+      shareBtn.style.display = "inline-flex";
+      shareBtn.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg"
+          width="16px" height="16px" viewBox="0 0 24 24"
+          fill="none" stroke="currentColor" stroke-width="3"
+          stroke-linecap="round" stroke-linejoin="round"
+          class="icon icon-tabler icons-tabler-outline icon-tabler-copy"
+          style="flex:0 0 auto;">
+          <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+          <path d="M7 9.667a2.667 2.667 0 0 1 2.667 -2.667h8.666a2.667 2.667 0 0 1 2.667 2.667v8.666a2.667 2.667 0 0 1 -2.667 2.667h-8.666a2.667 2.667 0 0 1 -2.667 -2.667l0 -8.666"/>
+          <path d="M4.012 16.737a2.005 2.005 0 0 1 -1.012 -1.737v-10c0 -1.1 .9 -2 2 -2h10c.75 0 1.158 .385 1.5 1"/>
+        </svg>
+        <span>Make a copy</span>
+      `;
+
+      shareBtn.title = "Make a copy";
+      shareBtn.setAttribute("aria-haspopup", "false");
+      shareBtn.setAttribute("aria-expanded", "false");
+    } else if (isOwner) {
+      shareBtn.style.display = "inline-flex";
+      document.getElementById("share-btn-label").textContent = "Share";
+      shareBtn.title = "Share";
+      shareBtn.setAttribute("aria-haspopup", "true");
+    } else {
+      // logged out
+      shareBtn.style.display = "none";
+    }
+
+    // Intercept clicks in CAPTURE phase so viewers can’t open Share modal
+    if (!shareViewerInterceptorInstalled) {
+      shareViewerInterceptorInstalled = true;
+
+      shareBtn.addEventListener(
+        "click",
+        async (e) => {
+          const u = lastKnownUser;
+          const o = currentOwnerId || u?.id;
+          const viewer = !!u && !!o && u.id !== o;
+          if (!viewer) return; // owners keep normal share
+
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+
+          if (typeof window.makeCopyOfCurrentBoard === "function") {
+            await window.makeCopyOfCurrentBoard();
+          } else {
+            alert("Make copy is not ready yet.");
+          }
+        },
+        true // <-- capture
+      );
+    }
+  }
+}
+
+
 function applyOwnershipMode() {
   const user = lastKnownUser;
   const owner = currentOwnerId || user?.id;
   isReadOnly = !user || !owner || user.id !== owner;
+
   if (window.BoardAPI?.applyReadOnlyGuards) window.BoardAPI.applyReadOnlyGuards(isReadOnly);
+
+  updateViewerTopButtons(); // ✅ add this
 }
 
 // ---------- Main App Initialization ----------
@@ -547,6 +850,43 @@ if (window.BoardAPI) {
           saveBoard(lastKnownUser);
       }
   }
+
+  window.BoardAPI.setBoardVisibility = async (newVisibility) => {
+    const user = lastKnownUser;
+    const boardId = loadedBoardId || currentBoardId;
+
+    if (!user) throw new Error("NOT_SIGNED_IN");
+    if (!boardId) throw new Error("NO_BOARD_ID");
+    if (isReadOnly) throw new Error("READ_ONLY");
+
+    const makePublic = newVisibility === "public_view";
+
+    if (makePublic) {
+      // Publish = upload a public copy (recommended: DON'T move out of /boards)
+      const payload = serializeBoard();
+      const json = JSON.stringify(payload, null, 2);
+      const blob = new Blob([json], { type: "application/json" });
+      const publicPath = pathForPublic(user.id, boardId);
+
+      const { error } = await sb.storage
+        .from(BUCKET)
+        .upload(publicPath, blob, {
+          upsert: true,
+          contentType: "application/json",
+          cacheControl: "no-store",
+        });
+
+      if (error) throw error;
+    } else {
+      // Unpublish = remove the public copy
+      const publicPath = pathForPublic(user.id, boardId);
+      const { error } = await sb.storage.from(BUCKET).remove([publicPath]);
+      if (error) throw error;
+    }
+
+    window.__boardVisibility = makePublic ? "public_view" : "private";
+    return window.__boardVisibility;
+  };
 }
 
 // ========================================================
@@ -555,7 +895,7 @@ if (window.BoardAPI) {
 window.addEventListener("bibleboard:load", async (e) => {
   const { boardId, ownerId } = e.detail;
   console.log("🔄 Switching to board:", boardId);
-
+  setVisibilityState("private", false);
   // 1. Force Save OLD Board (using old loadedBoardId)
   if (!isReadOnly && lastKnownUser) {
       await saveBoard(lastKnownUser);
