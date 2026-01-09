@@ -707,78 +707,114 @@ document.getElementById("signout-btn")?.addEventListener("click", async () => {
 });
 
 let shareViewerInterceptorInstalled = false;
+let shareViewerCaptureHandler = null;
+
+function computeOwnershipFlags() {
+  const user = lastKnownUser;
+  const ownerId = currentOwnerId;
+
+  // ✅ Viewer mode ONLY when:
+  // user logged in AND currentOwnerId exists AND currentOwnerId !== user.id
+  const isViewer = !!user && !!ownerId && user.id !== ownerId;
+
+  // Treat as owner if logged in and (ownerId missing OR matches user)
+  const isOwner = !!user && (!ownerId || user.id === ownerId);
+
+  return { user, ownerId, isViewer, isOwner };
+}
+
+function ensureShareLabelEl(shareBtn) {
+  // Prefer the stable id you added in HTML
+  let labelEl =
+    document.getElementById("share-btn-label") ||
+    shareBtn.querySelector(".btn-label");
+
+  // Safety fallback (prevents “Cannot set properties of null …”)
+  if (!labelEl) {
+    labelEl = document.createElement("span");
+    labelEl.className = "btn-label";
+    labelEl.id = "share-btn-label";
+    shareBtn.appendChild(labelEl);
+  }
+
+  return labelEl;
+}
 
 function updateViewerTopButtons() {
   const shareBtn = document.getElementById("share-btn");
   const scriptureBtn = document.getElementById("scripture-mode-toggle");
 
-  const user = lastKnownUser;
-  const owner = currentOwnerId || user?.id;
+  const { user, isViewer, isOwner } = computeOwnershipFlags();
 
-  const isOwner = !!user && !!owner && user.id === owner;
-  const isViewer = !!user && !!owner && user.id !== owner;
-
-  // Hide "Open Scripture" for viewers
+  // Optional: hide "Open Scripture" for viewers
   if (scriptureBtn) scriptureBtn.style.display = isViewer ? "none" : "";
 
-  // Replace Share button for viewers
-  if (shareBtn) {
-    if (isViewer) {
-      shareBtn.style.display = "inline-flex";
-      shareBtn.innerHTML = `
-        <svg xmlns="http://www.w3.org/2000/svg"
-          width="16px" height="16px" viewBox="0 0 24 24"
-          fill="none" stroke="currentColor" stroke-width="3"
-          stroke-linecap="round" stroke-linejoin="round"
-          class="icon icon-tabler icons-tabler-outline icon-tabler-copy"
-          style="flex:0 0 auto;">
-          <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-          <path d="M7 9.667a2.667 2.667 0 0 1 2.667 -2.667h8.666a2.667 2.667 0 0 1 2.667 2.667v8.666a2.667 2.667 0 0 1 -2.667 2.667h-8.666a2.667 2.667 0 0 1 -2.667 -2.667l0 -8.666"/>
-          <path d="M4.012 16.737a2.005 2.005 0 0 1 -1.012 -1.737v-10c0 -1.1 .9 -2 2 -2h10c.75 0 1.158 .385 1.5 1"/>
-        </svg>
-        <span>Make a copy</span>
-      `;
+  if (!shareBtn) return;
 
-      shareBtn.title = "Make a copy";
-      shareBtn.setAttribute("aria-haspopup", "false");
+  // Ensure button is interactive (addresses “visible but not active” cases)
+  shareBtn.disabled = false;
+  shareBtn.classList.remove("disabled");
+  shareBtn.style.pointerEvents = "";
+
+  const labelEl = ensureShareLabelEl(shareBtn);
+
+  if (!user) {
+    // Logged out
+    shareBtn.style.display = "none";
+  } else if (isViewer) {
+    // Viewer mode (shared board)
+    shareBtn.style.display = "inline-flex";
+    labelEl.textContent = "Make a copy";
+    shareBtn.title = "Make a copy";
+    shareBtn.setAttribute("aria-haspopup", "false");
+    shareBtn.setAttribute("aria-expanded", "false");
+  } else if (isOwner) {
+    // Owner mode (owned board OR ownerId missing)
+    shareBtn.style.display = "inline-flex";
+    labelEl.textContent = "Share";
+    shareBtn.title = "Share";
+    shareBtn.setAttribute("aria-haspopup", "true");
+    // keep aria-expanded controlled by your modal logic; just ensure not stuck
+    if (!shareBtn.hasAttribute("aria-expanded")) {
       shareBtn.setAttribute("aria-expanded", "false");
-    } else if (isOwner) {
-      shareBtn.style.display = "inline-flex";
-      document.getElementById("share-btn-label").textContent = "Share";
-      shareBtn.title = "Share";
-      shareBtn.setAttribute("aria-haspopup", "true");
-    } else {
-      // logged out
-      shareBtn.style.display = "none";
-    }
-
-    // Intercept clicks in CAPTURE phase so viewers can’t open Share modal
-    if (!shareViewerInterceptorInstalled) {
-      shareViewerInterceptorInstalled = true;
-
-      shareBtn.addEventListener(
-        "click",
-        async (e) => {
-          const u = lastKnownUser;
-          const o = currentOwnerId || u?.id;
-          const viewer = !!u && !!o && u.id !== o;
-          if (!viewer) return; // owners keep normal share
-
-          e.preventDefault();
-          e.stopPropagation();
-          e.stopImmediatePropagation();
-
-          if (typeof window.makeCopyOfCurrentBoard === "function") {
-            await window.makeCopyOfCurrentBoard();
-          } else {
-            alert("Make copy is not ready yet.");
-          }
-        },
-        true // <-- capture
-      );
     }
   }
+
+  // Install capture interceptor ONLY while in viewer mode; remove when owner
+  if (!shareViewerCaptureHandler) {
+    shareViewerCaptureHandler = async (e) => {
+      const { isViewer: viewerNow } = computeOwnershipFlags();
+      if (!viewerNow) return; // owners: do not intercept
+
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+
+      // Prevent double-click spam
+      if (shareBtn.dataset.busy === "1") return;
+      shareBtn.dataset.busy = "1";
+
+      try {
+        if (typeof window.makeCopyOfCurrentBoard === "function") {
+          await window.makeCopyOfCurrentBoard();
+        } else {
+          alert("Make copy is not ready yet.");
+        }
+      } finally {
+        shareBtn.dataset.busy = "0";
+      }
+    };
+  }
+
+  if (isViewer && !shareViewerInterceptorInstalled) {
+    shareBtn.addEventListener("click", shareViewerCaptureHandler, true);
+    shareViewerInterceptorInstalled = true;
+  } else if (!isViewer && shareViewerInterceptorInstalled) {
+    shareBtn.removeEventListener("click", shareViewerCaptureHandler, true);
+    shareViewerInterceptorInstalled = false;
+  }
 }
+
 
 
 function applyOwnershipMode() {
@@ -893,23 +929,42 @@ if (window.BoardAPI) {
 // 3. EVENT LISTENER FOR SWITCHING (SPA Behavior)
 // ========================================================
 window.addEventListener("bibleboard:load", async (e) => {
-  const { boardId, ownerId } = e.detail;
+  const detail = e?.detail || {};
+  const boardId = detail.boardId || null;
+  const ownerIdFromEvent = detail.ownerId || null;
+
+  if (!boardId) return;
+
   console.log("🔄 Switching to board:", boardId);
   setVisibilityState("private", false);
-  // 1. Force Save OLD Board (using old loadedBoardId)
+
+  // 1) Force Save OLD Board (using old loadedBoardId)
   if (!isReadOnly && lastKnownUser) {
-      await saveBoard(lastKnownUser);
+    await saveBoard(lastKnownUser);
   }
 
-  // 2. Unset ID so we don't save to old board while loading
+  // 2) Unset ID so we don't save to old board while loading
   loadedBoardId = null;
-  
-  // 3. Update State
-  currentBoardId = boardId;
-  currentOwnerId = ownerId;
-  applyOwnershipMode();
 
-  // 4. Clear Workspace
+  // 3) Update State
+  currentBoardId = boardId;
+
+  // ✅ Critical: if caller didn't provide ownerId, treat as owned-by-current-user
+  // This prevents stale URL owner from keeping you in viewer mode.
+  currentOwnerId = ownerIdFromEvent || (lastKnownUser ? lastKnownUser.id : null);
+
+  // ✅ Keep URL params in sync (and remove stale owner)
+  try {
+    const url = new URL(window.location.href);
+    url.searchParams.set("board", currentBoardId);
+    if (currentOwnerId) url.searchParams.set("owner", currentOwnerId);
+    else url.searchParams.delete("owner");
+    window.history.replaceState({}, "", url.toString());
+  } catch (_) {}
+
+  applyOwnershipMode(); // updates Share/Make-a-copy immediately
+
+  // 4) Clear Workspace
   const workspace = document.getElementById("workspace");
   const connectionsSvg = document.getElementById("connections");
   if (workspace) {
@@ -920,16 +975,21 @@ window.addEventListener("bibleboard:load", async (e) => {
     workspace.dataset.y = "0";
   }
   if (connectionsSvg) connectionsSvg.innerHTML = "";
-  writeTitle(""); 
+  writeTitle("");
 
-  // 5. Reset Undo/Redo
+  // 5) Reset Undo/Redo
   if (window.UndoRedoManager) {
     window.UndoRedoManager.undoStack = [];
     window.UndoRedoManager.redoStack = [];
     window.UndoRedoManager.refreshUndoRedoButtons();
   }
 
-  // 6. Load NEW Board
+  // 6) Load NEW Board
+  if (!lastKnownUser) {
+    showPersistenceBadge("login-required");
+    return;
+  }
+
   await loadBoard(lastKnownUser, currentOwnerId || lastKnownUser.id);
 });
 

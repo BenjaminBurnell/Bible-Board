@@ -99,6 +99,7 @@ const TEMPLATE_BOARDS = [
 
 const PROMO_CODE_HASHES = new Set([
   // Example placeholder: replace with your real hashes
+  // Expire after winter term:
   "d82059ecd1edd9d58d10bda74e5486dbd480bd6fadb7e8ab6f56f2defcf26c7c",
   "c451b55d11b3f61d9c8c589f9eeadd58699ec106490e932d1ec66c48bdae6768",
 ]);
@@ -290,7 +291,9 @@ window.makeCopyOfCurrentBoard = async function () {
     newUrl.searchParams.set("owner", currentUser.id);
     window.history.replaceState({}, "", newUrl.toString());
 
-    await loadBoards();
+    await switchBoard(newId, currentUser.id); // ✅ flips Make a copy → Share
+    await loadBoards(); // optional: refresh sidebar list so the new board appears
+
     showToast("Copied to your boards", { variant: "success", duration: 2200 });
   } catch (err) {
     console.error("[MakeCopy] Failed:", err);
@@ -514,18 +517,22 @@ function getDateGroup(dateStr) {
 }
 
 // --- Helper to switch boards without reloading ---
-async function switchBoard(boardId, ownerId) {
+function switchBoard(boardId, ownerId) {
+  // Update URL
   const newUrl = new URL(window.location);
   newUrl.searchParams.set("board", boardId);
   if (ownerId) newUrl.searchParams.set("owner", ownerId);
+  else newUrl.searchParams.delete("owner"); // ✅ prevent stale owner sticking around
+
   window.history.pushState({}, "", newUrl);
 
-  const allItems = document.querySelectorAll(".sidebar-board-item");
-  allItems.forEach((item) => {
+  // Update sidebar active state
+  document.querySelectorAll(".sidebar-board-item").forEach((item) => {
     if (item.dataset.id === boardId) item.classList.add("active");
     else item.classList.remove("active");
   });
 
+  // Dispatch board load event (ONCE, with the correct ids)
   setTimeout(() => {
     window.dispatchEvent(
       new CustomEvent("bibleboard:load", {
@@ -534,18 +541,16 @@ async function switchBoard(boardId, ownerId) {
     );
   }, 10);
 
+  // Close sidebar on mobile
   const sidebar = document.getElementById("sidebar");
   const overlay = document.getElementById("overlay");
-  if (
-    sidebar &&
-    sidebar.classList.contains("expanded") &&
-    window.innerWidth < 900
-  ) {
+  if (sidebar && sidebar.classList.contains("expanded") && window.innerWidth < 900) {
     sidebar.classList.remove("expanded");
     sidebar.classList.add("offscreen");
     if (overlay) overlay.classList.add("hidden");
   }
 }
+
 
 // --- Scroll Fade Logic ---
 const navbar = document.getElementById("nav-bar");

@@ -5011,3 +5011,45 @@ body.bb-note-modal-open #main-content-container {
     border-bottom-right-radius: 0px !important;
   }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* Viewer vs Owner top buttons */
+html.bb-viewer #share-btn { display: none !important; }
+html.bb-viewer #make-copy-btn { display: inline-flex !important; }
+html.bb-viewer #scripture-mode-toggle { display: none !important; }
+/* optional: if you have a bottom open scripture button */
+html.bb-viewer #open-scripture-btn,
+html.bb-viewer .open-scripture-btn { display: none !important; }
+
+html.bb-owner #share-btn { display: inline-flex !important; }
+html.bb-owner #make-copy-btn { display: none !important; }
