@@ -100,6 +100,7 @@ const TEMPLATE_BOARDS = [
 const PROMO_CODE_HASHES = new Set([
   // Example placeholder: replace with your real hashes
   "d82059ecd1edd9d58d10bda74e5486dbd480bd6fadb7e8ab6f56f2defcf26c7c",
+  "c451b55d11b3f61d9c8c589f9eeadd58699ec106490e932d1ec66c48bdae6768",
 ]);
 
 /**
@@ -4687,3 +4688,4 @@ function initBibleQueryVersionDropdown() {
     }
   }
 }
+
