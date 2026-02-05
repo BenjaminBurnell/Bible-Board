@@ -2563,7 +2563,7 @@ async function handleAuthChange(user, valid = false) {
   }
 
   // normal behavior for non-shared pages
-  // window.location = "../";
+  window.location = "../";
 }
 
 
