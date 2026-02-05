@@ -1774,6 +1774,7 @@ button, input:focus {
 .logo-text {
     font-size: 1.25rem;
     font-weight: 700;
+    margin-left: 10px;
     color: var(--fg); /* text-gray-900 */
 }
 

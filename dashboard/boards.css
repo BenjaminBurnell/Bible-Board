@@ -648,6 +648,24 @@ body {
   display: flex !important;
 }
 
+/* Sidebar board item “pop-in” animation */
+.sidebar-board-item.sidebar-enter {
+  filter: blur(0.1rem);
+  opacity: 0;
+  margin-top: 10px;
+
+  transition:
+    filter 0.2s ease,
+    opacity 0.2s ease,
+    margin-top 0.2s ease;
+}
+
+.sidebar-board-item.sidebar-enter.sidebar-enter-active {
+  filter: blur(0rem);
+  opacity: 1;
+  margin-top: 0px;
+}
+
 
 #bible-query-container-book {
   white-space: nowrap; /* Prevents text from wrapping */
@@ -2019,7 +2037,7 @@ body {
   display: none;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.3);
+  background: rgba(0, 0, 0, 0.1);
   backdrop-filter: blur(16px);
   z-index: 6000000;
 }

@@ -1405,7 +1405,8 @@ function renderSidebarBoards(boards) {
 
     groups[group].forEach((board) => {
       const itemDiv = document.createElement("div");
-      itemDiv.className = "sidebar-board-item";
+      itemDiv.className = "sidebar-board-item sidebar-enter";
+
       itemDiv.dataset.id = board.id;
 
       const currentParams = new URLSearchParams(window.location.search);
@@ -1433,6 +1434,17 @@ function renderSidebarBoards(boards) {
       itemDiv.appendChild(mainBtn);
       itemDiv.appendChild(menuBtn);
       container.appendChild(itemDiv);
+
+      // animate after insertion
+      requestAnimationFrame(() => {
+        itemDiv.classList.add("sidebar-enter-active");
+      });
+
+      // optional cleanup after the transition
+      setTimeout(() => {
+        itemDiv.classList.remove("sidebar-enter", "sidebar-enter-active");
+      }, 250);
+
     });
   });
 }
@@ -2551,7 +2563,7 @@ async function handleAuthChange(user, valid = false) {
   }
 
   // normal behavior for non-shared pages
-  window.location = "../";
+  // window.location = "../";
 }
 
 

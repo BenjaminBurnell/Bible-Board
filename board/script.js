@@ -9249,6 +9249,58 @@ function setupBoardSettingsPanel() {
 }
 
 
+async function fetchSemanticRefs(userQuery, opts = {}) {
+  const baseUrl = "https://full-bible-api.onrender.com";
+  const { topk = 7 } = opts;
+
+  const q = (userQuery ?? "").trim();
+  if (!q) return [];
+
+  const url = new URL("/semantic_refs", baseUrl);
+  url.searchParams.set("q", q);
+  url.searchParams.set("k", String(Math.max(1, Math.min(50, topk)))); // backend uses k
+
+  const res = await fetch(url.toString(), {
+    method: "GET",
+    headers: { Accept: "application/json" },
+  });
+
+  if (!res.ok) {
+    let detail = "";
+    try {
+      const data = await res.json();
+      detail = data?.detail ? ` - ${data.detail}` : "";
+    } catch (_) {}
+    throw new Error(`semantic_refs request failed (${res.status})${detail}`);
+  }
+
+  const data = await res.json();
+
+  // Support BOTH shapes:
+  // 1) ["MAT 14:13", ...]
+  if (Array.isArray(data)) return data.filter((x) => typeof x === "string");
+
+  // 2) { results: [{ reference, score, ... }, ...] }
+  if (Array.isArray(data?.results)) {
+    return data.results
+      .map((r) => r?.reference)
+      .filter((x) => typeof x === "string" && x.length);
+  }
+
+  // 3) Optional: if you ever return { references: [...] }
+  if (Array.isArray(data?.references)) {
+    return data.references.filter((x) => typeof x === "string");
+  }
+
+  return [];
+}
+
+
+
+
+// keep this
+window.fetchSemanticRefs = fetchSemanticRefs;
+
 
 
 

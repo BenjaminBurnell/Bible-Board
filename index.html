@@ -50,6 +50,20 @@
         <section class="section sub-main">
             <div id="text-container">
                 <h1 id="main-section-header-text">Turn scattered study into living boards.</h1>
+
+                <!-- <div class="animation-container">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 200" class="text-svg">
+                        <path id="curve" d="M0,150 Q200,50 400,150 T800,150" fill="transparent" />
+                            <text class="moving-text">
+                            <textPath id="text-path" href="#curve" startOffset="0">
+                                <tspan id="text-segment">Turn scattered study into living boards.</tspan>
+                                <tspan>Turn scattered study into living boards.</tspan>
+                                <tspan>Turn scattered study into living boards.</tspan>
+                                <tspan>Turn scattered study into living boards.</tspan>
+                            </textPath>
+                        </text>
+                    </svg>
+                </div> -->
                 <h4 id="main-section-sub-text">
                     Drag in verses, attach notes, connect themes, and return to the same visual board
                     every time you open your Bible.
@@ -381,6 +395,22 @@
                 </div>
             </div>
         </footer>
+
+        <!-- <div id="text-animation">
+            <div class="animation-container">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 200" class="text-svg">
+                    <path id="curve" d="M0,150 Q200,50 400,150 T800,150" fill="transparent" />
+                        <text class="moving-text">
+                        <textPath id="text-path" href="#curve" startOffset="0">
+                            <tspan id="text-segment">Turn scattered study into living boards.</tspan>
+                            <tspan>Turn scattered study into living boards.</tspan>
+                            <tspan>Turn scattered study into living boards.</tspan>
+                            <tspan>Turn scattered study into living boards.</tspan>
+                        </textPath>
+                    </text>
+                </svg>
+            </div>
+        </div> -->
     </main>
 
     <nav id="nav-bar">
@@ -402,5 +432,93 @@
     </nav>
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <script type="module" src="../supabaseClient.js"></script>
+
+    <style>
+        .animation-container {
+            position: relative;
+            width: 100%;
+            height: 300px;
+            background: transparent; /* Match the off-white background */
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: -1;
+        }
+
+        .text-svg {
+            width: 100%;
+            height: auto;
+        }
+
+        .moving-text {
+            font-family: 'Inter', sans-serif;
+            font-size: 3rem;
+            font-weight: 900;
+            fill: var(--fg);
+        }
+
+        /* Waveform Bars */
+        .waveform {
+            position: absolute;
+            display: flex;
+            gap: 4px;
+            align-items: center;
+        }
+
+        .bar {
+            width: 3px;
+            height: 10px;
+            background: #1a1a1a;
+            border-radius: 2px;
+            animation: pulse 0.5s infinite ease-in-out alternate;
+        }
+
+        /* Offset the bars for a natural look */
+        .bar:nth-child(2) { animation-delay: 0.1s; }
+        .bar:nth-child(3) { animation-delay: 0.2s; }
+        .bar:nth-child(4) { animation-delay: 0.15s; }
+
+        @keyframes pulse {
+            from { height: 10px; }
+            to { height: 25px; }
+        }
+        .moving-text {
+            white-space: nowrap;
+            text-rendering: geometricPrecision; /* This is key for smooth SVG motion */
+            -webkit-font-smoothing: antialiased;
+        }
+    </style>
+    
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+        const textPath = document.getElementById('text-path');
+        const segment = document.getElementById('text-segment');
+
+        // Verify the element is actually an SVG text element
+        if (segment instanceof SVGTextContentElement) {
+            const segmentWidth = segment.getComputedTextLength();
+            let currentOffset = 0;
+            const speed = 1.5;
+
+            function animate() {
+            currentOffset -= speed;
+
+            // Seamless reset logic
+            if (Math.abs(currentOffset) >= segmentWidth) {
+                currentOffset = 0;
+            }
+
+            textPath.setAttribute('startOffset', currentOffset);
+            requestAnimationFrame(animate);
+            }
+
+            animate();
+        } else {
+            console.error("The element is not a valid SVG text element. Current element:", segment);
+        }
+        });
+        
+    </script>
 </body>
 </html>
