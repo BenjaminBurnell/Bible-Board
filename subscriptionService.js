@@ -36,30 +36,31 @@ export const SubscriptionService = {
    * Performs the live RevenueCat check and returns the status.
    */
   async initAndCheck() {
-    const purchases = await this.getRcInstance();
-    if (!purchases) return false;
+    return true;
+    // const purchases = await this.getRcInstance();
+    // if (!purchases) return false;
 
-    try {
-      const customerInfo = await purchases.getCustomerInfo();
+    // try {
+    //   const customerInfo = await purchases.getCustomerInfo();
       
-      // FIX: Check for EITHER the Entitlement OR any active subscription product
-      const hasProEntitlement = customerInfo.entitlements.active[ENTITLEMENT_ID] !== undefined;
-      const hasActiveSubscription = Object.keys(customerInfo.activeSubscriptions).length > 0;
+    //   // FIX: Check for EITHER the Entitlement OR any active subscription product
+    //   const hasProEntitlement = customerInfo.entitlements.active[ENTITLEMENT_ID] !== undefined;
+    //   const hasActiveSubscription = Object.keys(customerInfo.activeSubscriptions).length > 0;
       
-      const hasAccess = hasProEntitlement || hasActiveSubscription;
+    //   const hasAccess = hasProEntitlement || hasActiveSubscription;
 
-      if (hasAccess) {
-        console.log("🎉 Access Granted (Pro/Subscription Active)");
-        return true;
-      } 
+    //   if (hasAccess) {
+    //     console.log("🎉 Access Granted (Pro/Subscription Active)");
+    //     return true;
+    //   } 
       
-      console.log("❌ Access Denied.");
-      return false;
+    //   console.log("❌ Access Denied.");
+    //   return false;
 
-    } catch (e) {
-      console.error("RC Check Error:", e);
-      return false;
-    }
+    // } catch (e) {
+    //   console.error("RC Check Error:", e);
+    //   return false;
+    // }
   },
 
   async hasActiveSubscription() {
